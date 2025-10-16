@@ -43,11 +43,15 @@ export function DailySummary({ summary = defaultSummary, calculatedBMR, calculat
   const tSummary = useTranslation('summary')
   const { totalCaloriesConsumed, totalCaloriesBurned, macros } = summary
 
-  // 计算宏量营养素百分比
-  const totalMacros = macros.carbs + macros.protein + macros.fat
-  const carbsPercent = totalMacros > 0 ? (macros.carbs / totalMacros) * 100 : 0
-  const proteinPercent = totalMacros > 0 ? (macros.protein / totalMacros) * 100 : 0
-  const fatPercent = totalMacros > 0 ? (macros.fat / totalMacros) * 100 : 0
+  // 计算宏量营养素百分比（基于热量而非重量）
+  const carbsCalories = macros.carbs * 4  // 1g碳水 = 4kcal
+  const proteinCalories = macros.protein * 4  // 1g蛋白质 = 4kcal
+  const fatCalories = macros.fat * 9  // 1g脂肪 = 9kcal
+  const totalMacroCalories = carbsCalories + proteinCalories + fatCalories
+
+  const carbsPercent = totalMacroCalories > 0 ? (carbsCalories / totalMacroCalories) * 100 : 0
+  const proteinPercent = totalMacroCalories > 0 ? (proteinCalories / totalMacroCalories) * 100 : 0
+  const fatPercent = totalMacroCalories > 0 ? (fatCalories / totalMacroCalories) * 100 : 0
 
   // 新增：计算每个宏量营养素是否低于下限或高于上限
   const carbsStatus = carbsPercent < MACRO_RANGES.carbs.min ? 'low' : carbsPercent > MACRO_RANGES.carbs.max ? 'high' : 'ok'
@@ -95,25 +99,25 @@ export function DailySummary({ summary = defaultSummary, calculatedBMR, calculat
               </Button>
             </Link>
           </div>
-          <div className="space-y-8 flex-grow">
+          <div className="space-y-6 flex-grow">
           {/* 卡路里摘要 */}
-          <div className="space-y-3">
+          <div className="space-y-2">
              <h4 className="text-sm font-medium flex items-center"><Sigma className="mr-2 h-4 w-4 text-primary" />{t('calorieBalance')}</h4>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center py-1">
               <div className="flex items-center text-sm">
                 <Utensils className="mr-2 h-4 w-4 text-green-500" />
                 <span>{t('caloriesIn')}</span>
               </div>
               <span className="text-sm font-semibold">{formatNumber(totalCaloriesConsumed, 0)} kcal</span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center py-1">
               <div className="flex items-center text-sm">
                 <Flame className="mr-2 h-4 w-4 text-red-500" />
                 <span>{t('exerciseBurn')}</span>
               </div>
               <span className="text-sm font-semibold">{formatNumber(totalCaloriesBurned, 0)} kcal</span>
             </div>
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center py-1">
               <div className="flex items-center text-sm font-medium">
                 {netCalories > 0 ? <TrendingUp className="mr-2 h-4 w-4 text-orange-500" /> : <TrendingDown className="mr-2 h-4 w-4 text-blue-500" />}
                 <span>{t('netCalories')}</span>
@@ -267,7 +271,7 @@ export function DailySummary({ summary = defaultSummary, calculatedBMR, calculat
           </div>
 
           {/* 宏量营养素分布 */}
-          {totalMacros > 0 && (
+          {totalMacroCalories > 0 && (
             <div className="space-y-4 pt-4 border-t">
               <h4 className="text-sm font-medium flex items-center"><PieChart className="mr-2 h-4 w-4 text-primary" />{t('macronutrients')}</h4>
 

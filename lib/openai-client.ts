@@ -128,6 +128,12 @@ export class OpenAICompatibleClient {
       return response
     } catch (error) {
       console.error("Fetch error:", error)
+      console.error("Error details:", {
+        name: error instanceof Error ? error.name : 'Unknown',
+        message: error instanceof Error ? error.message : String(error),
+        cause: error instanceof Error ? error.cause : undefined,
+        stack: error instanceof Error ? error.stack : undefined
+      })
 
       // 提供更详细的错误信息
       if (error instanceof Error) {
@@ -137,6 +143,10 @@ export class OpenAICompatibleClient {
           throw new Error(`网络连接失败：无法连接到 ${this.baseUrl}。请检查网络连接和API地址是否正确。`)
         } else if (error.message.includes('CERT') || error.message.includes('certificate')) {
           throw new Error(`SSL证书错误：连接到 ${this.baseUrl} 时遇到证书问题。`)
+        } else if (error.message.includes('CONNECT_TIMEOUT') || error.message.includes('UND_ERR_CONNECT_TIMEOUT')) {
+          throw new Error(`连接超时：无法在合理时间内连接到 ${this.baseUrl}。这可能是网络问题、服务器负载过高或服务器不可达。请稍后重试。`)
+        } else if (error.message.includes('fetch failed')) {
+          throw new Error(`网络请求失败：无法连接到 ${this.baseUrl}。请检查：1) 网络连接是否正常 2) API地址是否正确 3) 服务器是否可访问`)
         }
       }
 

@@ -1,0 +1,192 @@
+name: SnapFit AI Personal Edition Build
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-personal
+
+jobs:
+  # Vercel 部署
+  vercel-deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build for Vercel
+      run: npm run build
+      env:
+        NEXT_PUBLIC_VERSION: personal
+        NEXT_PUBLIC_FEATURES: basic
+        
+    - name: Deploy to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+        working-directory: ./
+
+  # Docker 构建 (本地部署用)
+  docker-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.personal
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          VERSION=personal
+          FEATURES=basic
+
+    - name: Generate deployment files
+      if: github.event_name != 'pull_request'
+      run: |
+        mkdir -p release
+        
+        # 个人版 docker-compose (SQLite)
+        cat > release/docker-compose.personal.yml << 'EOF'
+        version: '3.8'
+        
+        services:
+          snapfit-personal:
+            image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            container_name: snapfit-personal
+            ports:
+              - "3000:3000"
+            environment:
+              - NODE_ENV=production
+              - NEXTAUTH_SECRET=your-secret-here
+              - NEXTAUTH_URL=http://localhost:3000
+              - DATABASE_TYPE=sqlite
+              - SQLITE_PATH=/app/data/snapfit.db
+              # 个人版无需 OAuth
+            volumes:
+              - snapfit_personal_data:/app/data
+            restart: unless-stopped
+            
+        volumes:
+          snapfit_personal_data:
+        EOF
+        
+        # 个人版环境变量模板
+        cat > release/.env.personal.example << 'EOF'
+        # SnapFit AI 个人版配置
+        NODE_ENV=production
+        NEXTAUTH_SECRET=your-very-long-random-secret-here
+        NEXTAUTH_URL=http://localhost:3000
+        
+        # 数据库配置 (SQLite)
+        DATABASE_TYPE=sqlite
+        SQLITE_PATH=/app/data/snapfit.db
+        
+        # AI 服务 (可选)
+        OPENAI_API_KEY=sk-your-openai-key-here
+        OPENAI_BASE_URL=https://api.openai.com/v1
+        
+        # 个人版特性
+        ENABLE_REGISTRATION=true
+        MAX_USERS=1
+        FEATURES=basic
+        EOF
+
+    - name: Upload artifacts
+      if: github.event_name != 'pull_request'
+      uses: actions/upload-artifact@v4
+      with:
+        name: personal-deployment-files
+        path: release/
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release/docker-compose.personal.yml
+          release/.env.personal.example
+        body: |
+          ## SnapFit AI 个人版 ${{ github.ref_name }}
+          
+          ### 🏠 个人版特性
+          - ✅ 轻量级部署，无需外部数据库
+          - ✅ 支持 SQLite 本地存储
+          - ✅ 一键 Vercel 部署
+          - ✅ Docker 本地部署
+          - ✅ Apache 2.0 开源协议
+          
+          ### 🚀 部署方式
+          
+          #### Vercel 部署 (推荐)
+          [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/${{ github.repository }})
+          
+          #### Docker 本地部署
+          ```bash
+          # 下载配置文件
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/docker-compose.personal.yml
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/.env.personal.example
+          
+          # 配置环境变量
+          cp .env.personal.example .env
+          
+          # 启动服务
+          docker-compose -f docker-compose.personal.yml up -d
+          ```
+          
+          ### 📋 版本信息
+          - 版本类型: 个人版
+          - 数据库: SQLite
+          - 用户限制: 单用户
+          - 功能集: 基础功能
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

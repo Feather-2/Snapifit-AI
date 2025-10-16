@@ -1,17 +1,18 @@
+"use client"
+
 import Link from "next/link"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { GitHubStar } from "@/components/github-star"
 import type { Locale } from "@/i18n"
-import Image from "next/image"
-import { auth } from "@/lib/auth"
+import { useSession } from "next-auth/react"
 import { MainNavLinks } from "./main-nav-links"
 import { MobileNav } from "./mobile-nav"
 import { UserNav } from "./user-nav"
 import { ThemeToggle } from "./theme-toggle"
 import { UsageBadge } from "@/components/usage/usage-indicator"
 
-export async function MainNav({ locale }: { locale: Locale }) {
-  const session = await auth()
+export function MainNav({ locale }: { locale: Locale }) {
+  const { data: session } = useSession()
 
   return (
     <div className="sticky top-0 z-50 w-full border-b border-slate-200/20 dark:border-slate-600/30 bg-white/85 dark:bg-slate-800/85 backdrop-blur-xl shadow-sm">
@@ -31,8 +32,8 @@ export async function MainNav({ locale }: { locale: Locale }) {
         <MainNavLinks locale={locale} />
 
         <div className="ml-auto flex items-center space-x-2 md:space-x-3">
-          {/* 紧凑的使用量显示 - 只在登录且有权限时显示 */}
-          {session?.user && session.user.trustLevel && session.user.trustLevel >= 1 && session.user.trustLevel <= 4 && (
+          {/* 紧凑的使用量显示 - 登录时显示，包括LV0用户 */}
+          {session?.user && (
             <div className="hidden sm:block">
               <UsageBadge className="text-xs" />
             </div>
@@ -42,7 +43,7 @@ export async function MainNav({ locale }: { locale: Locale }) {
           <div className="hidden md:flex items-center space-x-3">
             <LanguageSwitcher />
             <ThemeToggle />
-            <GitHubStar repo="Feather-2/SnapFit-AI" />
+            <GitHubStar repo="Feather-2/Snapifit-AI" />
           </div>
           {/* 移动端使用汉堡菜单 */}
           <MobileNav locale={locale} />

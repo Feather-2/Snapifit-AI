@@ -12,26 +12,71 @@ interface SyncLimitRecord {
 export class SyncRateLimiter {
   private static instance: SyncRateLimiter;
   private syncLimits = new Map<string, SyncLimitRecord>();
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
-  // 同步API的多层限制规则
-  private readonly SYNC_LIMITS = {
-    // 每个用户每秒最多3次同步（防止瞬间爆发）
-    perUserPerSecond: { requests: 3, window: 1 * 1000 },
-    // 每个用户每分钟最多30次同步（防止持续滥用）
-    perUserPerMinute: { requests: 30, window: 60 * 1000 },
-    // 每个用户每小时最多300次同步（长期限制）
-    perUserPerHour: { requests: 300, window: 60 * 60 * 1000 },
-    // 每个IP每分钟最多100次同步（多用户共享IP的情况）
-    perIPPerMinute: { requests: 100, window: 60 * 1000 },
-    // 每个IP每小时最多1000次同步（IP级别长期限制）
-    perIPPerHour: { requests: 1000, window: 60 * 60 * 1000 }
-  };
+  // 动态获取同步API的多层限制规则（支持环境变量控制）
+  private getSyncLimits() {
+    const { EnvConfig } = require('./env-config');
+    const rateLimits = EnvConfig.rateLimits;
+
+    return {
+      // 每个用户每秒最多N次同步（防止瞬间爆发）
+      perUserPerSecond: { requests: rateLimits.syncUserPerSecond, window: 1 * 1000 },
+      // 每个用户每分钟最多N次同步（防止持续滥用）
+      perUserPerMinute: { requests: rateLimits.syncUserPerMinute, window: 60 * 1000 },
+      // 每个用户每小时最多N次同步（长期限制）
+      perUserPerHour: { requests: rateLimits.syncUserPerHour, window: 60 * 60 * 1000 },
+      // 每个IP每分钟最多N次同步（多用户共享IP的情况）
+      perIPPerMinute: { requests: rateLimits.syncIPPerMinute, window: 60 * 1000 },
+      // 每个IP每小时最多N次同步（IP级别长期限制）
+      perIPPerHour: { requests: rateLimits.syncIPPerHour, window: 60 * 60 * 1000 }
+    };
+  }
 
   private constructor() {
-    // 定期清理过期记录
-    setInterval(() => {
+    // 只在服务器端或可见页面中启动定期清理
+    if (typeof window === 'undefined') {
+      // 服务器端始终运行
+      this.startCleanupInterval();
+    } else {
+      // 客户端根据页面可见性决定
+      this.setupVisibilityListener();
+    }
+  }
+
+  private startCleanupInterval() {
+    if (this.cleanupInterval) return;
+    this.cleanupInterval = setInterval(() => {
       this.cleanup();
     }, 60 * 1000);
+  }
+
+  private stopCleanupInterval() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+  }
+
+  private setupVisibilityListener() {
+    if (typeof document === 'undefined') return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('[SyncRateLimiter] Page hidden, stopping cleanup interval');
+        this.stopCleanupInterval();
+      } else {
+        console.log('[SyncRateLimiter] Page visible, starting cleanup interval');
+        this.startCleanupInterval();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 初始状态检查
+    if (!document.hidden) {
+      this.startCleanupInterval();
+    }
   }
 
   static getInstance(): SyncRateLimiter {
@@ -50,14 +95,21 @@ export class SyncRateLimiter {
     retryAfter?: number;
     limitType?: string;
   } {
+    // 🔧 检查是否启用速率限制
+    const { EnvConfig } = require('./env-config');
+    if (!EnvConfig.enableRateLimit) {
+      return { allowed: true }; // 速率限制被禁用，直接通过
+    }
+
     const now = Date.now();
+    const syncLimits = this.getSyncLimits();
 
     // 1. 检查用户级别的每秒限制（最严格）
     const userKey1s = `user:${userId}:1s`;
     const userRecord1s = this.syncLimits.get(userKey1s);
 
     if (userRecord1s && now < userRecord1s.resetTime) {
-      if (userRecord1s.count >= this.SYNC_LIMITS.perUserPerSecond.requests) {
+      if (userRecord1s.count >= syncLimits.perUserPerSecond.requests) {
         return {
           allowed: false,
           reason: 'Too many sync requests per second. Please slow down.',
@@ -72,7 +124,7 @@ export class SyncRateLimiter {
     const userRecord1m = this.syncLimits.get(userKey1m);
 
     if (userRecord1m && now < userRecord1m.resetTime) {
-      if (userRecord1m.count >= this.SYNC_LIMITS.perUserPerMinute.requests) {
+      if (userRecord1m.count >= syncLimits.perUserPerMinute.requests) {
         return {
           allowed: false,
           reason: 'User sync limit exceeded. Too many requests per minute.',
@@ -87,7 +139,7 @@ export class SyncRateLimiter {
     const userRecord1h = this.syncLimits.get(userKey1h);
 
     if (userRecord1h && now < userRecord1h.resetTime) {
-      if (userRecord1h.count >= this.SYNC_LIMITS.perUserPerHour.requests) {
+      if (userRecord1h.count >= syncLimits.perUserPerHour.requests) {
         return {
           allowed: false,
           reason: 'User hourly sync limit exceeded. Please wait before syncing again.',
@@ -102,7 +154,7 @@ export class SyncRateLimiter {
     const ipRecord1m = this.syncLimits.get(ipKey1m);
 
     if (ipRecord1m && now < ipRecord1m.resetTime) {
-      if (ipRecord1m.count >= this.SYNC_LIMITS.perIPPerMinute.requests) {
+      if (ipRecord1m.count >= syncLimits.perIPPerMinute.requests) {
         return {
           allowed: false,
           reason: 'IP sync limit exceeded. Too many sync requests from this IP.',
@@ -117,7 +169,7 @@ export class SyncRateLimiter {
     const ipRecord1h = this.syncLimits.get(ipKey1h);
 
     if (ipRecord1h && now < ipRecord1h.resetTime) {
-      if (ipRecord1h.count >= this.SYNC_LIMITS.perIPPerHour.requests) {
+      if (ipRecord1h.count >= syncLimits.perIPPerHour.requests) {
         return {
           allowed: false,
           reason: 'IP hourly sync limit exceeded. Too many requests from this IP.',
@@ -137,20 +189,22 @@ export class SyncRateLimiter {
    * 更新所有计数器
    */
   private updateCounters(userId: string, ipAddress: string, now: number): void {
+    const syncLimits = this.getSyncLimits();
+
     // 更新用户1秒限制
-    this.updateCounter(`user:${userId}:1s`, this.SYNC_LIMITS.perUserPerSecond, now);
+    this.updateCounter(`user:${userId}:1s`, syncLimits.perUserPerSecond, now);
 
     // 更新用户1分钟限制
-    this.updateCounter(`user:${userId}:1m`, this.SYNC_LIMITS.perUserPerMinute, now);
+    this.updateCounter(`user:${userId}:1m`, syncLimits.perUserPerMinute, now);
 
     // 更新用户1小时限制
-    this.updateCounter(`user:${userId}:1h`, this.SYNC_LIMITS.perUserPerHour, now);
+    this.updateCounter(`user:${userId}:1h`, syncLimits.perUserPerHour, now);
 
     // 更新IP1分钟限制
-    this.updateCounter(`ip:${ipAddress}:1m`, this.SYNC_LIMITS.perIPPerMinute, now);
+    this.updateCounter(`ip:${ipAddress}:1m`, syncLimits.perIPPerMinute, now);
 
     // 更新IP1小时限制
-    this.updateCounter(`ip:${ipAddress}:1h`, this.SYNC_LIMITS.perIPPerHour, now);
+    this.updateCounter(`ip:${ipAddress}:1h`, syncLimits.perIPPerHour, now);
   }
 
   /**
@@ -200,6 +254,7 @@ export class SyncRateLimiter {
     };
   } {
     const now = Date.now();
+    const syncLimits = this.getSyncLimits();
     const userKey1s = `user:${userId}:1s`;
     const userKey1m = `user:${userId}:1m`;
     const userKey1h = `user:${userId}:1h`;
@@ -221,17 +276,17 @@ export class SyncRateLimiter {
       limits: {
         perSecond: {
           current: (record1s && now < record1s.resetTime) ? record1s.count : 0,
-          max: this.SYNC_LIMITS.perUserPerSecond.requests,
+          max: syncLimits.perUserPerSecond.requests,
           resetTime: record1s?.resetTime
         },
         perMinute: {
           current: (record1m && now < record1m.resetTime) ? record1m.count : 0,
-          max: this.SYNC_LIMITS.perUserPerMinute.requests,
+          max: syncLimits.perUserPerMinute.requests,
           resetTime: record1m?.resetTime
         },
         perHour: {
           current: (record1h && now < record1h.resetTime) ? record1h.count : 0,
-          max: this.SYNC_LIMITS.perUserPerHour.requests,
+          max: syncLimits.perUserPerHour.requests,
           resetTime: record1h?.resetTime
         }
       }
@@ -239,9 +294,9 @@ export class SyncRateLimiter {
 
     // 计算下次允许同步的时间（取最早的重置时间）
     const blockedUntil = [
-      record1s && now < record1s.resetTime && record1s.count >= this.SYNC_LIMITS.perUserPerSecond.requests ? record1s.resetTime : 0,
-      record1m && now < record1m.resetTime && record1m.count >= this.SYNC_LIMITS.perUserPerMinute.requests ? record1m.resetTime : 0,
-      record1h && now < record1h.resetTime && record1h.count >= this.SYNC_LIMITS.perUserPerHour.requests ? record1h.resetTime : 0
+      record1s && now < record1s.resetTime && record1s.count >= syncLimits.perUserPerSecond.requests ? record1s.resetTime : 0,
+      record1m && now < record1m.resetTime && record1m.count >= syncLimits.perUserPerMinute.requests ? record1m.resetTime : 0,
+      record1h && now < record1h.resetTime && record1h.count >= syncLimits.perUserPerHour.requests ? record1h.resetTime : 0
     ].filter(time => time > 0);
 
     if (blockedUntil.length > 0) {
@@ -288,6 +343,7 @@ export class SyncRateLimiter {
     };
   } {
     const now = Date.now();
+    const syncLimits = this.getSyncLimits();
     const ipKey1m = `ip:${ipAddress}:1m`;
     const ipKey1h = `ip:${ipAddress}:1h`;
 
@@ -300,12 +356,12 @@ export class SyncRateLimiter {
       limits: {
         perMinute: {
           current: (record1m && now < record1m.resetTime) ? record1m.count : 0,
-          max: this.SYNC_LIMITS.perIPPerMinute.requests,
+          max: syncLimits.perIPPerMinute.requests,
           resetTime: record1m?.resetTime
         },
         perHour: {
           current: (record1h && now < record1h.resetTime) ? record1h.count : 0,
-          max: this.SYNC_LIMITS.perIPPerHour.requests,
+          max: syncLimits.perIPPerHour.requests,
           resetTime: record1h?.resetTime
         }
       }

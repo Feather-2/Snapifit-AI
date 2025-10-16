@@ -47,6 +47,7 @@
     "totalUsage": "Total Usage",
     "userMenu": {
       "settings": "Settings",
+      "inviteCodes": "Invite Codes",
       "sharedServices": "Shared Services",
       "signOut": "Sign Out",
       "signIn": "Sign In"
@@ -83,6 +84,230 @@
     "subtitle": "Smart Health Management Assistant",
     "description": "Your personal health management and nutrition analysis assistant"
   },
+  "auth": {
+    "signin": {
+      "title": "Welcome Back",
+      "description": "Choose your sign-in method",
+      "oauthTab": "Third-party Login",
+      "credentialsTab": "Email & Password",
+      "oauthDescription": "Sign in quickly with third-party accounts",
+      "githubButton": "Sign in with GitHub",
+      "googleButton": "Sign in with Google",
+      "identifier": "Email or Username",
+      "identifierPlaceholder": "your@email.com or username",
+      "email": "Email Address",
+      "emailPlaceholder": "your@email.com",
+      "password": "Password",
+      "passwordPlaceholder": "Enter your password",
+      "signInButton": "Sign In",
+      "signingIn": "Signing in...",
+      "forgotPassword": "Forgot password?",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Sign up now"
+    },
+    "register": {
+      "title": "Create Account",
+      "description": "Fill in the information to create your new account",
+      "username": "Username",
+      "usernamePlaceholder": "2-50 characters, letters, numbers, underscore",
+      "email": "Email Address",
+      "emailPlaceholder": "your@email.com",
+      "password": "Password",
+      "passwordPlaceholder": "At least 8 characters",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "Enter password again",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "Optional, defaults to username",
+      "inviteCode": "Invite Code",
+      "inviteCodePlaceholder": "Optional, upgrade to LV3 with invite code",
+      "createAccount": "Create Account",
+      "registering": "Registering...",
+      "hasAccount": "Already have an account?",
+      "signinLink": "Sign in now",
+      "successTitle": "Registration Successful",
+      "successDescription": "Please check your email for verification",
+      "emailSent": "We have sent a verification email to",
+      "emailSentSuffix": ". Please click the link in the email to complete account verification.",
+      "backToSignin": "Back to Sign In",
+      "resendEmail": "Didn't receive email? Resend",
+      "success": "Registration successful! Please check your email for verification.",
+      "passwordFeedback": {
+        "minLength": "At least 8 characters required",
+        "lowercase": "Must contain lowercase letters",
+        "uppercase": "Must contain uppercase letters",
+        "number": "Must contain numbers",
+        "special": "Recommend including special characters"
+      },
+      "passwordStrength": {
+        "veryWeak": "Very Weak",
+        "weak": "Weak",
+        "fair": "Fair",
+        "good": "Good",
+        "strong": "Strong"
+      },
+      "errors": {
+        "passwordMismatch": "Password confirmation does not match",
+        "weakPassword": "Password is too weak",
+        "registrationFailed": "Registration failed",
+        "usernameTaken": "Username is already taken",
+        "emailTaken": "Email is already taken",
+        "registrationDisabled": "注册功能已关闭 | Registration is currently disabled",
+        "inviteCodeRequired": "注册需要邀请码 | Invite code is required for registration"
+      }
+    },
+    "forgotPassword": {
+      "title": "Forgot Password",
+      "description": "Enter your email address and we'll send you a reset link",
+      "email": "Email Address",
+      "emailPlaceholder": "your@email.com",
+      "sendButton": "Send Reset Email",
+      "sending": "Sending...",
+      "backToSignin": "Back to Sign In",
+      "emailSentTitle": "Email Sent",
+      "emailSentDescription": "Please check your email",
+      "emailSentMessage": "We have sent a password reset email to",
+      "emailSentMessageSuffix": ". Please click the link in the email to reset your password.",
+      "resendEmail": "Didn't receive email? Resend",
+      "resetTitle": "Reset Password",
+      "resetDescription": "Set a new password for your account",
+      "newPassword": "New Password",
+      "newPasswordPlaceholder": "At least 8 characters",
+      "confirmPassword": "Confirm New Password",
+      "confirmPasswordPlaceholder": "Enter new password again",
+      "resetButton": "Reset Password",
+      "resetting": "Resetting...",
+      "resetSuccess": "Password reset successful",
+      "redirecting": ", redirecting to sign in page...",
+      "emailSent": "Reset email sent",
+      "errors": {
+        "invalidToken": "Reset link is invalid or expired",
+        "tokenValidationFailed": "Error validating reset link",
+        "sendFailed": "Send failed, please try again",
+        "resetFailed": "Reset failed, please try again",
+        "captchaRequired": "Please complete the captcha verification",
+        "captchaInvalid": "Invalid captcha, please try again"
+      },
+      "captcha": {
+        "title": "Human Verification",
+        "description": "Please solve the math problem above and enter the answer to help prevent automated attacks",
+        "placeholder": "Answer",
+        "generating": "Generating...",
+        "loading": "Loading...",
+        "refresh": "Refresh captcha",
+        "enterAnswer": "Please enter the answer",
+        "invalidNumber": "Please enter a valid number",
+        "verified": "Verified",
+        "notVerified": "Not verified",
+        "generateFailed": "Failed to generate captcha, please try again",
+        "networkError": "Network error, please check your connection"
+      }
+    },
+    "errors": {
+      "oauthFailed": "OAuth login failed, please try again",
+      "invalidCredentials": "Invalid email or password",
+      "loginFailed": "Login failed, please try again"
+    }
+  },
+  "exercisePage": {
+    "common": {
+      "edit": "Edit",
+      "delete": "Delete",
+      "save": "Save",
+      "cancel": "Cancel"
+    },
+    "title": "Exercise",
+    "subtitle": "Quick log · Pro library · Muscle demo",
+    "tabs": {
+      "plan": "Plan",
+      "live": "Live",
+      "library": "Library"
+    },
+    "fields": {
+      "name": "Exercise Name",
+      "type": "Type",
+      "sets": "Sets",
+      "reps": "Reps",
+      "weight": "Weight (kg)",
+      "distance": "Distance (km)",
+      "duration": "Duration (min)",
+      "timePeriod": "Time Period"
+    },
+    "types": {
+      "all": "All",
+      "strength": "Strength",
+      "cardio": "Cardio",
+      "flexibility": "Flexibility",
+      "other": "Other"
+    },
+    "timePeriods": {
+      "morning": "Morning",
+      "noon": "Noon",
+      "afternoon": "Afternoon",
+      "evening": "Evening"
+    },
+    "placeholders": {
+      "name": "e.g., Bench Press / Squat / Running",
+      "type": "Select type",
+      "timePeriod": "Select time period"
+    },
+    "saveToday": "Save to Today",
+    "calories": "Calories",
+    "estimation": "Estimation",
+    "savedTitle": "Saved",
+    "savedDesc": "Saved to today's exercise log",
+    "library": {
+      "search": "Search",
+      "searchPh": "Search by name",
+      "muscle": "Muscle",
+      "musclePh": "Select muscle",
+      "remove": "Remove",
+      "removeConfirm": "Remove this exercise from library?",
+      "removed": "Removed"
+    },
+    "aiParse": {
+      "hint": "Paste your training notes, e.g., \"Bench Press 5x5@100kg rest 90s\", \"12 reps drop set 120kg→110kg\"",
+      "placeholder": "Enter training text, supports drop set/rest/superset syntax",
+      "button": "AI Parse & Save",
+      "processing": "Parsing...",
+      "emptyText": "Please enter training text to parse",
+      "parseFailed": "AI parsing failed",
+      "noResult": "No valid exercise items parsed",
+      "savedTitle": "Parsed and saved to today's training",
+      "savedDesc": "Added {count} records",
+      "networkErrorTitle": "Network or service error",
+      "parsedOnlyTitle": "Parsing Completed",
+      "parsedOnlyDesc": "Parsed {count} items, awaiting confirmation"
+    },
+    "livePanel": {
+      "previewSummary": "Parsed {count} records · ~{kcal} kcal",
+      "clear": "Clear Preview",
+      "saveAll": "Confirm Save",
+      "saving": "Saving...",
+      "savedTitle": "Saved Successfully",
+      "savedDesc": "Saved {count} records",
+      "saveErrorTitle": "Save Failed",
+      "timer": "Total Time",
+      "start": "Start",
+      "pause": "Pause",
+      "reset": "Reset",
+      "rest": "Rest",
+      "restSeconds": "{seconds}s",
+      "selectAll": "Select All",
+      "clearSelection": "Clear Selection",
+      "saveSelected": "Save Selected",
+      "emptyTitle": "No parsed items yet",
+      "emptyDesc": "Use Quick Log or AI parsing on the right to add sets"
+    },
+    "aiDiscover": {
+      "placeholder": "Search new exercises via AI/MCP",
+      "search": "Search",
+      "searching": "Searching...",
+      "found": "Found {count} candidates",
+      "addToLibrary": "Add to Library",
+      "searchFailed": "Search failed",
+      "added": "Candidates added to library"
+    }
+  },
   "dashboard": {
     "title": "Health Dashboard",
     "selectDate": "Select Date",
@@ -104,6 +329,22 @@
     "tdee": "TDEE",
     "inputPlaceholder": "Describe your food or exercise, or upload images...",
     "uploadImages": "Upload Images",
+    "nutritionAnalysisTitle": "Nutrition Analysis",
+    "nutritionAnalysis": {
+      "title": "{meal} Nutrition Analysis",
+      "currentMeal": "Current Meal: {meal}",
+      "cumulativeNutrition": "Cumulative Nutrition Intake",
+      "calories": "Calories",
+      "protein": "Protein",
+      "carbs": "Carbs",
+      "fat": "Fat",
+      "macroDistribution": "Macro Distribution",
+      "dailyProgress": "Daily Progress",
+      "ofTarget": "of Target",
+      "exceededTarget": "Exceeded target by {excess} kcal",
+      "remainingTarget": "Remaining target: {remaining} kcal",
+      "foodItems": "{meal} Food Items"
+    },
     "processing": "Processing...",
     "addEntry": "Add Entry",
     "errors": {
@@ -220,6 +461,53 @@
       "activityLevel": "Activity Level",
       "setTodayActivity": "Set today's activity intensity",
       "selectActivityLevel": "Select activity level",
+      "weightMeasurementTips": {
+        "title": "Professional Weight Measurement Guidelines",
+        "tips": [
+          "🕐 Consistent timing: Measure every morning after waking up, after using the bathroom, on an empty stomach",
+          "⚖️ Same scale: Use the same scale to ensure consistency and accuracy",
+          "👕 Consistent clothing: Wear light clothing or measure without clothes",
+          "📍 Fixed location: Place the scale on a flat, hard surface",
+          "📊 Focus on trends: Weight fluctuates due to water, food, etc. Focus on long-term trends",
+          "🔄 Regular calibration: Periodically check your scale's accuracy"
+        ]
+      },
+      "activityLevelGuide": {
+        "title": "Activity Level Detailed Guide",
+        "description": "Activity level is used to calculate Non-Exercise Activity Thermogenesis (NEAT), affecting your Total Daily Energy Expenditure (TDEE)",
+        "levels": {
+          "sedentary": {
+            "title": "Sedentary",
+            "description": "Mainly office work with little physical activity",
+            "examples": "Office workers, programmers, accountants, etc.",
+            "neat": "NEAT Factor: 1.2"
+          },
+          "light": {
+            "title": "Lightly Active",
+            "description": "Occasional light physical activity or exercise",
+            "examples": "1-3 times per week light exercise like walking, yoga",
+            "neat": "NEAT Factor: 1.375"
+          },
+          "moderate": {
+            "title": "Moderately Active",
+            "description": "Regular moderate-intensity exercise",
+            "examples": "3-5 times per week moderate exercise like jogging, swimming",
+            "neat": "NEAT Factor: 1.55"
+          },
+          "active": {
+            "title": "Very Active",
+            "description": "Daily physical activity or exercise",
+            "examples": "6-7 times per week exercise, or physically demanding job",
+            "neat": "NEAT Factor: 1.725"
+          },
+          "very_active": {
+            "title": "Extremely Active",
+            "description": "High-intensity training or physical labor",
+            "examples": "Professional athletes, construction workers, daily high-intensity training",
+            "neat": "NEAT Factor: 1.9"
+          }
+        }
+      },
       "recordHealthData": "Record Health Data",
       "recordHealthDataDesc": "Enter your diet or exercise records, intelligently identify nutrition and consumption",
       "dietRecord": "Diet Record",
@@ -322,6 +610,7 @@
       "calories": "Calories",
       "exercise": "Exercise",
       "deficit": "Deficit",
+      "prediction": "AI Prediction",
       "caloriesIn": "Calories In",
       "caloriesOut": "Exercise Burn",
       "calorieDeficit": "Calorie Deficit",
@@ -332,6 +621,46 @@
         "30d": "30 days",
         "90d": "90 days"
       }
+    },
+    "prediction": {
+      "title": "AI Prediction",
+      "fullTitle": "AI Weight Prediction",
+      "description": "Intelligent prediction based on multi-dimensional data",
+      "dataQuality": "Data Quality",
+      "confidence": "Confidence",
+      "highConfidence": "High Confidence",
+      "mediumConfidence": "Medium Confidence",
+      "lowConfidence": "Low Confidence",
+      "primaryFactors": "Primary Factors",
+      "aiSuggestions": "AI Suggestions",
+      "moreAccurateWithData": "More Accurate with More Data",
+      "dataCollectionNote": "As you continue to record data, AI prediction accuracy will continuously improve. Currently collected {days} days of data.",
+      "insufficientData": "Insufficient data or confidence too low",
+      "lowConfidenceMessage": "Prediction confidence too low, not displayed",
+      "dataRequirements": "Please continue recording complete diet, exercise, weight and lifestyle data",
+      "improvementTips": "Tips to improve prediction accuracy",
+      "tips": {
+        "continuousData": "Record complete data for at least 3-5 consecutive days",
+        "completeInfo": "Include weight, diet, exercise and sleep information",
+        "moreDataBetter": "More complete data leads to more accurate predictions"
+      },
+      "predictions": {
+        "day3": "3 days later",
+        "day7": "7 days later",
+        "day14": "14 days later",
+        "day30": "30 days later"
+      },
+      "actualWeight": "Actual Weight",
+      "predictedWeight": "Predicted Weight",
+      "today": "Today",
+      "experimentalFeature": "Experimental Feature - Development Only",
+      "developmentOnly": "AI weight prediction feature is under development and currently only available in development environment.",
+      "needUserProfile": "User profile required for prediction",
+      "needMoreData": "More historical data needed for prediction",
+      "loading": "Loading prediction data...",
+      "notAvailable": "Feature not available",
+      "developmentModeOnly": "AI prediction feature is only available in development mode",
+      "featureInDevelopment": "This feature is under development and will be officially released in future versions"
     },
     "summary": {
       "title": "Daily Summary",
@@ -358,17 +687,19 @@
           "underweight": "Underweight",
           "normal": "Normal",
           "overweight": "Overweight",
+          "obese": "Obese",
           "obese1": "Obese I",
           "obese2": "Obese II",
           "obese3": "Obese III"
         },
-        "description": "BMI is a common indicator for assessing weight status, for reference only.",
+        "description": "BMI is a common indicator for assessing weight status, for reference only. The system automatically selects appropriate BMI standards based on language settings.",
         "here": "You are here",
         "guideTitle": "Health Advice",
         "guides": {
           "underweight": "Maintain a balanced diet, increase calorie intake appropriately, and engage in strength training.",
           "normal": "Continue a healthy diet and regular exercise to maintain overall well-being.",
           "overweight": "Consider reducing calorie intake and increasing both cardio and strength training to gradually reduce fat.",
+          "obese": "Consult healthcare professionals to develop a weight-loss plan and actively manage your weight.",
           "obese1": "Consult healthcare professionals to develop a weight-loss plan and keep exercising.",
           "obese2": "High obesity risk, seek medical advice promptly and manage weight under professional supervision.",
           "obese3": "Severe obesity, comprehensive intervention and monitoring of complications under medical guidance are necessary."
@@ -455,6 +786,13 @@
       "protein": "Protein",
       "fat": "Fat",
       "grams": "g",
+      "time": "Time",
+      "nutritionPer100g": "Nutrition per 100g",
+      "editNutrition": "Edit Nutrition",
+      "hideNutrition": "Hide Nutrition",
+      "fiber": "Fiber",
+      "sugar": "Sugar",
+      "sodium": "Sodium",
       "cancel": "Cancel",
       "save": "Save",
       "mealTypes": {
@@ -492,7 +830,8 @@
         "morning": "Morning",
         "noon": "Noon",
         "afternoon": "Afternoon",
-        "evening": "Evening"
+        "evening": "Evening",
+        "unknown": "Unknown Period"
       }
     },
     "error": {
@@ -763,10 +1102,66 @@
       "no": "No"
     },
     "tabs": {
+      "account": "Account Info",
       "profile": "Personal Info",
       "goals": "Health Goals",
       "ai": "AI Configuration",
-      "data": "Data Management"
+      "data": "Data Management",
+      "inviteCodes": "Invite Codes"
+    },
+    "account": {
+      "title": "Account Information",
+      "description": "Manage your account information, including display name, email, and password",
+      "currentAccountInfo": "Current Account Information",
+      "username": "Username",
+      "trustLevel": "Trust Level",
+      "loginMethod": "Login Method",
+      "registrationTime": "Registration Time",
+      "loginMethods": {
+        "github": "GitHub",
+        "google": "Google",
+        "credentials": "Password Login"
+      },
+      "unknown": "Unknown",
+      "basicInfo": "Basic Information",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "Enter your display name",
+      "displayNameHelp": "This is the name other users will see",
+      "email": "Email Address",
+      "emailPlaceholder": "Enter your email address",
+      "emailHelp": "Used for important notifications and password reset",
+      "changePassword": "Change Password",
+      "changePasswordDescription": "Change your login password. For security, you need to enter your current password for verification.",
+      "setPasswordNotice": "You are currently logged in with a third-party account. After setting a password, you can choose to log in with either password or third-party account.",
+      "setPasswordWarning": "Note: Setting a password requires double confirmation. Please make sure to remember your password.",
+      "currentPassword": "Current Password",
+      "currentPasswordPlaceholder": "Enter current password",
+      "newPassword": "New Password",
+      "setPassword": "Set Password",
+      "newPasswordPlaceholder": "Enter new password (at least 8 characters)",
+      "setPasswordPlaceholder": "Set your login password (at least 8 characters)",
+      "confirmPassword": "Confirm Password",
+      "confirmPasswordPlaceholder": "Enter password again to confirm",
+      "passwordRequirements": "Password must be at least 8 characters",
+      "passwordRecommendation": "Recommended to use a combination of letters, numbers, and special characters",
+      "saveAccount": "Save Account Information",
+      "updating": "Updating...",
+      "updateSuccess": "Update Successful",
+      "updateSuccessDescription": "Account information has been updated",
+      "updateFailed": "Update Failed",
+      "unknownError": "Unknown Error",
+      "passwordMismatch": "Passwords do not match, please check",
+      "oauthPasswordNote": "After setting a password, you can log in with either password or third-party account",
+      "oauthUser": "OAuth User",
+      "error": "Error",
+      "userNotLoggedIn": "User not logged in",
+      "emailFormatError": "Email Format Error",
+      "enterValidEmail": "Please enter a valid email address",
+      "passwordMismatchTitle": "Password Mismatch",
+      "passwordMismatchDescription": "New password and confirmation password do not match",
+      "passwordTooShort": "Password Too Short",
+      "passwordMinLength": "Password must be at least 8 characters",
+      "adminPanel": "Admin Panel"
     },
     "profile": {
       "title": "Personal Information",
@@ -889,7 +1284,7 @@
       "privacyTitle": "Privacy Statement",
       "privacyDescription": "We value your privacy protection. This application stores your basic personal information (such as username, avatar), weight records, diet and exercise data, and API keys you voluntarily share with the community in the cloud to provide cross-device synchronization and community features. However, your personal private API keys and conversations with AI are always kept locally in your browser and will not be uploaded to our servers. Communication with AI models is only used to process your input and generate recommendations, and we do not store these conversation contents.",
       "usageTitle": "Usage Instructions",
-      "quotaInfo": "After logging in via Linux.do OAuth2, you will receive daily usage quotas based on your trust level. We encourage users to share quality model configurations to build a community ecosystem.",
+      "quotaInfo": "After logging in, you will receive daily usage quotas based on your trust level. We encourage users to share quality model configurations to build a community ecosystem.",
       "modelOptions": "You can use community shared models or configure private models.",
       "dataBackupTitle": "Data Backup",
       "dataBackupDescription": "The application uses cloud database storage. To ensure data safety, regular data export is strongly recommended as backup.",
@@ -899,7 +1294,12 @@
       "usage4": "Set your model parameters on the AI configuration page",
       "usage5": "Regularly export your data to prevent data loss",
       "versionTitle": "Version Information",
-      "versionInfo": "Snapifit AI Community Edition"
+      "versionInfo": "Snapifit AI Community Edition",
+      "guideTitle": "Usage Guide",
+      "guideDescription": "Review the initial usage guide to learn about the features of Snapifit AI Community Edition.",
+      "showGuide": "Show Usage Guide Again",
+      "guideReset": "Guide Reset",
+      "guideResetDescription": "Welcome guide will be displayed after page refresh"
     },
     "ai": {
       "title": "AI Configuration",
@@ -947,7 +1347,6 @@
       "fillApiUrlAndKey": "Please fill in API URL and Key first",
       "fetchModelsSuccess": "Fetch Models Success",
       "foundModels": "Found {count} available models",
-      "fetchModelsFailed": "Fetch Models Failed",
       "networkErrorOrApiUnavailable": "Network error or API unavailable",
       "privateConfigIncomplete": "Private Configuration Incomplete",
       "sharedPoolConfigIncomplete": "Shared Pool Configuration Incomplete",
@@ -1014,8 +1413,14 @@
       "exportErrorDescription": "Unable to export your health data",
       "importErrorTitle": "Import Failed",
       "importErrorDescription": "Unable to import your health data, please ensure the file format is correct",
+      "importInProgress": "Importing Data",
+      "importInProgressDesc": "Importing data locally and syncing to cloud, please wait...",
       "importSuccessTitle": "Import Successful",
       "importSuccessDescription": "Your health data has been successfully imported",
+      "importSuccessWithSyncDesc": "Your health data has been successfully imported and synced to cloud",
+      "importPartialSuccessTitle": "Import Complete, Sync Failed",
+      "importPartialSuccessDesc": "Data imported locally, but cloud sync failed. Please check network and sync manually.",
+      "importing": "Importing",
       "importSuccessWithMemoryTitle": "Import Successful",
       "importSuccessWithMemoryDescription": "Your health data and AI memories have been successfully imported",
       "partialImportSuccessTitle": "Partial Import Successful",
@@ -1051,6 +1456,376 @@
       "approachingLimit": "Approaching limit",
       "autoSaveIn3Seconds": "Auto-save in 3 seconds",
       "loadingSettings": "Loading settings..."
+    },
+    "inviteCodes": {
+      "title": "Invite Code Management",
+      "description": "Manage your invite codes to help other users upgrade to LV3",
+      "goToInviteCodes": "Go to Invite Codes",
+      "viewInviteCodes": "View My Invite Codes",
+      "createInviteCodes": "Create Invite Codes",
+      "useInviteCode": "Use Invite Code to Upgrade",
+      "currentLevel": "Current Level",
+      "canCreateCodes": "Can Create Invite Codes",
+      "needsConfiguration": "Requires Admin Configuration",
+      "upgradeToLV3": "Upgrade to LV3 to unlock more features",
+      "managementDescription": "Manage your invite codes, view usage statistics, or create new invite codes to help other users upgrade",
+      "upgradeDescription": "Use invite codes to upgrade to LV3 and unlock more features and permissions",
+      "viewAndManage": "View and manage your created invite codes",
+      "createNew": "Create new invite codes (requires admin configuration permissions)",
+      "viewStatistics": "View invite code usage statistics",
+      "manageInviteCodes": "Manage Invite Codes",
+      "unlockDailyQuota": "Unlock daily quota of 150 uses",
+      "getCreatePermission": "Get permission to create invite codes",
+      "quickRedemption": "Quick Invite Code Redemption",
+      "quickRedemptionDescription": "Enter invite code to immediately upgrade to LV3 and unlock more features",
+      "redemption": {
+        "enterCode": "Please enter invite code",
+        "placeholder": "Enter invite code (format: XXXX-YYYY-ZZZZ)",
+        "redeeming": "Redeeming...",
+        "redeem": "Redeem",
+        "success": "Redemption Successful!",
+        "successDescription": "You have successfully upgraded to LV3, please refresh the page to see updates",
+        "failed": "Redemption Failed",
+        "invalidCode": "Invite code is invalid or expired",
+        "networkError": "Network error, please try again later",
+        "formatInfo": "Invite code format: XXXX-YYYY-ZZZZ (12 characters plus hyphens)",
+        "upgradeInfo": "After successful redemption, you will be upgraded to LV3 with daily usage increased to 150 times",
+        "oneTimeUse": "Each invite code can only be used once"
+      }
+    }
+  },
+  "adminUsers": {
+    "title": "User Management",
+    "description": "Manage user permissions and information",
+    "searchUsers": "Search Users",
+    "searchPlaceholder": "Search username, email or display name...",
+    "filterByRole": "Filter by Role",
+    "filterByTrustLevel": "Filter by Trust Level",
+    "allRoles": "All Roles",
+    "allTrustLevels": "All Trust Levels",
+    "userList": "User List",
+    "foundUsers": "Found {count} users",
+    "userInfo": "User Information",
+    "role": "Role",
+    "trustLevel": "Trust Level",
+    "status": "Status",
+    "registrationTime": "Registration Time",
+    "actions": "Actions",
+    "active": "Active",
+    "inactive": "Inactive",
+    "silenced": "Silenced",
+    "emailNotVerified": "Email Not Verified",
+    "editUser": "Edit User",
+    "editUserDescription": "Modify user permissions and status settings",
+    "displayName": "Display Name",
+    "email": "Email",
+    "username": "Username",
+    "userRole": "User Role",
+    "userTrustLevel": "Trust Level",
+    "accountStatus": "Account Status",
+    "isActive": "Account Active",
+    "isSilenced": "Silenced Status",
+    "emailVerified": "Email Verified",
+    "updating": "Updating...",
+    "saveChanges": "Save Changes",
+    "cancel": "Cancel",
+    "roles": {
+      "user": "User",
+      "moderator": "Moderator",
+      "admin": "Administrator",
+      "super_admin": "Super Administrator"
+    },
+    "trustLevels": {
+      "0": "LV0 (New User)",
+      "1": "LV1 (Basic User)",
+      "2": "LV2 (Active User)",
+      "3": "LV3 (Trusted User)",
+      "4": "LV4 (Advanced User)"
+    },
+    "stats": {
+      "totalUsers": "Total Users",
+      "admins": "Administrators",
+      "lv3PlusUsers": "LV3+ Users",
+      "activeUsers": "Active Users"
+    },
+    "loading": "Loading...",
+    "backToAdmin": "Back to Admin Panel"
+  },
+  "adminSystem": {
+    "title": "System Settings",
+    "description": "System configuration and maintenance",
+    "basicSettings": "Basic Settings",
+    "maintenanceMode": "Maintenance Mode",
+    "maintenanceModeDescription": "When enabled, the system will display a maintenance page, only administrators can access",
+    "registrationEnabled": "Registration Enabled",
+    "registrationEnabledDescription": "Whether to allow new users to register accounts",
+    "requireInviteCode": "Require Invite Code",
+    "requireInviteCodeDescription": "New users must provide a valid invite code when registering",
+    "userSettings": "User Settings",
+    "maxDailyUsage": "Default Daily Limit",
+    "maxDailyUsageDescription": "Default daily usage limit for new users",
+    "defaultTrustLevel": "Default Trust Level",
+    "defaultTrustLevelDescription": "Default trust level for new users when registering",
+    "systemAnnouncement": "System Announcement",
+    "systemAnnouncementPlaceholder": "Enter system announcement content...",
+    "systemAnnouncementDescription": "System announcement information displayed on the homepage",
+    "saving": "Saving...",
+    "saveSettings": "Save Settings",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "trustLevels": {
+      "0": "LV0 - New User",
+      "1": "LV1 - Basic User",
+      "2": "LV2 - Active User",
+      "3": "LV3 - Advanced User"
+    },
+    "loading": "Loading...",
+    "backToAdmin": "Back to Admin Panel",
+    "warning": {
+      "title": "Super Administrator Privileges",
+      "description": "You are accessing core system settings. Please operate with caution, as incorrect configurations may cause the system to malfunction. It is recommended to create a database backup before making changes."
+    }
+  },
+  "adminSecurity": {
+    "title": "Security Center",
+    "description": "Security event monitoring, IP management and risk control",
+    "refresh": "Refresh",
+    "todayEvents": "Today's Security Events",
+    "blockedIPs": "Blocked IPs Count",
+    "systemStatus": "System Status",
+    "monitoringStatus": "Monitoring Status",
+    "secure": "Secure",
+    "normal": "Normal",
+    "securityEvents": "Security Event Log",
+    "securityEventsDescription": "System security events and abnormal access records",
+    "eventType": "Event Type",
+    "user": "User",
+    "ipAddress": "IP Address",
+    "eventDescription": "Description",
+    "time": "Time",
+    "unknownUser": "Unknown User",
+    "noSecurityEvents": "No Security Events",
+    "noSecurityEventsDescription": "System is running normally, no security threats detected",
+    "ipBlacklist": "IP Blacklist Management",
+    "ipBlacklistDescription": "Manage blocked IP addresses",
+    "blockIP": "Block IP",
+    "blockIPTitle": "Block IP Address",
+    "blockIPDescription": "Add IP address to blacklist to prevent system access",
+    "ipAddressLabel": "IP Address",
+    "ipAddressPlaceholder": "192.168.1.1",
+    "blockReasonLabel": "Block Reason",
+    "blockReasonPlaceholder": "Malicious attacks, frequent login failures, etc.",
+    "cancel": "Cancel",
+    "confirmBlock": "Confirm Block",
+    "blocking": "Blocking...",
+    "blockTime": "Block Time",
+    "actions": "Actions",
+    "unblock": "Unblock",
+    "loading": "Loading...",
+    "backToAdmin": "Back to Admin Panel",
+    "noBlockedIPs": "No Blocked IPs",
+    "noBlockedIPsDescription": "No IP addresses are currently blocked",
+    "eventTypes": {
+      "rateLimitExceeded": "Rate Limit Exceeded",
+      "invalidInput": "Invalid Input",
+      "unauthorizedAccess": "Unauthorized Access",
+      "suspiciousActivity": "Suspicious Activity",
+      "bruteForceAttempt": "Brute Force Attempt",
+      "dataInjectionAttempt": "Data Injection Attempt",
+      "fileUploadViolation": "File Upload Violation",
+      "apiAbuse": "API Abuse",
+      "privilegeEscalationAttempt": "Privilege Escalation Attempt",
+      "systemMaintenance": "System Maintenance"
+    }
+  },
+  "adminAnalytics": {
+    "title": "Data Analytics",
+    "description": "User activity, usage statistics and system monitoring",
+    "backToAdmin": "Back to Admin Panel",
+    "refresh": "Refresh",
+    "loading": "Loading...",
+    "timeRange": {
+      "1d": "Today",
+      "7d": "7 days",
+      "30d": "30 days",
+      "90d": "90 days"
+    },
+    "userStats": {
+      "title": "User Statistics",
+      "totalUsers": "Total Users",
+      "activeUsers": "Active Users",
+      "newUsersToday": "New Users Today",
+      "newUsersThisWeek": "New Users This Week",
+      "trustLevelDistribution": "Trust Level Distribution",
+      "loginMethodDistribution": "Login Method Distribution",
+      "passwordLogin": "Password Login"
+    },
+    "usageStats": {
+      "title": "Usage Statistics",
+      "totalConversations": "Total Conversations",
+      "conversationsToday": "Conversations Today",
+      "conversationsThisWeek": "Conversations This Week",
+      "averageMessages": "Average Messages",
+      "topSharedServices": "Top Shared Services",
+      "topSharedServicesDesc": "Most used shared AI services",
+      "serviceName": "Service Name",
+      "status": "Status",
+      "modelCount": "Model Count",
+      "usageCount": "Usage Count",
+      "percentage": "Percentage",
+      "actions": "Actions",
+      "running": "Running",
+      "paused": "Paused",
+      "models": "models",
+      "pauseService": "Pause Service",
+      "resumeService": "Resume Service",
+      "deleteService": "Delete Service"
+    },
+    "systemStats": {
+      "title": "System Statistics",
+      "totalApiCalls": "Total API Calls",
+      "apiCallsToday": "API Calls Today",
+      "errorRate": "Error Rate",
+      "systemPerformance": "System Performance",
+      "systemPerformanceDesc": "API response time and system status",
+      "averageResponseTime": "Average Response Time",
+      "systemStatus": "System Status",
+      "normalOperation": "Normal Operation",
+      "needsAttention": "Needs Attention",
+      "securityStats": "Security Statistics",
+      "securityStatsDesc": "Security events and threat monitoring",
+      "securityEventsToday": "Security Events Today",
+      "totalSecurityEvents": "Total Security Events"
+    },
+    "messages": {
+      "permissionDenied": "Permission Denied",
+      "adminOnlyAccess": "Only administrators can access this page",
+      "loadFailed": "Load Failed",
+      "networkError": "Network error, please try again later",
+      "deleteSuccess": "Delete Successful",
+      "deleteFailed": "Delete Failed",
+      "operationSuccess": "Operation Successful",
+      "operationFailed": "Operation Failed"
+    }
+  },
+  "admin": {
+    "title": "Admin Panel",
+    "description": "System administration functions (Admin only)",
+    "inviteConfigs": "Invite Code Configuration",
+    "inviteConfigsDescription": "Manage invite code creation permissions and limits",
+    "userManagement": "User Management",
+    "userManagementDescription": "Manage user permissions and information",
+    "systemSettings": "System Settings",
+    "systemSettingsDescription": "System configuration and maintenance",
+    "security": "Security Management",
+    "securityDescription": "Security settings and IP management",
+    "analytics": "Data Analytics",
+    "analyticsDescription": "User activity and system statistics",
+    "goToInviteConfigs": "Go to Invite Code Configuration",
+    "adminOnly": "Admin access only",
+    "superAdminOnly": "Super admin access only",
+    "welcome": "Welcome, {name}",
+    "roleAdmin": "Administrator",
+    "roleSuperAdmin": "Super Administrator",
+    "rolePermission": "You have {role} permissions",
+    "available": "Available",
+    "comingSoon": "Coming Soon",
+    "manageConfig": "Manage Configuration",
+    "manageUsers": "Manage Users",
+    "manageSystem": "System Management",
+    "manageSecurity": "Security Management",
+    "viewAnalytics": "View Analytics",
+    "errors": {
+      "insufficientPermission": "Insufficient Permission",
+      "adminOnlyAccess": "Only administrators can access this page",
+      "superAdminOnlyAccess": "Only super administrators can access system settings",
+      "loadFailed": "Load Failed",
+      "networkError": "Network error, please try again later",
+      "updateFailed": "Update Failed",
+      "saveFailed": "Save Failed"
+    },
+    "success": {
+      "updateSuccess": "Update Successful",
+      "saveSuccess": "Save Successful",
+      "userUpdated": "User information has been updated",
+      "configUpdated": "System configuration has been updated"
+    },
+    "notice": {
+      "title": "Administrator Notice",
+      "description": "Please use administrator privileges carefully to ensure system security and stable operation. All administrative operations will be recorded in the system logs. If you have any questions, please contact the system administrator or refer to the relevant documentation."
+    },
+    "features": {
+      "inviteConfigs": {
+        "item1": "Set invite code generation interval days",
+        "item2": "Configure batch generation quantity limits",
+        "item3": "Manage user total invite code limits"
+      },
+      "userManagement": {
+        "item1": "View all registered user information",
+        "item2": "Adjust user trust levels (LV0-LV4)",
+        "item3": "Set administrators and super administrators"
+      },
+      "systemSettings": {
+        "item1": "Maintenance mode toggle control",
+        "item2": "User registration and invite code policies",
+        "item3": "Default trust level and usage limits"
+      },
+      "analytics": {
+        "item1": "User registration and activity trends",
+        "item2": "Shared service usage statistics",
+        "item3": "AI conversation and memory data analysis"
+      },
+      "security": {
+        "item1": "View security event log records",
+        "item2": "Manage IP banning and unbanning operations",
+        "item3": "Monitor abnormal access and attack behavior"
+      }
+    }
+  },
+  "inviteConfigs": {
+    "title": "Invite Code Configuration Management",
+    "description": "Manage invite code creation permissions and limits",
+    "createConfig": "Create Configuration",
+    "configType": "Configuration Type",
+    "globalDefault": "Global Default",
+    "userSpecific": "User Specific",
+    "globalDefaultDesc": "Set default invite code creation permissions for all administrators",
+    "userSpecificDesc": "Set personalized invite code creation permissions for specific users",
+    "targetUser": "Target User",
+    "userEmail": "User Email",
+    "userId": "User ID",
+    "emailRecommended": "Email is recommended for easier user identification",
+    "intervalDays": "Interval Days",
+    "codesPerBatch": "Codes per Batch",
+    "maxTotalCodes": "Max Total Codes",
+    "creating": "Creating...",
+    "createGlobalConfig": "Create Global Configuration",
+    "createUserConfig": "Create User Configuration",
+    "messages": {
+      "loading": "Loading...",
+      "loadFailed": "Load failed",
+      "networkError": "Network error, please try again later",
+      "createSuccess": "Configuration created successfully",
+      "createFailed": "Configuration creation failed",
+      "confirmDelete": "Are you sure you want to delete this configuration?",
+      "deleteSuccess": "Configuration deleted successfully",
+      "deleteFailed": "Configuration deletion failed",
+      "userEmailOrIdRequired": "Please enter user email or user ID"
+    },
+    "table": {
+      "user": "User",
+      "intervalDays": "Interval Days",
+      "codesPerBatch": "Codes per Batch",
+      "maxTotalCodes": "Max Total Codes",
+      "creator": "Creator",
+      "createdAt": "Created At",
+      "actions": "Actions",
+      "globalDefaultConfig": "Global Default Configuration",
+      "forAllUsers": "For all users"
+    },
+    "empty": {
+      "title": "No Configurations",
+      "description": "No invite code configurations have been created yet. Click the button above to create the first configuration."
     }
   },
   "sync": {
@@ -1092,16 +1867,16 @@
     },
     "trustLevel": {
       "loginRequired": "Login Required",
-      "loginDescription": "Please login with your Linux.do account to use shared services",
-      "loginButton": "Login to Linux.do",
+      "loginDescription": "Please login with your account to use shared services",
+      "loginButton": "Login by OAuth2",
       "insufficientTrust": "Insufficient Trust Level",
       "requiresLevel": "Shared services require trust level {level} or above",
       "currentLevel": "Your current trust level: {level}",
       "howToImprove": "How to improve trust level:",
-      "improveTip1": "Actively participate in Linux.do community discussions",
-      "improveTip2": "Post high-quality content and replies",
-      "improveTip3": "Maintain good community behavior record",
-      "visitCommunity": "Visit Linux.do Community"
+      "improveTip1": "Actively use application features",
+      "improveTip2": "Share high-quality API configurations",
+      "improveTip3": "Maintain good usage record",
+      "contactAdmin": "To upgrade your level, please contact administrator"
     },
     "security": {
       "title": "Security & Control",
@@ -1183,7 +1958,8 @@
         "empty": "URL cannot be empty",
         "tips": {
           "support": "Third-party API proxy services supported",
-          "security": "Official API addresses blocked for community security"
+          "security": "Official API addresses blocked for community security",
+          "allowAll": "Current configuration allows both official API addresses and third-party proxy services"
         },
         "placeholder": "Enter API service URL"
       },
@@ -1258,6 +2034,116 @@
       "deleteSuccess": "Delete successful",
       "deleteSuccessDesc": "Configuration deleted",
       "deleteFailed": "Delete failed"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "Welcome to Snapifit AI Community Edition",
+      "content": "You can record your health data here and get intelligent advice. Your exclusive team class cyber personal trainer.",
+      "highlight": "Data-driven intelligent advice"
+    },
+    "sharing": {
+      "title": "AI Sharing & Circulation - Public Welfare Construction",
+      "content": "This is a sharing version. You can contribute to AI construction in Avatar - Shared Services, share your useful keys, and realize AI sharing circulation for public welfare sites. We have also made some settings, and your daily quota is usually quite generous.",
+      "highlight": "Share AI resources, mutual assistance and win-win",
+      "actionText": "Go to Sharing Settings"
+    },
+    "private": {
+      "title": "Private Configuration - More Stable",
+      "content": "Of course, you can also use your own key, which may be more stable. You can configure your private model in My Profile & Settings - AI Settings. The model will be stored in the browser and will not be uploaded.",
+      "highlight": "Data security, local storage",
+      "actionText": "Configure Private Model"
+    },
+    "sync": {
+      "title": "Multi-device Sync - Data Circulation",
+      "content": "If you use multiple devices, you can click the \"Refresh\" button on the homepage or \"Cloud Sync\" in settings before using a new device to get the latest data.",
+      "highlight": "Cross-device data synchronization",
+      "actionText": "Learn Sync Features"
+    },
+    "guide": {
+      "title": "First Use Guide",
+      "step": "Step {current} of {total}",
+      "stepOf": "{current} / {total}",
+      "swipeHint": "Swipe left for next",
+      "swipeHintRight": "Swipe right for previous",
+      "previous": "Previous",
+      "next": "Next",
+      "start": "Get Started",
+      "skip": "Skip Guide"
+    }
+  },
+  "inviteCodes": {
+    "title": "Invite Code Management",
+    "description": "Manage your invite codes to help other users upgrade to LV3",
+    "userLevel": "User Level",
+    "currentLevel": "Current Level",
+    "dailyUsage": "Daily Usage",
+    "canCreateCodes": "Can Create Invite Codes",
+    "useInviteCode": "Use Invite Code",
+    "createInviteCode": "Create Invite Code",
+    "quota": "Invite Code Quota",
+    "intervalDays": "Interval Days",
+    "codesPerBatch": "Codes per Batch",
+    "progress": "Cumulative Progress",
+    "status": "Creation Status",
+    "canCreate": "Can Create",
+    "restricted": "Restricted",
+    "nextAllowedAt": "Next Creation Time",
+    "noQuota": "Configuration Required",
+    "noQuotaDesc": "Please create invite code configuration first",
+    "goToConfig": "Go to Configuration",
+    "createDialog": {
+      "title": "Create Invite Code",
+      "description": "Create invite codes to help other users upgrade to LV3",
+      "count": "Creation Count",
+      "expiresInDays": "Expiry (Days)",
+      "codeDescription": "Description (Optional)",
+      "cancel": "Cancel",
+      "create": "Create Invite Code",
+      "creating": "Creating..."
+    },
+    "useDialog": {
+      "title": "Use Invite Code",
+      "description": "Enter invite code to upgrade to LV3 and unlock more features",
+      "code": "Invite Code",
+      "format": "Format: XXXX-YYYY-ZZZZ (12 characters + separators)",
+      "cancel": "Cancel",
+      "upgrade": "Upgrade to LV3",
+      "upgrading": "Upgrading...",
+      "benefits": {
+        "title": "After upgrading to LV3, you will get",
+        "dailyUsage": "Daily usage: 150 times",
+        "createCodes": "Invite code creation permission (requires admin configuration)",
+        "moreFeatures": "More community feature access"
+      }
+    },
+    "table": {
+      "code": "Invite Code",
+      "description": "Description",
+      "status": "Status",
+      "expiresAt": "Expires At",
+      "createdAt": "Created At",
+      "actions": "Actions",
+      "copy": "Copy",
+      "delete": "Delete",
+      "active": "Active",
+      "used": "Used",
+      "expired": "Expired",
+      "neverExpires": "Never Expires"
+    },
+    "empty": {
+      "title": "No Invite Codes Yet",
+      "createFirst": "Create your first invite code to help other users upgrade",
+      "upgradeFirst": "Upgrade to LV3 to create invite codes"
+    },
+    "messages": {
+      "loading": "Loading...",
+      "createSuccess": "Invite code created successfully",
+      "createFailed": "Failed to create invite code",
+      "useSuccess": "Invite code used successfully, your level has been upgraded to LV3! Please refresh the page to see updates",
+      "useFailed": "Failed to use invite code",
+      "loadFailed": "Failed to load data",
+      "copied": "Copied to clipboard"
     }
   }
 }

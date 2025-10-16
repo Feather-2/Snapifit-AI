@@ -1,11 +1,91 @@
 import { NextResponse } from 'next/server';
 import { KeyManager } from '@/lib/key-manager';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
+import { createDatabaseClient } from '@/lib/database';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
+
+// 执行维护任务
+async function performMaintenanceTasks() {
+  const tasks: {
+    sharedKeysReset: { status: string; resetCount?: number; error?: string };
+    aiMemoryManagement: { status: string; markedCount?: number; refreshedCount?: number; error?: string };
+    errors: string[];
+  } = {
+    sharedKeysReset: { status: 'skipped', resetCount: 0 },
+    aiMemoryManagement: { status: 'skipped', markedCount: 0, refreshedCount: 0 },
+    errors: []
+  };
+
+  try {
+    const db = await createDatabaseClient();
+
+    // 1. 重置共享密钥（每日00:00 UTC执行）
+    const now = new Date();
+    const isResetTime = now.getUTCHours() === 0; // 只在UTC 00:00执行重置
+
+    if (isResetTime) {
+      try {
+        const resetResult = await db.rpc({ functionName: 'reset_shared_keys_daily' });
+        const resetCount = resetResult.data || 0;
+        tasks.sharedKeysReset = { status: 'completed', resetCount };
+        console.log(`[MAINTENANCE] Reset ${resetCount} shared keys`);
+      } catch (error) {
+        console.error('[MAINTENANCE] Shared keys reset error:', error);
+        tasks.sharedKeysReset = { status: 'error', error: error instanceof Error ? error.message : 'Unknown error' };
+        tasks.errors.push(`Shared keys reset: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+
+    // 2. AI记忆管理（每次都执行）
+    try {
+      // 标记旧记忆
+      const markResult = await db.rpc({ functionName: 'mark_old_ai_memories' });
+      let markedCount = 0;
+      if (markResult.data) {
+        if (Array.isArray(markResult.data)) {
+          markedCount = markResult.data[0]?.marked_count || 0;
+        } else {
+          markedCount = markResult.data.marked_count || 0;
+        }
+      }
+
+      // 刷新记忆标记
+      const refreshResult = await db.rpc({ functionName: 'refresh_ai_memory_markers' });
+      let refreshedCount = 0;
+      if (refreshResult.data) {
+        if (Array.isArray(refreshResult.data)) {
+          refreshedCount = refreshResult.data[0]?.refreshed_count || 0;
+        } else {
+          refreshedCount = refreshResult.data.refreshed_count || 0;
+        }
+      }
+
+      tasks.aiMemoryManagement = {
+        status: 'completed',
+        markedCount,
+        refreshedCount
+      };
+      console.log(`[MAINTENANCE] AI Memory: marked ${markedCount}, refreshed ${refreshedCount}`);
+    } catch (error) {
+      tasks.aiMemoryManagement = { status: 'error', error: error instanceof Error ? error.message : 'Unknown error' };
+      tasks.errors.push(`AI memory management: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+
+  } catch (error) {
+    tasks.errors.push(`Database connection: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+
+  return tasks;
+}
 
 export async function GET() {
   const keyManager = new KeyManager();
 
   try {
+    // 获取数据库客户端
+    const supabaseAdmin = await getSupabaseAdmin()
+
     // 1. 获取所有活跃的共享Key（限制数量以避免超时）
     const MAX_KEYS_PER_BATCH = 10;
     const { data: activeKeys, error: fetchError } = await supabaseAdmin
@@ -42,11 +122,7 @@ export async function GET() {
             .from('shared_keys')
             .update({
               available_models: availableModels,
-              updated_at: new Date().toISOString(),
-              // 清除更新标记（如果存在）
-              metadata: key.metadata ?
-                Object.fromEntries(Object.entries(key.metadata).filter(([k]) => k !== 'needs_model_update')) :
-                null
+              updated_at: new Date().toISOString()
             })
             .eq('id', key.id);
 
@@ -82,20 +158,25 @@ export async function GET() {
       }
     }
 
-    // 检查是否还有更多密钥需要更新
-    const { count: remainingCount } = await supabaseAdmin
+    // 简化剩余数量计算
+    const { count: totalCount } = await supabaseAdmin
       .from('shared_keys')
       .select('id', { count: 'exact', head: true })
-      .eq('is_active', true)
-      .not('id', 'in', `(${activeKeys.map(k => k.id).join(',')})`);
+      .eq('is_active', true);
 
-    const response = {
+    const remainingCount = Math.max(0, (totalCount || 0) - activeKeys.length);
+
+    // 执行其他维护任务
+    const maintenanceTasks = await performMaintenanceTasks();
+
+    const response: any = {
       message: `Successfully updated ${updatedCount} of ${activeKeys.length} keys.`,
       updatedCount,
       processedKeys: activeKeys.length,
       remainingKeys: remainingCount || 0,
       results,
       batchSize: MAX_KEYS_PER_BATCH,
+      maintenance: maintenanceTasks,
       timestamp: new Date().toISOString()
     };
 

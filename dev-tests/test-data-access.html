@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SnapiFit AI 数据访问测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section h2 {
+            color: #2563eb;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 8px;
+        }
+        .data-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+        }
+        .data-item h3 {
+            margin: 0 0 8px 0;
+            color: #1e40af;
+        }
+        .data-content {
+            font-family: 'Courier New', monospace;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            font-size: 13px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status.success { background: #dcfce7; color: #166534; }
+        .status.error { background: #fef2f2; color: #dc2626; }
+        .status.warning { background: #fef3c7; color: #d97706; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 4px;
+        }
+        button:hover { background: #1d4ed8; }
+        .summary {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 20px;
+        }
+        .mcp-tools {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+        .tool-item {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 SnapiFit AI 数据访问能力测试</h1>
+        <p>测试不同数据源的访问能力，包括本地存储和数据库访问。</p>
+        <p><strong>当前URL:</strong> <span id="current-url"></span></p>
+
+        <button onclick="runAllTests()">🚀 运行所有测试</button>
+        <button onclick="clearResults()">🧹 清空结果</button>
+        <button onclick="testMCPTools()">🔧 测试MCP工具</button>
+    </div>
+
+    <div class="container">
+        <div class="section">
+            <h2>📱 1. 本地存储数据访问 (不需要数据库)</h2>
+
+            <div class="data-item">
+                <h3>localStorage - 用户档案</h3>
+                <div id="localStorage-result">
+                    <span class="status warning">未测试</span>
+                </div>
+            </div>
+
+            <div class="data-item">
+                <h3>IndexedDB - 健康日志</h3>
+                <div id="indexedDB-result">
+                    <span class="status warning">未测试</span>
+                </div>
+            </div>
+
+            <div class="data-item">
+                <h3>IndexedDB - AI记忆</h3>
+                <div id="aiMemory-result">
+                    <span class="status warning">未测试</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🌐 2. API路由数据访问 (需要数据库)</h2>
+
+            <div class="data-item">
+                <h3>API - 用户档案同步</h3>
+                <div id="api-profile-result">
+                    <span class="status warning">未测试</span>
+                </div>
+            </div>
+
+            <div class="data-item">
+                <h3>API - 每日记录同步</h3>
+                <div id="api-logs-result">
+                    <span class="status warning">未测试</span>
+                </div>
+            </div>
+
+            <div class="data-item">
+                <h3>API - MCP健康数据工具</h3>
+                <div id="api-mcp-result">
+                    <span class="status warning">未测试</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>🔧 3. MCP工具详细测试</h2>
+
+            <div class="data-item">
+                <h3>MCP工具列表</h3>
+                <div id="mcp-tools-list">
+                    <span class="status warning">未测试</span>
+                </div>
+            </div>
+
+            <div class="data-item">
+                <h3>逐个测试所有MCP工具</h3>
+                <button onclick="testAllMCPToolsIndividually()">🧪 逐个测试11个工具</button>
+                <div id="individual-tools-test">
+                    <span class="status warning">未测试</span>
+                </div>
+            </div>
+
+            <div class="data-item">
+                <h3>用户档案工具测试</h3>
+                <div id="mcp-profile-test">
+                    <span class="status warning">未测试</span>
+                </div>
+            </div>
+
+            <div class="data-item">
+                <h3>每日记录工具测试</h3>
+                <div id="mcp-logs-test">
+                    <span class="status warning">未测试</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="summary" id="test-summary" style="display: none;">
+            <h3>📊 测试总结</h3>
+            <div id="summary-content"></div>
+        </div>
+    </div>
+
+    <script>
+        // 显示当前URL
+        document.getElementById('current-url').textContent = window.location.href;
+
+        // 测试结果存储
+        const testResults = {
+            localStorage: null,
+            indexedDB: null,
+            aiMemory: null,
+            apiProfile: null,
+            apiLogs: null,
+            apiMCP: null,
+            mcpTools: null
+        };
+
+        // 清空结果
+        function clearResults() {
+            Object.keys(testResults).forEach(key => {
+                testResults[key] = null;
+            });
+
+            document.querySelectorAll('[id$="-result"], [id$="-test"], [id$="-list"]').forEach(el => {
+                el.innerHTML = '<span class="status warning">未测试</span>';
+            });
+
+            document.getElementById('test-summary').style.display = 'none';
+        }
+
+        // 运行所有测试
+        async function runAllTests() {
+            console.log('🚀 开始运行所有数据访问测试...');
+
+            // 测试本地存储
+            await testLocalStorage();
+            await testIndexedDB();
+            await testAIMemory();
+
+            // 测试API路由
+            await testAPIProfile();
+            await testAPILogs();
+            await testAPIMCP();
+
+            // 显示总结
+            showSummary();
+        }
+
+        // 测试MCP工具
+        async function testMCPTools() {
+            await testAPIMCP();
+            if (testResults.apiMCP?.success) {
+                await testMCPToolsList();
+                await testMCPProfileTools();
+                await testMCPLogsTools();
+            }
+        }
+
+        // 逐个测试所有MCP工具
+        async function testAllMCPToolsIndividually() {
+            console.log('🧪 开始逐个测试所有MCP工具...');
+
+            // 定义所有11个工具及其测试参数
+            const allTools = [
+                // 用户档案工具 (3个)
+                {
+                    name: 'get_user_profile',
+                    category: '用户档案',
+                    params: {}
+                },
+                {
+                    name: 'propose_profile_update',
+                    category: '用户档案',
+                    params: {
+                        updates: { weight: 71, height: 175 },
+                        reason: '测试用户档案修改提议'
+                    }
+                },
+                {
+                    name: 'confirm_profile_update',
+                    category: '用户档案',
+                    params: {
+                        updates: { weight: 71 },
+                        confirmed: false,
+                        feedback: '这是一个测试，不执行实际修改'
+                    }
+                },
+                // 每日记录工具 (4个)
+                {
+                    name: 'get_daily_logs',
+                    category: '每日记录',
+                    params: {
+                        date_range: {
+                            start: '2025-07-03',
+                            end: '2025-07-09'
+                        }
+                    }
+                },
+                {
+                    name: 'get_day_detail',
+                    category: '每日记录',
+                    params: {
+                        date: '2025-07-03'
+                    }
+                },
+                {
+                    name: 'update_daily_log',
+                    category: '每日记录',
+                    params: {
+                        date: '2025-07-03',
+                        log_data_patch: {
+                            weight: 70.5,
+                            dailyStatus: {
+                                mood: 'good',
+                                stressLevel: 3
+                            }
+                        },
+                        reason: '测试日志更新'
+                    }
+                },
+                {
+                    name: 'search_health_data',
+                    category: '每日记录',
+                    params: {
+                        query: '体重',
+                        filters: {
+                            date_range: {
+                                start: '2025-07-01',
+                                end: '2025-07-10'
+                            }
+                        }
+                    }
+                },
+                // 汇总数据工具 (4个)
+                {
+                    name: 'get_daily_summary',
+                    category: '汇总数据',
+                    params: {
+                        date: '2025-07-03'
+                    }
+                },
+                {
+                    name: 'get_nutrition_analysis',
+                    category: '汇总数据',
+                    params: {
+                        date: '2025-07-03'
+                    }
+                },
+                {
+                    name: 'get_weight_prediction',
+                    category: '汇总数据',
+                    params: {
+                        date: '2025-07-03',
+                        prediction_days: 7
+                    }
+                },
+                {
+                    name: 'analyze_health_trends',
+                    category: '汇总数据',
+                    params: {
+                        analysis_type: 'weight',
+                        days: 7,
+                        end_date: '2025-07-03'
+                    }
+                }
+            ];
+
+            let results = [];
+            let successCount = 0;
+            let failCount = 0;
+
+            // 逐个测试每个工具
+            for (let i = 0; i < allTools.length; i++) {
+                const tool = allTools[i];
+                console.log(`测试工具 ${i + 1}/11: ${tool.name}`);
+
+                try {
+                    const response = await fetch('/api/mcp/health-data', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'call_tool',
+                            tool_name: tool.name,
+                            params: tool.params
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        successCount++;
+                        results.push({
+                            ...tool,
+                            status: 'success',
+                            result: data
+                        });
+                    } else {
+                        failCount++;
+                        results.push({
+                            ...tool,
+                            status: 'error',
+                            error: data.error || '未知错误'
+                        });
+                    }
+                } catch (error) {
+                    failCount++;
+                    results.push({
+                        ...tool,
+                        status: 'error',
+                        error: error.message
+                    });
+                }
+            }
+
+            // 显示测试结果
+            displayIndividualToolResults(results, successCount, failCount);
+        }
+
+        // 显示个别工具测试结果
+        function displayIndividualToolResults(results, successCount, failCount) {
+            const categories = {
+                '用户档案': [],
+                '每日记录': [],
+                '汇总数据': []
+            };
+
+            // 按类别分组结果
+            results.forEach(result => {
+                categories[result.category].push(result);
+            });
+
+            let html = `
+                <div style="margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong>测试总结:</strong>
+                        <span style="color: #059669;">成功 ${successCount}</span> /
+                        <span style="color: #dc2626;">失败 ${failCount}</span> /
+                        <span>总计 ${results.length}</span>
+                    </div>
+                    <div>
+                        <button onclick="toggleAllToolData(true)" style="background: #10b981; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 4px;">展开全部</button>
+                        <button onclick="toggleAllToolData(false)" style="background: #6b7280; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">折叠全部</button>
+                    </div>
+                </div>
+            `;
+
+            // 为每个类别生成HTML
+            Object.entries(categories).forEach(([category, tools]) => {
+                html += `
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="color: #1e40af; margin: 12px 0 8px 0;">${category}工具 (${tools.length}个)</h4>
+                `;
+
+                tools.forEach((tool, index) => {
+                    const statusClass = tool.status === 'success' ? 'success' : 'error';
+                    const statusIcon = tool.status === 'success' ? '✅' : '❌';
+                    const toolId = `tool-${category}-${index}`;
+
+                    html += `
+                        <div style="margin: 8px 0; padding: 8px; background: #f8fafc; border-radius: 4px; border-left: 3px solid ${tool.status === 'success' ? '#10b981' : '#ef4444'};">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                                <div style="display: flex; align-items: center;">
+                                    <span class="status ${statusClass}">${statusIcon} ${tool.status === 'success' ? '成功' : '失败'}</span>
+                                    <strong style="margin-left: 8px;">${tool.name}</strong>
+                                </div>
+                                ${tool.status === 'success' ?
+                                    `<button onclick="toggleToolData('${toolId}')" style="background: #e5e7eb; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px;">查看数据</button>` :
+                                    ''
+                                }
+                            </div>
+                            ${tool.status === 'success' ?
+                                `<div style="font-size: 12px; color: #059669; margin-bottom: 8px;">调用成功，返回数据</div>
+                                 <div id="${toolId}" class="data-content" style="display: none; max-height: 200px; overflow-y: auto;">${JSON.stringify(tool.result, null, 2)}</div>` :
+                                `<div style="font-size: 12px; color: #dc2626;">错误: ${tool.error}</div>`
+                            }
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+            });
+
+            document.getElementById('individual-tools-test').innerHTML = html;
+        }
+
+        // 切换工具数据显示
+        function toggleToolData(toolId) {
+            const element = document.getElementById(toolId);
+            if (element.style.display === 'none') {
+                element.style.display = 'block';
+            } else {
+                element.style.display = 'none';
+            }
+        }
+
+        // 全部展开/折叠工具数据
+        function toggleAllToolData(show) {
+            const allDataElements = document.querySelectorAll('[id^="tool-"]');
+            allDataElements.forEach(element => {
+                element.style.display = show ? 'block' : 'none';
+            });
+        }
+
+        // 测试localStorage
+        async function testLocalStorage() {
+            try {
+                const userProfile = localStorage.getItem('userProfile');
+
+                if (userProfile) {
+                    const profile = JSON.parse(userProfile);
+                    testResults.localStorage = { success: true, data: profile };
+
+                    document.getElementById('localStorage-result').innerHTML = `
+                        <span class="status success">✅ 成功</span>
+                        <div class="data-content">${JSON.stringify(profile, null, 2)}</div>
+                    `;
+                } else {
+                    const sampleProfile = {
+                        weight: 70, height: 170, age: 30, gender: "male",
+                        activityLevel: "moderate", goal: "maintain", bmrFormula: "mifflin-st-jeor"
+                    };
+
+                    localStorage.setItem('userProfile', JSON.stringify(sampleProfile));
+                    testResults.localStorage = { success: true, data: sampleProfile };
+
+                    document.getElementById('localStorage-result').innerHTML = `
+                        <span class="status success">✅ 成功 (创建示例)</span>
+                        <div class="data-content">${JSON.stringify(sampleProfile, null, 2)}</div>
+                    `;
+                }
+            } catch (error) {
+                testResults.localStorage = { success: false, error: error.message };
+                document.getElementById('localStorage-result').innerHTML = `
+                    <span class="status error">❌ 失败</span>
+                    <div class="data-content">错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 测试IndexedDB健康日志
+        async function testIndexedDB() {
+            try {
+                // 使用正确的数据库名称
+                const dbName = 'healthApp';
+                const storeName = 'healthLogs';
+                const dbVersion = 3;
+
+                const db = await openDatabaseCorrect(dbName, dbVersion, ['healthLogs', 'aiMemories']);
+                const allData = await getAllData(db, storeName);
+
+                testResults.indexedDB = { success: true, data: allData };
+                document.getElementById('indexedDB-result').innerHTML = `
+                    <span class="status success">✅ 成功</span>
+                    <div class="data-content">数据库: ${dbName} v${dbVersion}\n找到 ${allData.length} 条记录\n${JSON.stringify(allData.slice(0, 2), null, 2)}</div>
+                `;
+
+                db.close();
+            } catch (error) {
+                testResults.indexedDB = { success: false, error: error.message };
+                document.getElementById('indexedDB-result').innerHTML = `
+                    <span class="status error">❌ 失败</span>
+                    <div class="data-content">错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 测试AI记忆
+        async function testAIMemory() {
+            try {
+                // 使用正确的数据库名称
+                const dbName = 'healthApp';
+                const storeName = 'aiMemories';
+                const dbVersion = 3;
+
+                const db = await openDatabaseCorrect(dbName, dbVersion, ['healthLogs', 'aiMemories']);
+                const allData = await getAllData(db, storeName);
+
+                testResults.aiMemory = { success: true, data: allData };
+                document.getElementById('aiMemory-result').innerHTML = `
+                    <span class="status success">✅ 成功</span>
+                    <div class="data-content">数据库: ${dbName} v${dbVersion}\n找到 ${allData.length} 条AI记忆记录</div>
+                `;
+
+                db.close();
+            } catch (error) {
+                testResults.aiMemory = { success: false, error: error.message };
+                document.getElementById('aiMemory-result').innerHTML = `
+                    <span class="status error">❌ 失败</span>
+                    <div class="data-content">错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 辅助函数：打开数据库（旧版本，保留兼容性）
+        function openDatabase(dbName, storeName) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, 1);
+
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(storeName)) {
+                        db.createObjectStore(storeName, { keyPath: 'date' });
+                    }
+                };
+            });
+        }
+
+        // 辅助函数：正确打开数据库（匹配应用实际配置）
+        function openDatabaseCorrect(dbName, dbVersion, storeNames) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, dbVersion);
+
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => resolve(request.result);
+
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+
+                    // 确保所有必需的对象存储都被创建
+                    storeNames.forEach(storeName => {
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            console.log(`Creating object store: ${storeName}`);
+                            db.createObjectStore(storeName);
+                        }
+                    });
+                };
+            });
+        }
+
+        // 辅助函数：获取所有数据
+        function getAllData(db, storeName) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
+
+                request.onsuccess = () => resolve(request.result);
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // 测试API - 用户档案
+        async function testAPIProfile() {
+            try {
+                const response = await fetch('/api/sync/profile');
+                const data = await response.json();
+
+                if (response.ok) {
+                    testResults.apiProfile = { success: true, data: data };
+                    document.getElementById('api-profile-result').innerHTML = `
+                        <span class="status success">✅ 成功</span>
+                        <div class="data-content">${JSON.stringify(data, null, 2)}</div>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${data.error || '未知错误'}`);
+                }
+            } catch (error) {
+                testResults.apiProfile = { success: false, error: error.message };
+                document.getElementById('api-profile-result').innerHTML = `
+                    <span class="status error">❌ 失败</span>
+                    <div class="data-content">错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 测试API - 每日记录
+        async function testAPILogs() {
+            try {
+                const response = await fetch('/api/sync/logs');
+                const data = await response.json();
+
+                if (response.ok) {
+                    testResults.apiLogs = { success: true, data: data };
+                    document.getElementById('api-logs-result').innerHTML = `
+                        <span class="status success">✅ 成功</span>
+                        <div class="data-content">获取 ${Array.isArray(data) ? data.length : 0} 条记录</div>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${data.error || '未知错误'}`);
+                }
+            } catch (error) {
+                testResults.apiLogs = { success: false, error: error.message };
+                document.getElementById('api-logs-result').innerHTML = `
+                    <span class="status error">❌ 失败</span>
+                    <div class="data-content">错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 测试API - MCP工具
+        async function testAPIMCP() {
+            try {
+                // MCP API需要POST请求，使用list_tools操作
+                const response = await fetch('/api/mcp/health-data', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'list_tools'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    testResults.apiMCP = { success: true, data: data };
+                    document.getElementById('api-mcp-result').innerHTML = `
+                        <span class="status success">✅ 成功</span>
+                        <div class="data-content">MCP服务器可用\n工具数量: ${data.tools?.length || 0}\n提供者: ${data.providers?.length || 0}\n服务器状态: ${data.serverInfo?.isRunning ? '运行中' : '未运行'}</div>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${data.error || '未知错误'}`);
+                }
+            } catch (error) {
+                testResults.apiMCP = { success: false, error: error.message };
+                document.getElementById('api-mcp-result').innerHTML = `
+                    <span class="status error">❌ 失败</span>
+                    <div class="data-content">错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 测试MCP工具列表
+        async function testMCPToolsList() {
+            try {
+                const response = await fetch('/api/mcp/health-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'list_tools' })
+                });
+
+                const data = await response.json();
+
+                if (data.tools) {
+                    const toolsHTML = data.tools.map(tool => `
+                        <div class="tool-item">
+                            <strong>${tool.name}</strong><br>
+                            ${tool.description}
+                        </div>
+                    `).join('');
+
+                    document.getElementById('mcp-tools-list').innerHTML = `
+                        <span class="status success">✅ 找到 ${data.tools.length} 个工具</span>
+                        <div class="mcp-tools">${toolsHTML}</div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('mcp-tools-list').innerHTML = `
+                    <span class="status error">❌ 失败</span>
+                    <div class="data-content">错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 测试MCP用户档案工具
+        async function testMCPProfileTools() {
+            try {
+                // 使用有效的UUID格式或者不传user_id让系统使用默认值
+                const response = await fetch('/api/mcp/health-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'call_tool',
+                        tool_name: 'get_user_profile',
+                        params: {} // 不传user_id，让系统使用当前登录用户的真实ID
+                    })
+                });
+
+                const data = await response.json();
+
+                document.getElementById('mcp-profile-test').innerHTML = `
+                    <span class="status ${response.ok ? 'success' : 'error'}">${response.ok ? '✅' : '❌'} ${response.ok ? '成功' : '失败'}</span>
+                    <div class="data-content">${JSON.stringify(data, null, 2)}</div>
+                `;
+            } catch (error) {
+                document.getElementById('mcp-profile-test').innerHTML = `
+                    <span class="status error">❌ 失败</span>
+                    <div class="data-content">错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 测试MCP每日记录工具
+        async function testMCPLogsTools() {
+            try {
+                const response = await fetch('/api/mcp/health-data', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'call_tool',
+                        tool_name: 'get_daily_logs',
+                        params: {
+                            // 不传user_id，让系统使用当前登录用户的真实ID
+                            date_range: {
+                                start: '2025-07-03',
+                                end: '2025-07-09'
+                            }
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                document.getElementById('mcp-logs-test').innerHTML = `
+                    <span class="status ${response.ok ? 'success' : 'error'}">${response.ok ? '✅' : '❌'} ${response.ok ? '成功' : '失败'}</span>
+                    <div class="data-content">${JSON.stringify(data, null, 2)}</div>
+                `;
+            } catch (error) {
+                document.getElementById('mcp-logs-test').innerHTML = `
+                    <span class="status error">❌ 失败</span>
+                    <div class="data-content">错误: ${error.message}</div>
+                `;
+            }
+        }
+
+        // 显示测试总结
+        function showSummary() {
+            const summary = { total: 0, success: 0, failed: 0, localAccess: 0, databaseAccess: 0 };
+
+            Object.entries(testResults).forEach(([key, result]) => {
+                if (key !== 'mcpTools') {
+                    summary.total++;
+                    if (result?.success) {
+                        summary.success++;
+                        if (['localStorage', 'indexedDB', 'aiMemory'].includes(key)) {
+                            summary.localAccess++;
+                        } else {
+                            summary.databaseAccess++;
+                        }
+                    } else {
+                        summary.failed++;
+                    }
+                }
+            });
+
+            const summaryHTML = `
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                    <div>
+                        <strong>总测试数:</strong> ${summary.total}<br>
+                        <strong>成功:</strong> <span style="color: #059669;">${summary.success}</span><br>
+                        <strong>失败:</strong> <span style="color: #dc2626;">${summary.failed}</span>
+                    </div>
+                    <div>
+                        <strong>本地数据访问:</strong> <span style="color: ${summary.localAccess === 3 ? '#059669' : '#dc2626'};">${summary.localAccess}/3</span><br>
+                        <strong>数据库数据访问:</strong> <span style="color: ${summary.databaseAccess > 0 ? '#059669' : '#dc2626'};">${summary.databaseAccess}/3</span>
+                    </div>
+                </div>
+                <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 6px;">
+                    <strong>结论:</strong>
+                    ${summary.localAccess === 3 ?
+                        '✅ 本地数据访问完全可用，无需数据库即可使用基本功能。' :
+                        '⚠️ 本地数据访问存在问题。'
+                    }
+                    ${summary.databaseAccess > 0 ?
+                        '✅ 数据库访问可用，支持云同步和高级功能。' :
+                        '❌ 数据库访问不可用，MCP工具和云同步功能受限。'
+                    }
+                </div>
+            `;
+
+            document.getElementById('summary-content').innerHTML = summaryHTML;
+            document.getElementById('test-summary').style.display = 'block';
+        }
+    </script>
+</body>
+</html>

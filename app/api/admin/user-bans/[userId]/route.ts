@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { userBanManager } from '@/lib/user-ban-manager';
+import { getUserBanManager } from '@/lib/user-ban-manager';
 import { InputValidator, ValidationRules } from '@/lib/input-validator';
 import { logSecurityEvent } from '@/lib/security-monitor';
 import { getClientIP } from '@/lib/ip-utils';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 // 检查管理员权限
 async function checkAdminPermission(userId: string): Promise<boolean> {
@@ -46,11 +48,13 @@ export async function GET(
     const { userId } = params;
 
     // 获取用户封禁状态
+    const userBanManager = getUserBanManager();
     const isBanned = await userBanManager.isUserBanned(userId);
     const banDetails = isBanned ? await userBanManager.getBanDetails(userId) : null;
 
     // 获取用户的所有封禁历史
-    const { supabaseAdmin } = await import('@/lib/supabase');
+    const { getSupabaseAdmin } = await import('@/lib/supabase');
+    const supabaseAdmin = await getSupabaseAdmin();
     const { data: banHistory, error } = await supabaseAdmin
       .from('user_bans')
       .select('*')
@@ -111,10 +115,10 @@ export async function PUT(
     const validationRules: ValidationRules = {
       reason: { required: true, type: 'string', minLength: 1, maxLength: 500 },
       duration: { required: false, type: 'number', min: 0 },
-      severity: { 
-        required: false, 
-        type: 'string', 
-        allowedValues: ['low', 'medium', 'high', 'critical'] 
+      severity: {
+        required: false,
+        type: 'string',
+        allowedValues: ['low', 'medium', 'high', 'critical']
       }
     };
 
@@ -129,6 +133,7 @@ export async function PUT(
     const { reason, duration = 0, severity = 'medium' } = body;
 
     // 检查用户是否已经被封禁
+    const userBanManager = getUserBanManager();
     const isAlreadyBanned = await userBanManager.isUserBanned(userId);
     if (isAlreadyBanned) {
       return NextResponse.json({
@@ -200,6 +205,7 @@ export async function DELETE(
     const reason = searchParams.get('reason') || 'Manual unban by admin';
 
     // 检查用户是否被封禁
+    const userBanManager = getUserBanManager();
     const isBanned = await userBanManager.isUserBanned(userId);
     if (!isBanned) {
       return NextResponse.json({

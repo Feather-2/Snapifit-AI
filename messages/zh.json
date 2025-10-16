@@ -34,6 +34,7 @@
   "navigation": {
     "home": "主页",
     "chat": "对话",
+    "exercise": "运动",
     "settings": "设置",
     "signIn": "登录",
     "signOut": "退出",
@@ -47,6 +48,7 @@
     "totalUsage": "总使用次数",
     "userMenu": {
       "settings": "设置",
+      "inviteCodes": "邀请码",
       "sharedServices": "共享服务",
       "signOut": "登出",
       "signIn": "登录"
@@ -78,10 +80,234 @@
       "nextLevelQuota": "下一等级可获得"
     }
   },
+  "exercisePage": {
+    "common": {
+      "edit": "编辑",
+      "delete": "删除",
+      "save": "保存",
+      "cancel": "取消"
+    },
+    "title": "运动",
+    "subtitle": "快记组数 · 专业动作库 · 肌肉演示",
+    "tabs": {
+      "plan": "训练计划",
+      "live": "训练中",
+      "library": "动作库"
+    },
+    "fields": {
+      "name": "动作名称",
+      "type": "类型",
+      "sets": "组数",
+      "reps": "次数",
+      "weight": "重量 (kg)",
+      "distance": "距离 (km)",
+      "duration": "时长 (分钟)",
+      "timePeriod": "时间段"
+    },
+    "types": {
+      "all": "全部",
+      "strength": "力量",
+      "cardio": "有氧",
+      "flexibility": "柔韧",
+      "other": "其他"
+    },
+    "timePeriods": {
+      "morning": "上午",
+      "noon": "中午",
+      "afternoon": "下午",
+      "evening": "晚上"
+    },
+    "placeholders": {
+      "name": "如：卧推 / 深蹲 / 跑步",
+      "type": "选择类型",
+      "timePeriod": "选择时间段"
+    },
+    "saveToday": "保存到今天",
+    "calories": "消耗",
+    "estimation": "估算",
+    "savedTitle": "记录成功",
+    "savedDesc": "已保存到今日运动记录",
+    "library": {
+      "search": "搜索动作",
+      "searchPh": "按名称搜索",
+      "muscle": "肌肉部位",
+      "musclePh": "选择部位",
+      "remove": "移除",
+      "removeConfirm": "从动作库移除此动作？",
+      "removed": "已移除"
+    },
+    "aiParse": {
+      "hint": "直接粘贴你的训练笔记，例如：\"卧推 5x5@100kg 休90s\"、\"这组做了12个，从120kg→110kg 递减\"",
+      "placeholder": "输入训练文本，支持掉重/休息/超级组语法",
+      "button": "AI 解析并保存",
+      "processing": "解析中...",
+      "emptyText": "请输入要解析的训练文字",
+      "parseFailed": "AI 解析失败",
+      "noResult": "未解析到有效的运动条目",
+      "savedTitle": "已解析并保存到今日训练",
+      "savedDesc": "新增 {count} 条记录",
+      "networkErrorTitle": "网络或服务错误",
+      "parsedOnlyTitle": "解析完成",
+      "parsedOnlyDesc": "已解析 {count} 条，等待确认保存"
+    },
+    "livePanel": {
+      "previewSummary": "已解析 {count} 条记录 · 约 {kcal} kcal",
+      "clear": "清空预览",
+      "saveAll": "确认保存",
+      "saving": "保存中...",
+      "savedTitle": "保存成功",
+      "savedDesc": "已保存 {count} 条记录",
+      "saveErrorTitle": "保存失败",
+      "timer": "总计时",
+      "start": "开始",
+      "pause": "暂停",
+      "reset": "重置",
+      "rest": "休息",
+      "restSeconds": "{seconds}s",
+      "selectAll": "全选",
+      "clearSelection": "清除选择",
+      "saveSelected": "保存所选",
+      "emptyTitle": "暂无解析记录",
+      "emptyDesc": "请在右侧使用快记或 AI 解析添加组次"
+    },
+    "aiDiscover": {
+      "placeholder": "用关键词查找新动作（AI/MCP）",
+      "search": "搜索动作",
+      "searching": "搜索中...",
+      "found": "找到 {count} 个候选",
+      "addToLibrary": "加入动作库",
+      "searchFailed": "搜索失败",
+      "added": "已加入候选到动作库"
+    }
+  },
   "app": {
     "title": "Snapifit AI",
     "subtitle": "智能健康管理助手",
     "description": "您的个人健康管理和营养分析助手"
+  },
+  "auth": {
+    "signin": {
+      "title": "欢迎回来",
+      "description": "选择您的登录方式",
+      "oauthTab": "第三方登录",
+      "credentialsTab": "账号密码",
+      "oauthDescription": "使用第三方账号快速登录",
+      "githubButton": "使用 GitHub 登录",
+      "googleButton": "使用 Google 登录",
+      "identifier": "邮箱或用户名",
+      "identifierPlaceholder": "your@email.com 或 username",
+      "email": "邮箱地址",
+      "emailPlaceholder": "your@email.com",
+      "password": "密码",
+      "passwordPlaceholder": "输入您的密码",
+      "signInButton": "登录",
+      "signingIn": "登录中...",
+      "forgotPassword": "忘记密码？",
+      "noAccount": "还没有账号？",
+      "registerLink": "立即注册"
+    },
+    "register": {
+      "title": "创建账户",
+      "description": "填写信息创建您的新账户",
+      "username": "用户名",
+      "usernamePlaceholder": "2-50个字符，字母数字下划线",
+      "email": "邮箱地址",
+      "emailPlaceholder": "your@email.com",
+      "password": "密码",
+      "passwordPlaceholder": "至少8个字符",
+      "confirmPassword": "确认密码",
+      "confirmPasswordPlaceholder": "再次输入密码",
+      "displayName": "显示名称",
+      "displayNamePlaceholder": "可选，默认使用用户名",
+      "inviteCode": "邀请码",
+      "inviteCodePlaceholder": "可选，有邀请码可升级到LV3",
+      "createAccount": "创建账户",
+      "registering": "注册中...",
+      "hasAccount": "已有账号？",
+      "signinLink": "立即登录",
+      "successTitle": "注册成功",
+      "successDescription": "请检查您的邮箱进行验证",
+      "emailSent": "我们已向",
+      "emailSentSuffix": "发送了验证邮件。请点击邮件中的链接完成账户验证。",
+      "backToSignin": "返回登录",
+      "resendEmail": "没收到邮件？重新发送",
+      "success": "注册成功！请检查您的邮箱进行验证。",
+      "passwordFeedback": {
+        "minLength": "至少需要8个字符",
+        "lowercase": "需要包含小写字母",
+        "uppercase": "需要包含大写字母",
+        "number": "需要包含数字",
+        "special": "建议包含特殊字符"
+      },
+      "passwordStrength": {
+        "veryWeak": "很弱",
+        "weak": "弱",
+        "fair": "一般",
+        "good": "良好",
+        "strong": "强"
+      },
+      "errors": {
+        "passwordMismatch": "密码确认不匹配",
+        "weakPassword": "密码强度不足",
+        "registrationFailed": "注册失败",
+        "usernameTaken": "用户名已被使用",
+        "emailTaken": "邮箱已被使用",
+        "registrationDisabled": "注册功能已关闭 | Registration is currently disabled",
+        "inviteCodeRequired": "注册需要邀请码 | Invite code is required for registration"
+      }
+    },
+    "forgotPassword": {
+      "title": "忘记密码",
+      "description": "输入您的邮箱地址，我们将发送重置链接",
+      "email": "邮箱地址",
+      "emailPlaceholder": "your@email.com",
+      "sendButton": "发送重置邮件",
+      "sending": "发送中...",
+      "backToSignin": "返回登录",
+      "emailSentTitle": "邮件已发送",
+      "emailSentDescription": "请检查您的邮箱",
+      "emailSentMessage": "我们已向",
+      "emailSentMessageSuffix": "发送了密码重置邮件。请点击邮件中的链接重置您的密码。",
+      "resendEmail": "没收到邮件？重新发送",
+      "resetTitle": "重置密码",
+      "resetDescription": "为您的账户设置新密码",
+      "newPassword": "新密码",
+      "newPasswordPlaceholder": "至少8个字符",
+      "confirmPassword": "确认新密码",
+      "confirmPasswordPlaceholder": "再次输入新密码",
+      "resetButton": "重置密码",
+      "resetting": "重置中...",
+      "resetSuccess": "密码重置成功",
+      "redirecting": "，正在跳转到登录页面...",
+      "emailSent": "重置邮件已发送",
+      "errors": {
+        "invalidToken": "重置链接无效或已过期",
+        "tokenValidationFailed": "验证重置链接时出错",
+        "sendFailed": "发送失败，请重试",
+        "resetFailed": "重置失败，请重试",
+        "captchaRequired": "请完成人机验证",
+        "captchaInvalid": "验证码错误，请重试"
+      },
+      "captcha": {
+        "title": "人机验证",
+        "description": "请计算上面的数学题并输入答案，这有助于防止自动化攻击",
+        "placeholder": "答案",
+        "generating": "生成中...",
+        "loading": "加载中...",
+        "refresh": "刷新验证码",
+        "enterAnswer": "请输入答案",
+        "invalidNumber": "请输入有效的数字",
+        "verified": "已验证",
+        "notVerified": "未验证",
+        "generateFailed": "生成验证码失败，请重试",
+        "networkError": "网络错误，请检查连接"
+      }
+    },
+    "errors": {
+      "oauthFailed": "OAuth 登录失败，请重试",
+      "invalidCredentials": "邮箱或密码错误",
+      "loginFailed": "登录失败，请重试"
+    }
   },
   "dashboard": {
     "title": "健康仪表板",
@@ -103,6 +329,22 @@
     "tdee": "总日消耗",
     "inputPlaceholder": "描述您的食物或运动，或上传图片...",
     "uploadImages": "上传图片",
+    "nutritionAnalysisTitle": "营养分析",
+    "nutritionAnalysis": {
+      "title": "{meal} 营养分析",
+      "currentMeal": "当前餐次：{meal}",
+      "cumulativeNutrition": "累计营养摄入",
+      "calories": "卡路里",
+      "protein": "蛋白质",
+      "carbs": "碳水化合物",
+      "fat": "脂肪",
+      "macroDistribution": "宏量营养素分布",
+      "dailyProgress": "每日进度",
+      "ofTarget": "目标完成",
+      "exceededTarget": "超出目标 {excess} kcal",
+      "remainingTarget": "剩余目标 {remaining} kcal",
+      "foodItems": "{meal} 食物清单"
+    },
     "processing": "处理中...",
     "addEntry": "添加记录",
     "errors": {
@@ -211,6 +453,53 @@
       "activityLevel": "活动水平",
       "setTodayActivity": "设置今日的活动强度",
       "selectActivityLevel": "选择活动水平",
+      "weightMeasurementTips": {
+        "title": "专业体重测量建议",
+        "tips": [
+          "🕐 固定测量时间：建议每天早晨起床后、排便后、空腹状态下测量",
+          "⚖️ 使用同一台秤：确保测量的一致性和准确性",
+          "👕 穿着一致：建议穿着轻薄衣物或裸体测量",
+          "📍 固定位置：将体重秤放在平坦、坚硬的地面上",
+          "📊 关注趋势：体重会因水分、食物等因素波动，重点关注长期趋势",
+          "🔄 定期校准：定期检查体重秤的准确性"
+        ]
+      },
+      "activityLevelGuide": {
+        "title": "活动水平详细说明",
+        "description": "活动水平用于计算非运动热效应(NEAT)，影响您的总日消耗量(TDEE)计算",
+        "levels": {
+          "sedentary": {
+            "title": "久坐不动",
+            "description": "主要从事办公室工作，很少体力活动",
+            "examples": "办公室职员、程序员、会计师等",
+            "neat": "NEAT系数: 1.2"
+          },
+          "light": {
+            "title": "轻度活跃",
+            "description": "偶尔进行轻度体力活动或运动",
+            "examples": "每周1-3次轻度运动，如散步、瑜伽",
+            "neat": "NEAT系数: 1.375"
+          },
+          "moderate": {
+            "title": "中度活跃",
+            "description": "规律进行中等强度运动",
+            "examples": "每周3-5次中等强度运动，如慢跑、游泳",
+            "neat": "NEAT系数: 1.55"
+          },
+          "active": {
+            "title": "高度活跃",
+            "description": "每天都进行体力活动或运动",
+            "examples": "每周6-7次运动，或体力要求较高的工作",
+            "neat": "NEAT系数: 1.725"
+          },
+          "very_active": {
+            "title": "非常活跃",
+            "description": "高强度训练或体力劳动",
+            "examples": "专业运动员、建筑工人、每日高强度训练",
+            "neat": "NEAT系数: 1.9"
+          }
+        }
+      },
       "recordHealthData": "记录健康数据",
       "recordHealthDataDesc": "输入您的饮食或运动记录，智能识别营养和消耗",
       "dietRecord": "饮食记录",
@@ -311,6 +600,7 @@
       "calories": "卡路里",
       "exercise": "运动消耗",
       "deficit": "热量缺口",
+      "prediction": "AI预测",
       "caloriesIn": "卡路里摄入",
       "caloriesOut": "运动消耗",
       "calorieDeficit": "热量缺口",
@@ -321,6 +611,46 @@
         "30d": "30天",
         "90d": "90天"
       }
+    },
+    "prediction": {
+      "title": "AI预测",
+      "fullTitle": "AI 体重预测",
+      "description": "基于多维度数据的智能预测",
+      "dataQuality": "数据质量",
+      "confidence": "置信度",
+      "highConfidence": "高置信度",
+      "mediumConfidence": "中等置信度",
+      "lowConfidence": "低置信度",
+      "primaryFactors": "主要影响因素",
+      "aiSuggestions": "AI 建议",
+      "moreAccurateWithData": "越测越准",
+      "dataCollectionNote": "随着您持续记录数据，AI 预测的准确性将不断提升。当前已收集 {days} 天数据。",
+      "insufficientData": "数据不足或置信度过低",
+      "lowConfidenceMessage": "预测置信度过低，暂不显示",
+      "dataRequirements": "请继续记录完整的饮食、运动、体重和生活状态数据",
+      "improvementTips": "提升预测准确性的建议",
+      "tips": {
+        "continuousData": "连续记录至少3-5天的完整数据",
+        "completeInfo": "包含体重、饮食、运动和睡眠信息",
+        "moreDataBetter": "数据越完整，预测越准确"
+      },
+      "predictions": {
+        "day3": "3天后",
+        "day7": "7天后",
+        "day14": "14天后",
+        "day30": "30天后"
+      },
+      "actualWeight": "实际体重",
+      "predictedWeight": "预测体重",
+      "today": "今日",
+      "experimentalFeature": "实验性功能 - 仅开发模式",
+      "developmentOnly": "AI体重预测功能正在开发中，目前仅在开发环境下可用。",
+      "needUserProfile": "需要用户资料来生成预测",
+      "needMoreData": "需要更多历史数据来生成预测",
+      "loading": "正在加载预测数据...",
+      "notAvailable": "功能暂不可用",
+      "developmentModeOnly": "AI预测功能仅在开发模式下可用",
+      "featureInDevelopment": "此功能正在开发中，将在未来版本中正式发布"
     },
     "summary": {
       "title": "今日汇总",
@@ -347,17 +677,19 @@
           "underweight": "偏瘦",
           "normal": "正常",
           "overweight": "超重",
+          "obese": "肥胖",
           "obese1": "轻度肥胖",
           "obese2": "中度肥胖",
           "obese3": "重度肥胖"
         },
-        "description": "BMI是评估体重状况的常用指标，仅供参考。",
+        "description": "BMI是评估体重状况的常用指标，仅供参考。系统会根据语言环境自动选择适合的BMI标准。",
         "here": "您在这里",
         "guideTitle": "健康建议",
         "guides": {
           "underweight": "保持均衡饮食，适当增加能量摄入并加强力量训练。",
           "normal": "继续保持健康饮食与规律运动，关注整体生活方式。",
           "overweight": "建议控制热量摄入，增加有氧及力量训练，逐步减脂。",
+          "obese": "建议在专业医生或营养师指导下制定减重计划，积极进行体重管理。",
           "obese1": "建议在专业医生或营养师指导下制定减重计划并坚持运动。",
           "obese2": "肥胖风险较高，请及时就医并在专业指导下进行体重管理。",
           "obese3": "严重肥胖，需在医疗团队指导下综合干预并监测并发症。"
@@ -444,6 +776,13 @@
       "protein": "蛋白质",
       "fat": "脂肪",
       "grams": "克",
+      "time": "时间",
+      "nutritionPer100g": "每100g营养成分",
+      "editNutrition": "编辑营养",
+      "hideNutrition": "隐藏营养",
+      "fiber": "纤维",
+      "sugar": "糖",
+      "sodium": "钠",
       "cancel": "取消",
       "save": "保存",
       "mealTypes": {
@@ -480,7 +819,8 @@
         "morning": "上午",
         "noon": "中午",
         "afternoon": "下午",
-        "evening": "晚上"
+        "evening": "晚上",
+        "unknown": "未知时段"
       }
     }
   },
@@ -715,10 +1055,66 @@
       "no": "否"
     },
     "tabs": {
+      "account": "账户信息",
       "profile": "个人信息",
       "goals": "健康目标",
       "ai": "AI 配置",
-      "data": "数据管理"
+      "data": "数据管理",
+      "inviteCodes": "邀请码"
+    },
+    "account": {
+      "title": "账户信息",
+      "description": "管理您的账户信息，包括显示名称、邮箱和密码",
+      "currentAccountInfo": "当前账户信息",
+      "username": "用户名",
+      "trustLevel": "信任等级",
+      "loginMethod": "登录方式",
+      "registrationTime": "注册时间",
+      "loginMethods": {
+        "github": "GitHub",
+        "google": "Google",
+        "credentials": "密码登录"
+      },
+      "unknown": "未知",
+      "basicInfo": "基本信息",
+      "displayName": "显示名称",
+      "displayNamePlaceholder": "输入您的显示名称",
+      "displayNameHelp": "这是其他用户看到的您的名称",
+      "email": "邮箱地址",
+      "emailPlaceholder": "输入您的邮箱地址",
+      "emailHelp": "用于接收重要通知和密码重置",
+      "changePassword": "修改密码",
+      "changePasswordDescription": "修改您的登录密码。为了安全，需要输入当前密码进行验证。",
+      "setPasswordNotice": "您当前使用第三方账号登录。设置密码后，您可以选择使用密码或第三方账号登录。",
+      "setPasswordWarning": "注意：设置密码需要二次确认，请确保记住您的密码。",
+      "currentPassword": "当前密码",
+      "currentPasswordPlaceholder": "输入当前密码",
+      "newPassword": "新密码",
+      "setPassword": "设置密码",
+      "newPasswordPlaceholder": "输入新密码（至少8位）",
+      "setPasswordPlaceholder": "设置您的登录密码（至少8位）",
+      "confirmPassword": "确认密码",
+      "confirmPasswordPlaceholder": "再次输入密码确认",
+      "passwordRequirements": "密码至少需要8个字符",
+      "passwordRecommendation": "建议使用字母、数字和特殊字符的组合",
+      "saveAccount": "保存账户信息",
+      "updating": "更新中...",
+      "updateSuccess": "更新成功",
+      "updateSuccessDescription": "账户信息已更新",
+      "updateFailed": "更新失败",
+      "unknownError": "未知错误",
+      "passwordMismatch": "密码不一致，请检查",
+      "oauthPasswordNote": "设置密码后，您可以使用密码或第三方账号登录",
+      "oauthUser": "OAuth用户",
+      "error": "错误",
+      "userNotLoggedIn": "用户未登录",
+      "emailFormatError": "邮箱格式错误",
+      "enterValidEmail": "请输入有效的邮箱地址",
+      "passwordMismatchTitle": "密码不匹配",
+      "passwordMismatchDescription": "新密码和确认密码不一致",
+      "passwordTooShort": "密码太短",
+      "passwordMinLength": "密码至少需要8个字符",
+      "adminPanel": "管理面板"
     },
     "profile": {
       "title": "个人信息",
@@ -758,10 +1154,6 @@
       "bodyFatPlaceholder": "例如: 15",
       "bodyFatDescription": "请输入您的体脂百分比。例如，输入15代表15%。",
       "greeting": "您好"
-    },
-    "sharedKeys": {
-      "title": "共享密钥池",
-      "description": "贡献您的API Key，与社区共享AI算力"
     },
     "buttons": {
       "save": "保存",
@@ -863,8 +1255,14 @@
       "exportErrorDescription": "无法导出您的健康数据",
       "importErrorTitle": "导入失败",
       "importErrorDescription": "无法导入您的健康数据，请确保文件格式正确",
+      "importInProgress": "正在导入数据",
+      "importInProgressDesc": "正在导入数据到本地并同步到云端，请稍候...",
       "importSuccessTitle": "导入成功",
       "importSuccessDescription": "您的健康数据已成功导入",
+      "importSuccessWithSyncDesc": "您的健康数据已成功导入并同步到云端",
+      "importPartialSuccessTitle": "导入完成，同步失败",
+      "importPartialSuccessDesc": "数据已导入到本地，但云端同步失败。请检查网络连接后手动同步。",
+      "importing": "导入中",
       "importSuccessWithMemoryTitle": "导入成功",
       "importSuccessWithMemoryDescription": "您的健康数据和AI记忆已成功导入",
       "partialImportSuccessTitle": "部分导入成功",
@@ -906,7 +1304,7 @@
       "privacyTitle": "隐私声明",
       "privacyDescription": "我们重视您的隐私保护。本应用会在云端存储您的基础个人信息（如用户名、头像等）、体重记录、饮食和运动数据，以及您主动分享给社群的API密钥，以提供跨设备同步和社群功能。但是，您的个人私有API密钥和与AI的对话记录始终保存在您的浏览器本地，不会上传到我们的服务器。与AI模型的通信仅用于处理您的输入并生成建议，我们不会存储这些对话内容。",
       "usageTitle": "使用说明",
-      "quotaInfo": "通过 Linux.do OAuth2 登录后，您将根据信任等级获得相应的每日使用额度。我们鼓励用户分享优质模型配置，共建社区生态。",
+      "quotaInfo": "通过 OAuth2 或者账号密码 登录后，您将根据信任等级获得相应的每日使用额度。我们鼓励用户分享优质模型配置，共建社区生态。",
       "modelOptions": "您可以使用社区共享模型或配置私有模型。",
       "dataBackupTitle": "数据备份",
       "dataBackupDescription": "应用使用云数据库存储。为确保数据安全，强烈建议定期导出数据作为备份。",
@@ -916,7 +1314,12 @@
       "usage4": "在 AI 配置页面设置您的模型参数",
       "usage5": "定期导出您的数据以防数据丢失",
       "versionTitle": "版本信息",
-      "versionInfo": "Snapifit AI 社区版"
+      "versionInfo": "Snapifit AI 社区版",
+      "guideTitle": "使用引导",
+      "guideDescription": "重新查看初次使用时的引导说明，了解Snapifit AI社区版的特色功能。",
+      "showGuide": "重新显示使用引导",
+      "guideReset": "引导已重置",
+      "guideResetDescription": "欢迎引导将在页面刷新后显示"
     },
     "ai": {
       "title": "AI 配置",
@@ -1008,6 +1411,373 @@
         "saveFailed": "保存失败",
         "saveFailedDescription": "记忆保存失败，请重试"
       }
+    },
+    "inviteCodes": {
+      "title": "邀请码管理",
+      "description": "管理您的邀请码，帮助其他用户升级到LV3",
+      "currentLevel": "当前等级",
+      "canCreateCodes": "可创建邀请码",
+      "needsConfiguration": "需要管理员配置",
+      "upgradeToLV3": "升级到LV3解锁更多功能",
+      "managementDescription": "管理您的邀请码，查看使用情况，或创建新的邀请码帮助其他用户升级",
+      "upgradeDescription": "使用邀请码升级到LV3，解锁更多功能和权限",
+      "viewAndManage": "查看和管理您创建的邀请码",
+      "createNew": "创建新的邀请码（需管理员配置权限）",
+      "viewStatistics": "查看邀请码使用统计",
+      "manageInviteCodes": "管理邀请码",
+      "useInviteCode": "使用邀请码",
+      "unlockDailyQuota": "解锁每日150次使用额度",
+      "getCreatePermission": "获得创建邀请码权限",
+      "quickRedemption": "快速兑换邀请码",
+      "quickRedemptionDescription": "输入邀请码立即升级到LV3，解锁更多功能",
+      "redemption": {
+        "enterCode": "请输入邀请码",
+        "placeholder": "输入邀请码 (格式: XXXX-YYYY-ZZZZ)",
+        "redeeming": "兑换中...",
+        "redeem": "兑换",
+        "success": "兑换成功！",
+        "successDescription": "您已成功升级到LV3，请刷新页面查看更新",
+        "failed": "兑换失败",
+        "invalidCode": "邀请码无效或已过期",
+        "networkError": "网络错误，请稍后重试",
+        "formatInfo": "邀请码格式：XXXX-YYYY-ZZZZ（12位字符加连字符）",
+        "upgradeInfo": "成功兑换后将升级到LV3，每日使用次数提升至150次",
+        "oneTimeUse": "每个邀请码只能使用一次"
+      }
+    }
+  },
+  "admin": {
+    "title": "管理面板",
+    "description": "系统管理功能（仅管理员可见）",
+    "inviteConfigs": "邀请码配置",
+    "inviteConfigsDescription": "管理邀请码创建权限和限制",
+    "userManagement": "用户管理",
+    "userManagementDescription": "管理用户权限和信息",
+    "systemSettings": "系统设置",
+    "systemSettingsDescription": "系统配置和维护",
+    "security": "安全管理",
+    "securityDescription": "安全设置和IP管理",
+    "analytics": "数据分析",
+    "analyticsDescription": "用户活动和系统统计",
+    "goToInviteConfigs": "前往邀请码配置",
+    "adminOnly": "仅管理员可访问",
+    "superAdminOnly": "仅超级管理员可访问",
+    "welcome": "欢迎，{name}",
+    "roleAdmin": "管理员",
+    "roleSuperAdmin": "超级管理员",
+    "rolePermission": "您拥有{role}权限",
+    "available": "可用",
+    "comingSoon": "即将推出",
+    "manageConfig": "管理配置",
+    "manageUsers": "管理用户",
+    "manageSystem": "系统管理",
+    "manageSecurity": "安全管理",
+    "viewAnalytics": "查看分析",
+    "errors": {
+      "insufficientPermission": "权限不足",
+      "adminOnlyAccess": "只有管理员可以访问此页面",
+      "superAdminOnlyAccess": "只有超级管理员可以访问系统设置",
+      "loadFailed": "加载失败",
+      "networkError": "网络错误，请稍后重试",
+      "updateFailed": "更新失败",
+      "saveFailed": "保存失败"
+    },
+    "success": {
+      "updateSuccess": "更新成功",
+      "saveSuccess": "保存成功",
+      "userUpdated": "用户信息已更新",
+      "configUpdated": "系统配置已更新"
+    },
+    "notice": {
+      "title": "管理员注意事项",
+      "description": "请谨慎使用管理员权限，确保系统安全稳定运行。所有管理操作都会被记录在系统日志中。如有疑问，请联系系统管理员或查阅相关文档。"
+    },
+    "features": {
+      "inviteConfigs": {
+        "item1": "设置邀请码生成间隔天数",
+        "item2": "配置每批生成数量限制",
+        "item3": "管理用户总邀请码上限"
+      },
+      "userManagement": {
+        "item1": "查看所有注册用户信息",
+        "item2": "调整用户信任等级(LV0-LV4)",
+        "item3": "设置管理员和超级管理员"
+      },
+      "systemSettings": {
+        "item1": "维护模式开关控制",
+        "item2": "用户注册和邀请码策略",
+        "item3": "默认信任等级和使用限制"
+      },
+      "analytics": {
+        "item1": "用户注册和活跃趋势",
+        "item2": "共享服务使用量统计",
+        "item3": "AI对话和记忆数据分析"
+      },
+      "security": {
+        "item1": "查看安全事件日志记录",
+        "item2": "管理IP封禁和解封操作",
+        "item3": "监控异常访问和攻击行为"
+      }
+    }
+  },
+  "adminUsers": {
+    "title": "用户管理",
+    "description": "管理用户权限和信息",
+    "searchUsers": "搜索用户",
+    "searchPlaceholder": "搜索用户名、邮箱或显示名称...",
+    "filterByRole": "按角色筛选",
+    "filterByTrustLevel": "按信任等级筛选",
+    "allRoles": "所有角色",
+    "allTrustLevels": "所有信任等级",
+    "userList": "用户列表",
+    "foundUsers": "共找到 {count} 个用户",
+    "userInfo": "用户信息",
+    "role": "角色",
+    "trustLevel": "信任等级",
+    "status": "状态",
+    "registrationTime": "注册时间",
+    "actions": "操作",
+    "active": "活跃",
+    "inactive": "非活跃",
+    "silenced": "已禁言",
+    "emailNotVerified": "邮箱未验证",
+    "editUser": "编辑用户",
+    "editUserDescription": "修改用户的权限和状态设置",
+    "displayName": "显示名称",
+    "email": "邮箱",
+    "username": "用户名",
+    "userRole": "用户角色",
+    "userTrustLevel": "信任等级",
+    "accountStatus": "账户状态",
+    "isActive": "账户激活",
+    "isSilenced": "禁言状态",
+    "emailVerified": "邮箱验证",
+    "updating": "更新中...",
+    "saveChanges": "保存更改",
+    "cancel": "取消",
+    "roles": {
+      "user": "普通用户",
+      "moderator": "版主",
+      "admin": "管理员",
+      "super_admin": "超级管理员"
+    },
+    "trustLevels": {
+      "0": "LV0 (新用户)",
+      "1": "LV1 (基础用户)",
+      "2": "LV2 (活跃用户)",
+      "3": "LV3 (信任用户)",
+      "4": "LV4 (高级用户)"
+    },
+    "stats": {
+      "totalUsers": "总用户数",
+      "admins": "管理员",
+      "lv3PlusUsers": "LV3+ 用户",
+      "activeUsers": "活跃用户"
+    },
+    "loading": "加载中...",
+    "backToAdmin": "返回管理面板"
+  },
+  "adminSystem": {
+    "title": "系统设置",
+    "description": "系统配置和维护",
+    "basicSettings": "基础设置",
+    "maintenanceMode": "维护模式",
+    "maintenanceModeDescription": "启用后，系统将显示维护页面，只有管理员可以访问",
+    "registrationEnabled": "允许注册",
+    "registrationEnabledDescription": "是否允许新用户注册账户",
+    "requireInviteCode": "必须邀请码",
+    "requireInviteCodeDescription": "新用户注册时必须提供有效的邀请码",
+    "userSettings": "用户设置",
+    "maxDailyUsage": "默认每日限制",
+    "maxDailyUsageDescription": "新用户的默认每日使用次数限制",
+    "defaultTrustLevel": "默认信任等级",
+    "defaultTrustLevelDescription": "新用户注册时的默认信任等级",
+    "systemAnnouncement": "系统公告",
+    "systemAnnouncementPlaceholder": "输入系统公告内容...",
+    "systemAnnouncementDescription": "在首页显示的系统公告信息",
+    "saving": "保存中...",
+    "saveSettings": "保存设置",
+    "enabled": "启用",
+    "disabled": "禁用",
+    "trustLevels": {
+      "0": "LV0 - 新用户",
+      "1": "LV1 - 基础用户",
+      "2": "LV2 - 活跃用户",
+      "3": "LV3 - 高级用户"
+    },
+    "loading": "加载中...",
+    "backToAdmin": "返回管理面板",
+    "warning": {
+      "title": "超级管理员权限",
+      "description": "您正在访问系统核心设置。请谨慎操作，错误的配置可能导致系统无法正常运行。建议在修改前创建数据库备份。"
+    }
+  },
+  "adminSecurity": {
+    "title": "安全中心",
+    "description": "安全事件监控、IP管理和风险控制",
+    "refresh": "刷新",
+    "todayEvents": "今日安全事件",
+    "blockedIPs": "封禁IP数量",
+    "systemStatus": "系统状态",
+    "monitoringStatus": "监控状态",
+    "secure": "安全",
+    "normal": "正常",
+    "securityEvents": "安全事件日志",
+    "securityEventsDescription": "系统安全事件和异常访问记录",
+    "eventType": "事件类型",
+    "user": "用户",
+    "ipAddress": "IP地址",
+    "eventDescription": "描述",
+    "time": "时间",
+    "unknownUser": "未知用户",
+    "noSecurityEvents": "暂无安全事件",
+    "noSecurityEventsDescription": "系统运行正常，未检测到安全威胁",
+    "ipBlacklist": "IP黑名单管理",
+    "ipBlacklistDescription": "管理被封禁的IP地址",
+    "blockIP": "封禁IP",
+    "blockIPTitle": "封禁IP地址",
+    "blockIPDescription": "添加IP地址到黑名单，阻止其访问系统",
+    "ipAddressLabel": "IP地址",
+    "ipAddressPlaceholder": "192.168.1.1",
+    "blockReasonLabel": "封禁原因",
+    "blockReasonPlaceholder": "恶意攻击、频繁失败登录等",
+    "cancel": "取消",
+    "confirmBlock": "确认封禁",
+    "blocking": "封禁中...",
+    "blockTime": "封禁时间",
+    "actions": "操作",
+    "unblock": "解封",
+    "loading": "加载中...",
+    "backToAdmin": "返回管理面板",
+    "noBlockedIPs": "暂无封禁IP",
+    "noBlockedIPsDescription": "当前没有被封禁的IP地址",
+    "eventTypes": {
+      "rateLimitExceeded": "频率限制",
+      "invalidInput": "无效输入",
+      "unauthorizedAccess": "未授权访问",
+      "suspiciousActivity": "可疑活动",
+      "bruteForceAttempt": "暴力破解",
+      "dataInjectionAttempt": "数据注入",
+      "fileUploadViolation": "文件上传违规",
+      "apiAbuse": "API滥用",
+      "privilegeEscalationAttempt": "权限提升",
+      "systemMaintenance": "系统维护"
+    }
+  },
+  "adminAnalytics": {
+    "title": "数据统计",
+    "description": "用户活跃度、使用量统计和系统监控",
+    "backToAdmin": "返回管理面板",
+    "refresh": "刷新",
+    "loading": "加载中...",
+    "timeRange": {
+      "1d": "今天",
+      "7d": "7天",
+      "30d": "30天",
+      "90d": "90天"
+    },
+    "userStats": {
+      "title": "用户统计",
+      "totalUsers": "总用户数",
+      "activeUsers": "活跃用户",
+      "newUsersToday": "今日新用户",
+      "newUsersThisWeek": "本周新用户",
+      "trustLevelDistribution": "信任等级分布",
+      "loginMethodDistribution": "登录方式分布",
+      "passwordLogin": "密码登录"
+    },
+    "usageStats": {
+      "title": "使用统计",
+      "totalConversations": "总对话数",
+      "conversationsToday": "今日对话",
+      "conversationsThisWeek": "本周对话",
+      "averageMessages": "平均消息数",
+      "topSharedServices": "热门共享服务",
+      "topSharedServicesDesc": "使用次数最多的共享AI服务",
+      "serviceName": "服务名称",
+      "status": "状态",
+      "modelCount": "模型数量",
+      "usageCount": "使用次数",
+      "percentage": "占比",
+      "actions": "操作",
+      "running": "运行中",
+      "paused": "已暂停",
+      "models": "个模型",
+      "pauseService": "暂停服务",
+      "resumeService": "恢复服务",
+      "deleteService": "删除服务"
+    },
+    "systemStats": {
+      "title": "系统统计",
+      "totalApiCalls": "总API调用",
+      "apiCallsToday": "今日API调用",
+      "errorRate": "错误率",
+      "systemPerformance": "系统性能",
+      "systemPerformanceDesc": "API响应时间和系统状态",
+      "averageResponseTime": "平均响应时间",
+      "systemStatus": "系统状态",
+      "normalOperation": "正常运行",
+      "needsAttention": "需要关注",
+      "securityStats": "安全统计",
+      "securityStatsDesc": "安全事件和威胁监控",
+      "securityEventsToday": "今日安全事件",
+      "totalSecurityEvents": "总安全事件"
+    },
+    "messages": {
+      "permissionDenied": "权限不足",
+      "adminOnlyAccess": "只有管理员可以访问此页面",
+      "loadFailed": "加载失败",
+      "networkError": "网络错误，请稍后重试",
+      "deleteSuccess": "删除成功",
+      "deleteFailed": "删除失败",
+      "operationSuccess": "操作成功",
+      "operationFailed": "操作失败"
+    }
+  },
+  "inviteConfigs": {
+    "title": "邀请码配置管理",
+    "description": "管理邀请码创建权限和限制",
+    "createConfig": "创建配置",
+    "configType": "配置类型",
+    "globalDefault": "全局默认",
+    "userSpecific": "用户特定",
+    "globalDefaultDesc": "为所有管理员设置默认的邀请码创建权限",
+    "userSpecificDesc": "为特定用户设置个性化的邀请码创建权限",
+    "targetUser": "目标用户",
+    "userEmail": "用户邮箱",
+    "userId": "用户ID",
+    "emailRecommended": "推荐使用邮箱，更容易识别用户",
+    "intervalDays": "间隔天数",
+    "codesPerBatch": "每批数量",
+    "maxTotalCodes": "总数上限",
+    "creating": "创建中...",
+    "createGlobalConfig": "创建全局配置",
+    "createUserConfig": "创建用户配置",
+    "messages": {
+      "loading": "加载中...",
+      "loadFailed": "加载失败",
+      "networkError": "网络错误，请稍后重试",
+      "createSuccess": "配置创建成功",
+      "createFailed": "配置创建失败",
+      "confirmDelete": "确定要删除这个配置吗？",
+      "deleteSuccess": "配置删除成功",
+      "deleteFailed": "配置删除失败",
+      "userEmailOrIdRequired": "请输入用户邮箱或用户ID"
+    },
+    "table": {
+      "user": "用户",
+      "intervalDays": "间隔天数",
+      "codesPerBatch": "每批数量",
+      "maxTotalCodes": "总数上限",
+      "creator": "创建者",
+      "createdAt": "创建时间",
+      "actions": "操作",
+      "globalDefaultConfig": "全局默认配置",
+      "forAllUsers": "适用于所有用户"
+    },
+    "empty": {
+      "title": "暂无配置",
+      "description": "还没有创建任何邀请码配置，点击上方按钮创建第一个配置。"
     }
   },
   "summary": {
@@ -1098,16 +1868,16 @@
     },
     "trustLevel": {
       "loginRequired": "需要登录",
-      "loginDescription": "请先登录您的Linux.do账号以使用共享服务",
-      "loginButton": "登录 Linux.do",
+      "loginDescription": "请先登录您的账号以使用共享服务",
+      "loginButton": "登录",
       "insufficientTrust": "信任等级不足",
       "requiresLevel": "使用共享服务需要信任等级 {level} 或以上",
       "currentLevel": "您当前的信任等级：{level}",
       "howToImprove": "如何提升信任等级：",
-      "improveTip1": "积极参与Linux.do社区讨论",
-      "improveTip2": "发布高质量的内容和回复",
-      "improveTip3": "保持良好的社区行为记录",
-      "visitCommunity": "访问 Linux.do 社区"
+      "improveTip1": "积极使用应用功能",
+      "improveTip2": "分享高质量的API配置",
+      "improveTip3": "保持良好的使用记录",
+      "contactAdmin": "如需提升等级，请联系管理员"
     },
     "security": {
       "title": "安全与控制",
@@ -1189,7 +1959,8 @@
         "empty": "URL不能为空",
         "tips": {
           "support": "支持第三方API代理服务",
-          "security": "为出于管理方便，已屏蔽官方API地址"
+          "security": "为出于管理方便，已屏蔽官方API地址",
+          "allowAll": "当前配置允许使用官方API地址和第三方代理服务"
         },
         "placeholder": "请输入API服务地址"
       },
@@ -1264,6 +2035,116 @@
       "deleteSuccess": "删除成功",
       "deleteSuccessDesc": "配置已删除",
       "deleteFailed": "删除失败"
+    }
+  },
+  "onboarding": {
+    "welcome": {
+      "title": "欢迎来到 Snapifit AI 社区版",
+      "content": "您可以在此记录您的健康数据，获得智能建议。你专属团课赛博私教。",
+      "highlight": "数据驱动的智能建议"
+    },
+    "sharing": {
+      "title": "AI共享流转 - 公益共建",
+      "content": "这是一个分享版本，您可以在 头像——共享服务 这里进行AI共建，分享您手头好用的key，实现公益站的AI共享流转。我们还进行了一些设置，您每日的额度通常是较为宽裕的。",
+      "highlight": "共享AI资源，互助共赢",
+      "actionText": "前往共享设置"
+    },
+    "private": {
+      "title": "私有配置 - 更加稳定",
+      "content": "当然，您也可以使用自己的key，可能会更加稳定。您可以在 我的档案与设置——AI设置 这里来配置自己的私有模型。该模型会存储在浏览器中，不会被上传。",
+      "highlight": "数据安全，本地存储",
+      "actionText": "配置私有模型"
+    },
+    "sync": {
+      "title": "多端同步 - 数据流转",
+      "content": "如您使用多端，可以在新设备使用前，点击主页的\"刷新\"按钮或设置里的\"云同步\"，将会获取最新的数据。",
+      "highlight": "跨设备数据同步",
+      "actionText": "了解同步功能"
+    },
+    "guide": {
+      "title": "初次使用指南",
+      "step": "第 {current} 步，共 {total} 步",
+      "stepOf": "{current} / {total}",
+      "swipeHint": "左滑下一步",
+      "swipeHintRight": "右滑上一步",
+      "previous": "上一步",
+      "next": "下一步",
+      "start": "开始使用",
+      "skip": "跳过引导"
+    }
+  },
+  "inviteCodes": {
+    "title": "邀请码管理",
+    "description": "管理您的邀请码，帮助其他用户升级到LV3",
+    "userLevel": "用户等级",
+    "currentLevel": "当前等级",
+    "dailyUsage": "每日使用次数",
+    "canCreateCodes": "可创建邀请码",
+    "useInviteCode": "使用邀请码",
+    "createInviteCode": "创建邀请码",
+    "quota": "邀请码配额",
+    "intervalDays": "间隔天数",
+    "codesPerBatch": "每次数量",
+    "progress": "累计进度",
+    "status": "创建状态",
+    "canCreate": "可创建",
+    "restricted": "受限",
+    "nextAllowedAt": "下次可创建",
+    "noQuota": "需要配置",
+    "noQuotaDesc": "请先创建邀请码配置",
+    "goToConfig": "前往配置",
+    "createDialog": {
+      "title": "创建邀请码",
+      "description": "创建邀请码帮助其他用户升级到LV3",
+      "count": "创建数量",
+      "expiresInDays": "有效期（天）",
+      "codeDescription": "描述（可选）",
+      "cancel": "取消",
+      "create": "创建邀请码",
+      "creating": "创建中..."
+    },
+    "useDialog": {
+      "title": "使用邀请码",
+      "description": "输入邀请码升级到LV3，解锁更多功能和权限",
+      "code": "邀请码",
+      "format": "邀请码格式：XXXX-YYYY-ZZZZ（12位字符+分隔符）",
+      "cancel": "取消",
+      "upgrade": "升级到LV3",
+      "upgrading": "升级中...",
+      "benefits": {
+        "title": "升级到LV3后您将获得",
+        "dailyUsage": "每日使用次数：150次",
+        "createCodes": "创建邀请码权限（需管理员配置）",
+        "moreFeatures": "更多社区功能访问权限"
+      }
+    },
+    "table": {
+      "code": "邀请码",
+      "description": "描述",
+      "status": "状态",
+      "expiresAt": "过期时间",
+      "createdAt": "创建时间",
+      "actions": "操作",
+      "copy": "复制",
+      "delete": "删除",
+      "active": "有效",
+      "used": "已使用",
+      "expired": "已过期",
+      "neverExpires": "永不过期"
+    },
+    "empty": {
+      "title": "还没有邀请码",
+      "createFirst": "创建您的第一个邀请码，帮助其他用户升级",
+      "upgradeFirst": "升级到LV3后即可创建邀请码"
+    },
+    "messages": {
+      "loading": "加载中...",
+      "createSuccess": "邀请码创建成功",
+      "createFailed": "创建邀请码失败",
+      "useSuccess": "邀请码使用成功，您的等级已升级到LV3！请刷新页面查看更新",
+      "useFailed": "使用邀请码失败",
+      "loadFailed": "加载数据失败",
+      "copied": "已复制到剪贴板"
     }
   }
 }

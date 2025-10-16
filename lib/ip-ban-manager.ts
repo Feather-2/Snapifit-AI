@@ -3,7 +3,7 @@
  * 自动检测和封禁恶意IP地址
  */
 
-import { supabaseAdmin } from './supabase';
+import { getSupabaseAdmin } from './supabase';
 import { logSecurityEvent } from './security-monitor';
 
 export interface IPBanRecord {
@@ -31,6 +31,11 @@ export class IPBanManager {
   private static instance: IPBanManager;
   private bannedIPs = new Map<string, IPBanRecord>();
   private readonly CACHE_REFRESH_INTERVAL = 5 * 60 * 1000; // 5分钟刷新缓存
+
+  // 获取数据库客户端
+  private async getSupabase() {
+    return await getSupabaseAdmin()
+  }
 
   // 自动封禁规则配置
   private readonly AUTO_BAN_RULES: BanRule[] = [
@@ -85,6 +90,10 @@ export class IPBanManager {
   ];
 
   constructor() {
+    // 获取数据库提供商配置
+    const DB_PROVIDER = process.env.DB_PROVIDER || 'supabase'
+
+    // 无论使用哪种数据库，都需要初始化基本功能
     // 定期刷新缓存
     setInterval(() => {
       this.refreshBanCache();
@@ -118,7 +127,8 @@ export class IPBanManager {
 
     // 从数据库查询
     try {
-      const { data: banRecord, error } = await supabaseAdmin
+      const supabase = await this.getSupabase()
+      const { data: banRecord, error } = await supabase
         .from('ip_bans')
         .select('*')
         .eq('ip_address', ipAddress)
@@ -182,6 +192,7 @@ export class IPBanManager {
       };
 
       // 保存到数据库
+      const supabaseAdmin = await this.getSupabase()
       const { data, error } = await supabaseAdmin
         .from('ip_bans')
         .insert({
@@ -278,6 +289,7 @@ export class IPBanManager {
     try {
       const timeWindow = new Date(Date.now() - rule.timeWindow * 60 * 1000);
 
+      const supabaseAdmin = await this.getSupabase()
       const { data: events, error } = await supabaseAdmin
         .from('security_events')
         .select('id')
@@ -303,6 +315,7 @@ export class IPBanManager {
   async unbanIP(ipAddress: string, reason: string = 'manual'): Promise<{ success: boolean; error?: string }> {
     try {
       // 更新数据库
+      const supabaseAdmin = await this.getSupabase()
       const { error } = await supabaseAdmin
         .from('ip_bans')
         .update({
@@ -348,6 +361,9 @@ export class IPBanManager {
   }> {
     try {
       const offset = (page - 1) * limit;
+
+      // 获取数据库客户端
+      const supabaseAdmin = await this.getSupabase()
 
       // 获取总数
       const { count, error: countError } = await supabaseAdmin
@@ -402,6 +418,7 @@ export class IPBanManager {
    */
   private async refreshBanCache(): Promise<void> {
     try {
+      const supabaseAdmin = await this.getSupabase()
       const { data: bans, error } = await supabaseAdmin
         .from('ip_bans')
         .select('*')
@@ -454,6 +471,7 @@ export class IPBanManager {
     try {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
+      const supabaseAdmin = await this.getSupabase()
       const { data: stats, error } = await supabaseAdmin
         .from('ip_bans')
         .select('ban_type, severity, is_active, banned_at');
@@ -499,5 +517,7 @@ export class IPBanManager {
   }
 }
 
-// 导出单例实例
-export const ipBanManager = IPBanManager.getInstance();
+// 导出单例实例获取函数（延迟初始化）
+export function getIPBanManager() {
+  return IPBanManager.getInstance();
+}

@@ -1,21 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { ipBanManager } from '@/lib/ip-ban-manager';
-import { userBanManager } from '@/lib/user-ban-manager';
+import { checkDebugAccess } from '@/lib/debug-guard';
+import { getIPBanManager } from '@/lib/ip-ban-manager';
+import { getUserBanManager } from '@/lib/user-ban-manager';
 import { getClientIP } from '@/lib/ip-utils';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 export async function GET(request: NextRequest) {
+  // 检查调试访问权限
+  const debugCheck = checkDebugAccess();
+  if (debugCheck) return debugCheck;
   try {
     const session = await auth();
     const ip = getClientIP(request);
     const userId = session?.user?.id;
 
     // 检查IP封禁状态
+    const ipBanManager = getIPBanManager();
+    const userBanManager = getUserBanManager();
     const isIPBanned = await ipBanManager.isIPBanned(ip);
-    
+
     // 检查用户封禁状态
     const isUserBanned = userId ? await userBanManager.isUserBanned(userId) : false;
+
+    // 获取数据库客户端
+    const supabaseAdmin = await getSupabaseAdmin()
 
     // 获取最近的安全事件
     const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
@@ -30,13 +41,13 @@ export async function GET(request: NextRequest) {
     // 统计用户的速率限制违规事件
     let userRateLimitEvents = 0;
     let ipRateLimitEvents = 0;
-    
+
     if (recentEvents) {
-      userRateLimitEvents = recentEvents.filter(e => 
+      userRateLimitEvents = recentEvents.filter(e =>
         e.event_type === 'rate_limit_exceeded' && e.user_id === userId
       ).length;
-      
-      ipRateLimitEvents = recentEvents.filter(e => 
+
+      ipRateLimitEvents = recentEvents.filter(e =>
         e.event_type === 'rate_limit_exceeded' && e.ip_address === ip
       ).length;
     }
@@ -45,7 +56,7 @@ export async function GET(request: NextRequest) {
     const ipBanRules = {
       rate_limit_exceeded: { threshold: 5, timeWindow: 10, banDuration: 30 }
     };
-    
+
     const userBanRules = {
       rate_limit_exceeded: { threshold: 10, timeWindow: 30, banDuration: 60 }
     };
@@ -152,6 +163,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // 检查调试访问权限
+  const debugCheck = checkDebugAccess();
+  if (debugCheck) return debugCheck;
+
   try {
     const session = await auth();
     if (!session?.user?.id) {

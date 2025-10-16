@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { supabaseAdmin } from '@/lib/supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 // 获取安全统计信息（仅管理员可访问）
 export async function GET(request: NextRequest) {
@@ -43,6 +45,9 @@ async function checkAdminPermission(userId: string): Promise<boolean> {
       return true
     }
 
+    // 获取 Supabase 管理员客户端
+    const supabaseAdmin = await getSupabaseAdmin()
+
     // 方法2: 检查用户的信任等级是否足够高（例如LV4且有特殊标记）
     const { data: user, error } = await supabaseAdmin
       .from('users')
@@ -71,6 +76,9 @@ async function getSecurityStats(days: number = 7) {
   today.setHours(0, 0, 0, 0)
 
   try {
+    // 获取 Supabase 管理员客户端
+    const supabaseAdmin = await getSupabaseAdmin()
+
     // 获取总违规次数
     const { count: totalViolations } = await supabaseAdmin
       .from('security_events')

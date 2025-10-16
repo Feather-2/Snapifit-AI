@@ -38,11 +38,34 @@ export function BaseURLInput({
 }: BaseURLInputProps) {
   const [validation, setValidation] = useState<URLValidationResult | null>(null);
   const [isValidating, setIsValidating] = useState(false);
+  const [allowOfficialAPIs, setAllowOfficialAPIs] = useState<boolean | null>(null);
   const t = useTranslation('sharedKeys');
   const tCommon = useTranslation('common');
 
   // 使用i18n的placeholder
   const defaultPlaceholder = placeholder || t('upload.urlValidation.placeholder');
+
+  // 获取URL验证配置
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await fetch('/api/config/url-validation');
+        if (response.ok) {
+          const data = await response.json();
+          setAllowOfficialAPIs(data.config.allowOfficialAPIs);
+        } else {
+          // 如果API失败，默认为false（更安全）
+          setAllowOfficialAPIs(false);
+        }
+      } catch (error) {
+        console.error('Failed to fetch URL validation config:', error);
+        // 如果API失败，默认为false（更安全）
+        setAllowOfficialAPIs(false);
+      }
+    };
+
+    fetchConfig();
+  }, []);
 
   // 客户端URL验证（简化版）
   const validateURL = async (url: string): Promise<URLValidationResult> => {
@@ -78,46 +101,50 @@ export function BaseURLInput({
         };
       }
 
-      // 检查黑名单
-      const blacklistedDomains = [
-        // AI官方API
-        'api.openai.com', 'openai.com', 'chat.openai.com',
-        'api.anthropic.com', 'anthropic.com', 'claude.ai',
-        'api.deepseek.com', 'deepseek.com', 'chat.deepseek.com',
-        'dashscope.aliyuncs.com', 'qwen.aliyun.com', 'aliyun.com',
-        'generativelanguage.googleapis.com', 'ai.google.dev', 'googleapis.com', 'google.com',
-        'azure.com', 'microsoft.com', 'openai.azure.com',
-        'aip.baidubce.com', 'baidu.com', 'baidubce.com',
-        'hunyuan.tencent.com', 'tencent.com',
-        'volcengine.com', 'bytedance.com',
-        'xfyun.cn', 'iflytek.com',
-        'zhipuai.cn', 'bigmodel.cn',
-        'moonshot.cn', 'kimi.ai',
-        'lingyiwanwu.com', '01.ai',
-        'minimax.chat', 'minimaxi.com',
-        // 政府和敏感域名
-        'gov.cn', 'gov.us', 'gov.uk', 'gov.au', 'gov.ca',
-        'mil.cn', 'mil.us', 'military.com',
-        'edu.cn', 'edu.us', 'ac.uk', 'ac.cn',
-        'bank.com', 'banking.com', 'finance.gov'
-      ];
+      // 检查黑名单（只有在不允许官方API时才检查）
+      if (allowOfficialAPIs === false) {
+        const blacklistedDomains = [
+          // AI官方API
+          'api.openai.com', 'openai.com', 'chat.openai.com',
+          'api.anthropic.com', 'anthropic.com', 'claude.ai',
+          'api.deepseek.com', 'deepseek.com', 'chat.deepseek.com',
+          'dashscope.aliyuncs.com', 'qwen.aliyun.com', 'aliyun.com',
+          'generativelanguage.googleapis.com', 'ai.google.dev', 'googleapis.com', 'google.com',
+          'azure.com', 'microsoft.com', 'openai.azure.com',
+          'aip.baidubce.com', 'baidu.com', 'baidubce.com',
+          'hunyuan.tencent.com', 'tencent.com',
+          'volcengine.com', 'bytedance.com',
+          'xfyun.cn', 'iflytek.com',
+          'zhipuai.cn', 'bigmodel.cn',
+          'moonshot.cn', 'kimi.ai',
+          'lingyiwanwu.com', '01.ai',
+          'minimax.chat', 'minimaxi.com',
+          // 政府和敏感域名
+          'gov.cn', 'gov.us', 'gov.uk', 'gov.au', 'gov.ca',
+          'mil.cn', 'mil.us', 'military.com',
+          'edu.cn', 'edu.us', 'ac.uk', 'ac.cn',
+          'bank.com', 'banking.com', 'finance.gov'
+        ];
 
-      for (const blockedDomain of blacklistedDomains) {
-        if (hostname === blockedDomain || hostname.endsWith(`.${blockedDomain}`)) {
-          return {
-            isValid: false,
-            isBlocked: true,
-            reason: t('upload.urlValidation.blocked'),
-            blockedDomain
-          };
+        for (const blockedDomain of blacklistedDomains) {
+          if (hostname === blockedDomain || hostname.endsWith(`.${blockedDomain}`)) {
+            return {
+              isValid: false,
+              isBlocked: true,
+              reason: t('upload.urlValidation.blocked'),
+              blockedDomain
+            };
+          }
         }
       }
 
-      // 通过验证的第三方URL
+      // 通过验证的URL
       return {
         isValid: true,
         isBlocked: false,
-        reason: t('upload.urlValidation.passed')
+        reason: allowOfficialAPIs
+          ? 'URL验证通过（允许所有源站）'
+          : t('upload.urlValidation.passed')
       };
 
     } catch (error) {
@@ -133,6 +160,11 @@ export function BaseURLInput({
       return;
     }
 
+    // 等待配置加载完成
+    if (allowOfficialAPIs === null) {
+      return;
+    }
+
     setIsValidating(true);
     const timer = setTimeout(async () => {
       const result = await validateURL(value);
@@ -142,7 +174,7 @@ export function BaseURLInput({
     }, 500);
 
     return () => clearTimeout(timer);
-  }, [value, onValidationChange]);
+  }, [value, onValidationChange, allowOfficialAPIs]);
 
   const getStatusIcon = () => {
     if (isValidating) return <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />;
@@ -212,10 +244,15 @@ export function BaseURLInput({
         </div>
       )}
 
-      {/* 使用说明 */}
+      {/* 使用说明 - 根据配置动态显示 */}
       <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
         <p>• {t('upload.urlValidation.tips.support')}</p>
-        <p>• {t('upload.urlValidation.tips.security')}</p>
+        {allowOfficialAPIs === false && (
+          <p>• {t('upload.urlValidation.tips.security')}</p>
+        )}
+        {allowOfficialAPIs === true && (
+          <p>• {t('upload.urlValidation.tips.allowAll')}</p>
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase'
+import { getSupabaseAdmin } from './supabase'
 import { OpenAICompatibleClient } from './openai-client'
 import * as CryptoJS from 'crypto-js'
 
@@ -35,7 +35,10 @@ export interface KeyUsageLog {
 }
 
 export class KeyManager {
-  private supabase = supabaseAdmin
+  // 获取数据库客户端
+  private async getSupabase() {
+    return await getSupabaseAdmin()
+  }
 
   // 加密API Key
   private encryptApiKey(apiKey: string): string {
@@ -58,7 +61,8 @@ export class KeyManager {
       // 加密API Key用于比较
       const encryptedKey = this.encryptApiKey(apiKey)
 
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('shared_keys')
         .select('id')
         .eq('user_id', userId)
@@ -71,6 +75,11 @@ export class KeyManager {
         return { exists: false }
       }
 
+      if (!data || !Array.isArray(data)) {
+        console.error('Invalid data returned from duplicate key check')
+        return { exists: false }
+      }
+
       return { exists: data.length > 0, keyId: data[0]?.id }
     } catch (error) {
       console.error('Exception in checkDuplicateKey:', error)
@@ -80,6 +89,13 @@ export class KeyManager {
 
   async addSharedKey(config: Omit<SharedKeyConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; error?: string; id?: string }> {
     try {
+      console.log('🔧 [KeyManager] addSharedKey called with config:', {
+        userId: config.userId,
+        name: config.name,
+        baseUrl: config.baseUrl,
+        modelsCount: config.availableModels?.length
+      })
+
       // 加密API Key
       const encryptedKey = this.encryptApiKey(config.apiKey)
 
@@ -97,15 +113,26 @@ export class KeyManager {
         total_usage_count: 0
       }
 
-      const { data, error } = await this.supabase
+      console.log('🔧 [KeyManager] About to insert data:', insertData)
+
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('shared_keys')
         .insert(insertData)
         .select()
         .single()
 
+      console.log('🔧 [KeyManager] Insert result:', { hasData: !!data, hasError: !!error, error: error?.message })
+
       if (error) {
+        console.error('🔧 [KeyManager] Insert error:', error)
         return { success: false, error: error.message }
       }
+
+      if (!data || !data.id) {
+        return { success: false, error: 'Failed to create shared key: No data returned' }
+      }
+
       return { success: true, id: data.id }
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
@@ -155,7 +182,8 @@ export class KeyManager {
       const currentDate = new Date().toISOString().split('T')[0];
 
       // 检查是否有密钥需要重置（updated_at不是今天且usage_count_today > 0）
-      const { data: keysNeedReset, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data: keysNeedReset, error } = await supabase
         .from('shared_keys')
         .select('id, name, usage_count_today, updated_at')
         .eq('is_active', true)
@@ -171,7 +199,7 @@ export class KeyManager {
         console.log(`🔄 Auto-resetting ${keysNeedReset.length} shared keys for new day`);
 
         // 重置这些密钥
-        const { error: resetError } = await this.supabase
+        const { error: resetError } = await supabase
           .from('shared_keys')
           .update({
             usage_count_today: 0,
@@ -201,7 +229,8 @@ export class KeyManager {
 
     // 如果用户指定了一个或多个Key ID，则在这些Key中进行选择
     if (selectedKeyIds && selectedKeyIds.length > 0) {
-      const { data: specificKeys, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data: specificKeys, error } = await supabase
         .from('shared_keys')
         .select('*')
         .in('id', selectedKeyIds)
@@ -213,7 +242,7 @@ export class KeyManager {
 
       // 过滤出支持所需模型的keys
       const suitableKeys = modelName
-        ? specificKeys.filter(k => k.available_models && k.available_models.includes(modelName))
+        ? specificKeys.filter((k: any) => k.available_models && k.available_models.includes(modelName))
         : specificKeys;
 
       if (suitableKeys.length === 0) {
@@ -221,7 +250,7 @@ export class KeyManager {
       }
 
       // 过滤掉已达到每日限制的Key（999999表示无限制）
-      const availableKeys = suitableKeys.filter(key =>
+      const availableKeys = suitableKeys.filter((key: any) =>
         key.daily_limit === 999999 || (key.usage_count_today || 0) < (key.daily_limit || 150)
       )
 
@@ -246,21 +275,52 @@ export class KeyManager {
       return { key: null, error: '必须提供模型名称或指定的Key ID才能获取Key。' };
     }
 
-    const { data: keys, error } = await this.supabase
-      .from("shared_keys")
-      .select('*')
-      .eq('is_active', true)
-      // 使用 contains 操作符检查 available_models 数组
-      .contains('available_models', [modelName])
-      .order("last_used_at", { ascending: true }) // LRU 负载均衡
-      .limit(10) // 限制候选池大小
+    const supabase = await this.getSupabase()
+
+    // 检查数据库提供商类型，使用不同的查询方式
+    const dbProvider = process.env.DB_PROVIDER || 'postgresql'
+
+    let keys, error
+
+    if (dbProvider === 'supabase') {
+      // Supabase 模式：使用 contains 操作符
+      const result = await supabase
+        .from("shared_keys")
+        .select('*')
+        .eq('is_active', true)
+        .contains('available_models', [modelName])
+        .order("last_used_at", { ascending: true })
+        .limit(10)
+      keys = result.data
+      error = result.error
+    } else {
+      // PostgreSQL 模式：获取所有活跃的 keys，然后在代码中过滤
+      const result = await supabase
+        .from("shared_keys")
+        .select('*')
+        .eq('is_active', true)
+        .order("last_used_at", { ascending: true })
+        .limit(50) // 获取更多候选，然后过滤
+
+      if (result.error) {
+        keys = null
+        error = result.error
+      } else {
+        // 在代码中过滤包含指定模型的 keys
+        keys = result.data?.filter((key: any) => {
+          const availableModels = key.available_models || []
+          return Array.isArray(availableModels) && availableModels.includes(modelName)
+        }).slice(0, 10) // 限制为10个
+        error = null
+      }
+    }
 
     if (error || !keys || keys.length === 0) {
       return { key: null, error: `没有找到支持模型 "${modelName}" 的可用共享Key。` }
     }
 
     // 过滤掉已达到每日限制的Key（999999表示无限制）
-    const availableKeys = keys.filter(key =>
+    const availableKeys = keys.filter((key: any) =>
       key.daily_limit === 999999 || (key.usage_count_today || 0) < (key.daily_limit || 150)
     )
 
@@ -304,7 +364,8 @@ export class KeyManager {
       // 更新Key使用统计
       if (usage.success) {
         // 先获取当前的统计数据
-        const { data: currentKey, error: fetchError } = await this.supabase
+        const supabase = await this.getSupabase()
+        const { data: currentKey, error: fetchError } = await supabase
           .from('shared_keys')
           .select('usage_count_today, total_usage_count')
           .eq('id', keyId)
@@ -318,7 +379,7 @@ export class KeyManager {
         const updatedUsageCountToday = (currentKey.usage_count_today || 0) + 1;
         const updatedTotalUsageCount = (currentKey.total_usage_count || 0) + 1;
 
-        const { error: updateError } = await this.supabase
+        const { error: updateError } = await supabase
           .from('shared_keys')
           .update({
             usage_count_today: updatedUsageCountToday,
@@ -344,7 +405,8 @@ export class KeyManager {
   // 获取用户的Key列表
   async getUserKeys(userId: string): Promise<{ keys: SharedKeyConfig[]; error?: string }> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('shared_keys')
         .select('*')
         .eq('user_id', userId)
@@ -384,7 +446,8 @@ export class KeyManager {
   // 验证Key的所有者
   async verifyKeyOwner(keyId: string, userId: string): Promise<boolean> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('shared_keys')
         .select('user_id')
         .eq('id', keyId)
@@ -407,7 +470,8 @@ export class KeyManager {
     try {
       // 如果提供了 userId，验证所有权
       if (userId) {
-        const { data: keyData, error: fetchError } = await this.supabase
+        const supabase = await this.getSupabase()
+        const { data: keyData, error: fetchError } = await supabase
           .from('shared_keys')
           .select('user_id')
           .eq('id', keyId)
@@ -422,7 +486,8 @@ export class KeyManager {
         }
       }
 
-      const { error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { error } = await supabase
         .from('shared_keys')
         .delete()
         .eq('id', keyId);
@@ -440,33 +505,75 @@ export class KeyManager {
   // 获取感谢榜数据
   async getThanksBoard(): Promise<{ contributors: any[]; error?: string }> {
     try {
-      const { data, error } = await this.supabase
-        .from('shared_keys')
-        .select(`
-          user_id,
-          users!inner(username, avatar_url),
-          total_usage_count,
-          daily_limit,
-          is_active
-        `)
-        .eq('is_active', true)
-        .order('total_usage_count', { ascending: false })
-        .limit(20)
+      const dbProvider = process.env.DB_PROVIDER || 'postgresql'
 
-      if (error) {
-        return { contributors: [], error: error.message }
+      if (dbProvider === 'supabase') {
+        // Supabase 模式
+        const supabase = await this.getSupabase()
+        const { data, error } = await supabase
+          .from('shared_keys')
+          .select(`
+            user_id,
+            users!inner(username, avatar_url),
+            total_usage_count,
+            daily_limit,
+            is_active
+          `)
+          .eq('is_active', true)
+          .order('total_usage_count', { ascending: false })
+          .limit(20)
+
+        if (error) {
+          return { contributors: [], error: error.message }
+        }
+
+        const contributors = data.map((item: any) => ({
+          userId: item.user_id,
+          username: item.users.username,
+          avatarUrl: item.users.avatar_url,
+          totalContributions: item.total_usage_count,
+          dailyLimit: item.daily_limit,
+          isActive: item.is_active
+        }))
+
+        return { contributors }
+      } else {
+        // PostgreSQL 模式
+        const { createPostgreSQLClient } = await import('@/lib/database/providers/postgresql')
+        const pgProvider = createPostgreSQLClient()
+
+        const query = `
+          SELECT
+            sk.user_id,
+            sk.total_usage_count,
+            sk.daily_limit,
+            sk.is_active,
+            u.username,
+            u.avatar_url
+          FROM shared_keys sk
+          INNER JOIN users u ON sk.user_id = u.id
+          WHERE sk.is_active = true
+          ORDER BY sk.total_usage_count DESC
+          LIMIT 20;
+        `
+
+        const result = await pgProvider.query(query, [])
+
+        if (result.error) {
+          return { contributors: [], error: result.error.message }
+        }
+
+        const contributors = result.data?.map((item: any) => ({
+          userId: item.user_id,
+          username: item.username,
+          avatarUrl: item.avatar_url,
+          totalContributions: item.total_usage_count,
+          dailyLimit: item.daily_limit,
+          isActive: item.is_active
+        })) || []
+
+        return { contributors }
       }
-
-      const contributors = data.map((item: any) => ({
-        userId: item.user_id,
-        username: item.users.username,
-        avatarUrl: item.users.avatar_url,
-        totalContributions: item.total_usage_count,
-        dailyLimit: item.daily_limit,
-        isActive: item.is_active
-      }))
-
-      return { contributors }
     } catch (error) {
       return {
         contributors: [],
@@ -478,54 +585,142 @@ export class KeyManager {
   // 获取使用排行榜
   async getUsageLeaderboard(): Promise<{ success: boolean; keys?: any[]; error?: string }> {
     try {
-      const { data, error } = await this.supabase
-        .from('shared_keys')
-        .select(`
-          id,
-          name,
-          base_url,
-          available_models,
-          daily_limit,
-          description,
-          tags,
-          is_active,
-          usage_count_today,
-          total_usage_count,
-          created_at,
-          users!inner(id, username, display_name, avatar_url, trust_level)
-        `)
-        .eq('is_active', true)
-        .order('total_usage_count', { ascending: false })
-        .limit(50)
+      const dbProvider = process.env.DB_PROVIDER || 'postgresql'
+      console.log('🔧 [KeyManager] getUsageLeaderboard - DB Provider:', dbProvider)
 
-      if (error) {
-        return { success: false, error: error.message }
+      if (dbProvider === 'supabase') {
+        // Supabase 模式：分别查询然后合并（避免关联查询兼容性问题）
+        console.log('🔧 [KeyManager] Using Supabase mode with separate queries')
+        const supabase = await this.getSupabase()
+
+        // 1. 获取共享密钥
+        const { data: keysData, error: keysError } = await supabase
+          .from('shared_keys')
+          .select(`
+            id,
+            name,
+            base_url,
+            available_models,
+            daily_limit,
+            description,
+            tags,
+            is_active,
+            usage_count_today,
+            total_usage_count,
+            created_at,
+            user_id
+          `)
+          .eq('is_active', true)
+          .order('total_usage_count', { ascending: false })
+          .limit(50)
+
+        if (keysError) {
+          return { success: false, error: keysError.message }
+        }
+
+        // 2. 获取相关用户信息
+        const userIds = [...new Set(keysData.map(key => key.user_id))]
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('id, username, display_name, avatar_url, trust_level')
+          .in('id', userIds)
+
+        if (usersError) {
+          return { success: false, error: usersError.message }
+        }
+
+        // 3. 合并数据
+        const usersMap = new Map(usersData.map(user => [user.id, user]))
+        const keys = keysData.map((item: any) => {
+          const user = usersMap.get(item.user_id)
+          return {
+            id: item.id,
+            name: item.name,
+            baseUrl: item.base_url,
+            availableModels: item.available_models,
+            dailyLimit: item.daily_limit,
+            description: item.description,
+            tags: item.tags || [],
+            isActive: item.is_active,
+            usageCountToday: item.usage_count_today,
+            totalUsageCount: item.total_usage_count,
+            createdAt: item.created_at,
+            user: user ? {
+              id: user.id,
+              username: user.username,
+              displayName: user.display_name,
+              avatarUrl: user.avatar_url,
+              trustLevel: user.trust_level
+            } : null,
+            modelHealth: []
+          }
+        }).filter(key => key.user) // 只返回有用户信息的密钥
+
+        return { success: true, keys }
+      } else {
+        // PostgreSQL 模式：分别查询然后合并
+        console.log('🔧 [KeyManager] Using PostgreSQL mode')
+        const { createPostgreSQLClient } = await import('@/lib/database/providers/postgresql')
+        const pgProvider = createPostgreSQLClient()
+
+        const query = `
+          SELECT
+            sk.id,
+            sk.name,
+            sk.base_url,
+            sk.available_models,
+            sk.daily_limit,
+            sk.description,
+            sk.tags,
+            sk.is_active,
+            sk.usage_count_today,
+            sk.total_usage_count,
+            sk.created_at,
+            sk.user_id,
+            u.username,
+            u.display_name,
+            u.avatar_url,
+            u.trust_level
+          FROM shared_keys sk
+          INNER JOIN users u ON sk.user_id = u.id
+          WHERE sk.is_active = true
+          ORDER BY sk.total_usage_count DESC
+          LIMIT 50;
+        `
+
+        console.log('🔧 [KeyManager] Executing PostgreSQL query:', query)
+        const result = await pgProvider.query(query, [])
+        console.log('🔧 [KeyManager] PostgreSQL query result:', { hasData: !!result.data, hasError: !!result.error, error: result.error?.message })
+
+        if (result.error) {
+          console.error('🔧 [KeyManager] PostgreSQL query error:', result.error)
+          return { success: false, error: result.error.message }
+        }
+
+        const keys = result.data?.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          baseUrl: item.base_url,
+          availableModels: item.available_models,
+          dailyLimit: item.daily_limit,
+          description: item.description,
+          tags: item.tags || [],
+          isActive: item.is_active,
+          usageCountToday: item.usage_count_today,
+          totalUsageCount: item.total_usage_count,
+          createdAt: item.created_at,
+          user: {
+            id: item.user_id,
+            username: item.username,
+            displayName: item.display_name,
+            avatarUrl: item.avatar_url,
+            trustLevel: item.trust_level
+          },
+          modelHealth: []
+        })) || []
+
+        return { success: true, keys }
       }
-
-      const keys = data.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        baseUrl: item.base_url,
-        availableModels: item.available_models,
-        dailyLimit: item.daily_limit,
-        description: item.description,
-        tags: item.tags || [],
-        isActive: item.is_active,
-        usageCountToday: item.usage_count_today,
-        totalUsageCount: item.total_usage_count,
-        createdAt: item.created_at,
-        user: {
-          id: item.users.id,
-          username: item.users.username,
-          displayName: item.users.display_name,
-          avatarUrl: item.users.avatar_url,
-          trustLevel: item.users.trust_level
-        },
-        // TODO: 添加模型健康状态检查
-        modelHealth: []
-      }))
-
-      return { success: true, keys }
     } catch (error) {
       return {
         success: false,
@@ -537,7 +732,8 @@ export class KeyManager {
   // 获取用户自己的所有配置
   async getMyConfigurations(userId: string): Promise<{ success: boolean; keys?: any[]; error?: string }> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('shared_keys')
         .select(`
           id,
@@ -588,7 +784,8 @@ export class KeyManager {
   async updateSharedKey(keyId: string, userId: string, updates: any): Promise<{ success: boolean; error?: string }> {
     try {
       // 验证所有权
-      const { data: keyData, error: fetchError } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data: keyData, error: fetchError } = await supabase
         .from('shared_keys')
         .select('user_id')
         .eq('id', keyId)
@@ -603,7 +800,7 @@ export class KeyManager {
       }
 
       // 更新数据
-      const { error } = await this.supabase
+      const { error } = await supabase
         .from('shared_keys')
         .update(updates)
         .eq('id', keyId)
@@ -621,7 +818,8 @@ export class KeyManager {
   // 重置每日使用计数（定时任务调用）
   async resetDailyUsage(): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { error } = await supabase
         .from('shared_keys')
         .update({ usage_count_today: 0 })
         .neq('id', '')

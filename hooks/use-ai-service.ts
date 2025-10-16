@@ -77,7 +77,7 @@ export function useAIService({ aiConfig, modelType }: AIServiceOptions): AIServi
           const details = errorData.details || {}
           const currentUsage = details.currentUsage || '未知'
           const dailyLimit = details.dailyLimit || '未知'
-          throw new Error(`今日AI使用次数已达上限 (${currentUsage}/${dailyLimit})，请明天再试或提升信任等级`)
+          throw new Error(`今日AI使用次数已达上限，请明天再试或提升信任等级`)
         } else if (response.status === 401 && errorData.code === 'UNAUTHORIZED') {
           throw new Error('请先登录后再使用AI功能')
         } else {
@@ -137,7 +137,7 @@ export function useAIService({ aiConfig, modelType }: AIServiceOptions): AIServi
           const details = errorData.details || {}
           const currentUsage = details.currentUsage || '未知'
           const dailyLimit = details.dailyLimit || '未知'
-          throw new Error(`今日AI使用次数已达上限 (${currentUsage}/${dailyLimit})，请明天再试或提升信任等级`)
+          throw new Error(`今日AI使用次数已达上限，请明天再试或提升信任等级`)
         } else if (response.status === 401 && errorData.code === 'UNAUTHORIZED') {
           throw new Error('请先登录后再使用AI功能')
         } else {

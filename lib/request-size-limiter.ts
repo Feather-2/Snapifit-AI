@@ -4,32 +4,62 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { logSecurityEvent } from './security-monitor';
 import { getClientIP } from './ip-utils';
+
+/**
+ * 异步记录安全事件到数据库（非阻塞）
+ * 通过内部 API 调用来避免在中间件中直接使用数据库
+ */
+async function logSecurityEventAsync(event: {
+  ipAddress: string;
+  userAgent: string;
+  eventType: string;
+  severity: string;
+  description: string;
+  metadata?: Record<string, any>;
+}) {
+  try {
+    // 非阻塞的内部 API 调用
+    fetch('/api/security/log-event', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Request': 'true', // 标记为内部请求
+      },
+      body: JSON.stringify(event),
+    }).catch(error => {
+      // 静默处理错误，不影响主要流程
+      console.error('Failed to log security event to database:', error);
+    });
+  } catch (error) {
+    // 静默处理错误
+    console.error('Failed to initiate security event logging:', error);
+  }
+}
 
 // 不同API的大小限制配置（字节）
 const SIZE_LIMITS = {
   // 默认限制：1MB
   default: 1 * 1024 * 1024,
-  
+
   // 设置相关API：较小限制
   settings: 100 * 1024, // 100KB
-  
+
   // 共享密钥API：中等限制
   'shared-keys': 50 * 1024, // 50KB
-  
+
   // 聊天API：较大限制（支持图片）
   chat: 10 * 1024 * 1024, // 10MB
-  
+
   // 上传API：最大限制
   upload: 50 * 1024 * 1024, // 50MB
-  
+
   // 管理API：小限制
   admin: 200 * 1024, // 200KB
-  
+
   // 同步API：小限制
   sync: 500 * 1024, // 500KB
-  
+
   // AI API：大限制
   ai: 5 * 1024 * 1024, // 5MB
 } as const;
@@ -45,7 +75,7 @@ function getSizeLimit(pathname: string): number {
   if (pathname.includes('/admin')) return SIZE_LIMITS.admin;
   if (pathname.includes('/sync')) return SIZE_LIMITS.sync;
   if (pathname.includes('/ai/')) return SIZE_LIMITS.ai;
-  
+
   return SIZE_LIMITS.default;
 }
 
@@ -56,7 +86,7 @@ export async function checkRequestSize(req: NextRequest): Promise<NextResponse |
   try {
     const pathname = req.nextUrl.pathname;
     const method = req.method;
-    
+
     // 只检查有请求体的方法
     if (!['POST', 'PUT', 'PATCH'].includes(method)) {
       return null;
@@ -74,11 +104,28 @@ export async function checkRequestSize(req: NextRequest): Promise<NextResponse |
 
     if (size > limit) {
       const ip = getClientIP(req);
-      
-      // 记录安全事件
-      await logSecurityEvent({
+
+      const userAgent = req.headers.get('user-agent') || 'unknown';
+
+      // 记录安全事件到控制台
+      console.log('Security Event - Request Too Large:', {
+        ip,
+        userAgent,
+        eventType: 'invalid_input',
+        severity: 'medium',
+        description: `Request body too large: ${size} bytes (limit: ${limit} bytes)`,
+        requestSize: size,
+        sizeLimit: limit,
+        path: pathname,
+        method,
+        sizeLimitType: getSizeLimitType(pathname),
+        timestamp: new Date().toISOString()
+      });
+
+      // 异步记录到数据库（非阻塞）
+      logSecurityEventAsync({
         ipAddress: ip,
-        userAgent: req.headers.get('user-agent') || 'unknown',
+        userAgent,
         eventType: 'invalid_input',
         severity: 'medium',
         description: `Request body too large: ${size} bytes (limit: ${limit} bytes)`,
@@ -99,7 +146,7 @@ export async function checkRequestSize(req: NextRequest): Promise<NextResponse |
           limit,
           limitType: getSizeLimitType(pathname)
         }
-      }, { 
+      }, {
         status: 413,
         headers: {
           'X-Size-Limit': limit.toString(),
@@ -130,19 +177,38 @@ async function checkRequestBodySize(req: NextRequest, pathname: string): Promise
 
     while (true) {
       const { done, value } = await reader.read();
-      
+
       if (done) break;
-      
+
       if (value) {
         totalSize += value.length;
-        
+
         // 如果超过限制，立即停止
         if (totalSize > limit) {
           const ip = getClientIP(req);
-          
-          await logSecurityEvent({
+
+          const userAgent = req.headers.get('user-agent') || 'unknown';
+
+          // 记录安全事件到控制台
+          console.log('Security Event - Streaming Request Too Large:', {
+            ip,
+            userAgent,
+            eventType: 'invalid_input',
+            severity: 'medium',
+            description: `Streaming request body too large: ${totalSize}+ bytes (limit: ${limit} bytes)`,
+            requestSize: totalSize,
+            sizeLimit: limit,
+            path: pathname,
+            method: req.method,
+            sizeLimitType: getSizeLimitType(pathname),
+            streamingCheck: true,
+            timestamp: new Date().toISOString()
+          });
+
+          // 异步记录到数据库（非阻塞）
+          logSecurityEventAsync({
             ipAddress: ip,
-            userAgent: req.headers.get('user-agent') || 'unknown',
+            userAgent,
             eventType: 'invalid_input',
             severity: 'medium',
             description: `Streaming request body too large: ${totalSize}+ bytes (limit: ${limit} bytes)`,
@@ -164,7 +230,7 @@ async function checkRequestBodySize(req: NextRequest, pathname: string): Promise
               limit,
               limitType: getSizeLimitType(pathname)
             }
-          }, { 
+          }, {
             status: 413,
             headers: {
               'X-Size-Limit': limit.toString(),
@@ -172,7 +238,7 @@ async function checkRequestBodySize(req: NextRequest, pathname: string): Promise
             }
           });
         }
-        
+
         chunks.push(value);
       }
     }
@@ -195,7 +261,7 @@ function getSizeLimitType(pathname: string): string {
   if (pathname.includes('/admin')) return 'admin';
   if (pathname.includes('/sync')) return 'sync';
   if (pathname.includes('/ai/')) return 'ai';
-  
+
   return 'default';
 }
 
@@ -204,11 +270,11 @@ function getSizeLimitType(pathname: string): string {
  */
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
-  
+
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
+
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
@@ -217,10 +283,10 @@ export function formatBytes(bytes: number): string {
  */
 export function getSizeLimits(): Record<string, string> {
   const limits: Record<string, string> = {};
-  
+
   for (const [key, value] of Object.entries(SIZE_LIMITS)) {
     limits[key] = formatBytes(value);
   }
-  
+
   return limits;
 }

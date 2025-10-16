@@ -5,7 +5,11 @@
 
 # next.js
 /.next/
+/ .swc/
 /out/
+
+# landing-page
+/landing-page
 
 # production
 /build
@@ -25,3 +29,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# build artifacts (project-specific)
+/lib/mcp/dist/
+/health-app.zip
+/.claude
+AGENTS.md
+AGENTS.md

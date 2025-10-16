@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/debug-guard';
 import { validateBaseURL } from '@/lib/url-validator';
 
 export async function POST(request: NextRequest) {
+  // 检查调试访问权限
+  const debugCheck = checkDebugAccess();
+  if (debugCheck) return debugCheck;
   try {
     const { url } = await request.json();
 

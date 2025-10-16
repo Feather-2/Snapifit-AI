@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { auth } from '@/lib/auth';
 import { syncRateLimiter } from '@/lib/sync-rate-limiter';
 import { logSecurityEvent } from '@/lib/security-monitor';
 import { getClientIP } from '@/lib/ip-utils';
 import { securityEventEnhancer } from '@/lib/security-event-enhancer';
 import { InputValidator, ValidationRule } from '@/lib/input-validator';
+import { getSupabaseAdmin } from '@/lib/supabase';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 export async function GET(request: Request) {
   try {
@@ -14,12 +16,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = await createClient();
     const userId = session.user.id;
+    const supabaseAdmin = await getSupabaseAdmin();
 
     console.log(`[API/SYNC/PROFILE/GET] Fetching profile for user: ${userId}`);
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('user_profiles')
       .select('*')
       .eq('user_id', userId)
@@ -77,6 +79,7 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id;
     const ip = getClientIP(request);
+    const supabaseAdmin = await getSupabaseAdmin();
 
     // 🔒 检查同步速率限制
     const limitCheck = syncRateLimiter.checkSyncLimit(userId, ip);
@@ -122,7 +125,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
     const profileData = await request.json();
 
     // 🔗 增强最近的安全事件
@@ -197,7 +199,7 @@ export async function POST(request: NextRequest) {
     };
 
     // 使用upsert来插入或更新档案
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('user_profiles')
       .upsert(dbProfile, {
         onConflict: 'user_id',
@@ -209,6 +211,11 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('[API/SYNC/PROFILE/POST] Supabase error:', error);
       throw error;
+    }
+
+    if (!data) {
+      console.error('[API/SYNC/PROFILE/POST] No data returned from upsert operation');
+      throw new Error('No data returned from profile sync operation');
     }
 
     console.log(`[API/SYNC/PROFILE/POST] Successfully synced profile for user: ${userId}`);

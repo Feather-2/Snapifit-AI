@@ -1,0 +1,186 @@
+name: SnapFit AI Linux.do Edition Build
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # Vercel 部署 (L站专属版主要部署方式)
+  vercel-deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build for Vercel
+      run: npm run build
+      env:
+        NEXT_PUBLIC_VERSION: linuxdo
+        NEXT_PUBLIC_FEATURES: linuxdo-exclusive
+        NEXT_PUBLIC_OAUTH_PROVIDERS: linuxdo
+        
+    - name: Deploy to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_LINUXDO }}
+        working-directory: ./
+
+  # 生成部署文档和配置
+  generate-docs:
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Generate deployment files
+      run: |
+        mkdir -p release
+        
+        # L站版部署说明
+        cat > release/README-linuxdo.md << 'EOF'
+        # SnapFit AI Linux.do 专属版
+        
+        ## 🎯 版本特性
+        - ✅ Linux.do 社区专属
+        - ✅ 仅支持 Linux.do OAuth 登录
+        - ✅ Supabase + Vercel 部署
+        - ✅ 社区定制功能
+        - ✅ Apache 2.0 开源协议
+        
+        ## 🚀 部署方式
+        
+        ### Vercel + Supabase (推荐)
+        
+        1. **Fork 本仓库**
+        2. **创建 Supabase 项目**
+           - 访问 [Supabase](https://supabase.com)
+           - 创建新项目
+           - 获取数据库连接信息
+        
+        3. **配置 Vercel**
+           - 导入 GitHub 仓库到 Vercel
+           - 配置环境变量 (见下方)
+           - 部署
+        
+        4. **配置 Linux.do OAuth**
+           - 在 Linux.do 申请 OAuth 应用
+           - 配置回调地址: `https://your-app.vercel.app/api/auth/callback/linuxdo`
+        
+        ## ⚙️ 环境变量配置
+        
+        ```bash
+        # 数据库配置
+        DATABASE_URL=postgresql://user:pass@host:5432/db
+        
+        # 认证配置
+        NEXTAUTH_SECRET=your-secret-here
+        NEXTAUTH_URL=https://your-app.vercel.app
+        
+        # Linux.do OAuth
+        LINUXDO_CLIENT_ID=your-linuxdo-client-id
+        LINUXDO_CLIENT_SECRET=your-linuxdo-client-secret
+        
+        # AI 服务
+        OPENAI_API_KEY=sk-your-openai-key
+        
+        # 版本标识
+        NEXT_PUBLIC_VERSION=linuxdo
+        NEXT_PUBLIC_OAUTH_PROVIDERS=linuxdo
+        ```
+        
+        ## 🔧 特殊配置
+        
+        - 仅允许 Linux.do OAuth 登录
+        - 不支持本地 PostgreSQL 部署
+        - 针对 Linux.do 社区优化的功能
+        - 社区专属的 UI 主题
+        EOF
+        
+        # L站版环境变量模板
+        cat > release/.env.linuxdo.example << 'EOF'
+        # SnapFit AI Linux.do 专属版配置
+        
+        # 数据库配置 (Supabase)
+        DATABASE_URL=postgresql://postgres:password@db.xxx.supabase.co:5432/postgres
+        
+        # 认证配置
+        NEXTAUTH_SECRET=your-very-long-random-secret-here
+        NEXTAUTH_URL=https://your-app.vercel.app
+        
+        # Linux.do OAuth (必需)
+        LINUXDO_CLIENT_ID=your-linuxdo-client-id
+        LINUXDO_CLIENT_SECRET=your-linuxdo-client-secret
+        LINUXDO_OAUTH_URL=https://connect.linux.do
+        
+        # AI 服务配置
+        OPENAI_API_KEY=sk-your-openai-key-here
+        OPENAI_BASE_URL=https://api.openai.com/v1
+        
+        # 版本特性
+        NEXT_PUBLIC_VERSION=linuxdo
+        NEXT_PUBLIC_FEATURES=linuxdo-exclusive
+        NEXT_PUBLIC_OAUTH_PROVIDERS=linuxdo
+        
+        # 社区特性
+        ENABLE_COMMUNITY_FEATURES=true
+        LINUXDO_EXCLUSIVE_FEATURES=true
+        EOF
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linuxdo-deployment-files
+        path: release/
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release/README-linuxdo.md
+          release/.env.linuxdo.example
+        body: |
+          ## SnapFit AI Linux.do 专属版 ${{ github.ref_name }}
+          
+          ### 🎯 Linux.do 社区专属
+          - ✅ 仅支持 Linux.do OAuth 登录
+          - ✅ Supabase + Vercel 部署架构
+          - ✅ 社区定制功能和主题
+          - ✅ Apache 2.0 开源协议
+          
+          ### 🚀 一键部署
+          [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/${{ github.repository }}&env=DATABASE_URL,NEXTAUTH_SECRET,LINUXDO_CLIENT_ID,LINUXDO_CLIENT_SECRET,OPENAI_API_KEY)
+          
+          ### 📋 部署要求
+          1. **Supabase 账户** - 用于数据库服务
+          2. **Vercel 账户** - 用于前端部署
+          3. **Linux.do OAuth 应用** - 用于用户认证
+          4. **OpenAI API Key** - 用于 AI 功能 (可选)
+          
+          ### 🔗 相关链接
+          - [Supabase](https://supabase.com) - 数据库服务
+          - [Vercel](https://vercel.com) - 前端部署
+          - [Linux.do](https://linux.do) - 社区平台
+          
+          ### 📖 详细文档
+          请查看 `README-linuxdo.md` 获取完整的部署指南。
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

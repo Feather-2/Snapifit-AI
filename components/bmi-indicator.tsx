@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Scale, Info } from "lucide-react"
 import { useTranslation } from "@/hooks/use-i18n"
+import { useLocale } from "next-intl"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 
 interface BMIIndicatorProps {
@@ -10,8 +11,8 @@ interface BMIIndicatorProps {
   height: number // 身高 (cm)
 }
 
-// BMI分类标准
-const BMI_CATEGORIES = [
+// 国际BMI分类标准 (WHO标准)
+const INTERNATIONAL_BMI_CATEGORIES = [
   { min: 0, max: 18.5, key: 'underweight', color: 'bg-blue-500', textColor: 'text-blue-600' },
   { min: 18.5, max: 25, key: 'normal', color: 'bg-green-500', textColor: 'text-green-600' },
   { min: 25, max: 30, key: 'overweight', color: 'bg-yellow-500', textColor: 'text-yellow-600' },
@@ -20,8 +21,21 @@ const BMI_CATEGORIES = [
   { min: 40, max: Infinity, key: 'obese3', color: 'bg-red-700', textColor: 'text-red-700' },
 ]
 
+// 中国BMI分类标准 (适合亚洲人群)
+const CHINESE_BMI_CATEGORIES = [
+  { min: 0, max: 18.5, key: 'underweight', color: 'bg-blue-500', textColor: 'text-blue-600' },
+  { min: 18.5, max: 24, key: 'normal', color: 'bg-green-500', textColor: 'text-green-600' },
+  { min: 24, max: 28, key: 'overweight', color: 'bg-yellow-500', textColor: 'text-yellow-600' },
+  { min: 28, max: Infinity, key: 'obese', color: 'bg-red-500', textColor: 'text-red-600' },
+]
+
 export function BMIIndicator({ weight, height }: BMIIndicatorProps) {
   const t = useTranslation('dashboard.summary.bmi')
+  const locale = useLocale()
+
+  // 根据语言环境选择BMI标准
+  const isChineseLocale = locale === 'zh'
+  const BMI_CATEGORIES = isChineseLocale ? CHINESE_BMI_CATEGORIES : INTERNATIONAL_BMI_CATEGORIES
 
   // 计算BMI
   const heightInMeters = height / 100
@@ -47,6 +61,7 @@ export function BMIIndicator({ weight, height }: BMIIndicatorProps) {
     underweight: "保持均衡饮食，适当增加能量摄入并加强力量训练。",
     normal: "继续保持健康饮食与规律运动，关注整体生活方式。",
     overweight: "建议控制热量摄入，增加有氧及力量训练，逐步减脂。",
+    obese: "建议在专业医生或营养师指导下制定减重计划，积极进行体重管理。",
     obese1: "建议在专业医生或营养师指导下制定减重计划并坚持运动。",
     obese2: "肥胖风险较高，请及时就医并在专业指导下进行体重管理。",
     obese3: "严重肥胖，需在医疗团队指导下综合干预并监测并发症。",
@@ -80,14 +95,27 @@ export function BMIIndicator({ weight, height }: BMIIndicatorProps) {
                   ?
                 </button>
               </PopoverTrigger>
-              <PopoverContent side="top" align="center" className="p-3 w-56 space-y-2">
+              <PopoverContent side="top" align="center" className="p-3 w-64 space-y-2">
+                {/* Part 0: BMI标准说明 */}
+                <div className="pb-2 border-b border-muted">
+                  <p className="text-xs font-medium text-primary">
+                    {isChineseLocale ? '中国BMI标准' : '国际BMI标准 (WHO)'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {isChineseLocale
+                      ? '适合亚洲人群的BMI分类标准'
+                      : 'World Health Organization BMI classification'
+                    }
+                  </p>
+                </div>
+
                 {/* Part 1: BMI分类 */}
                 <div className="space-y-1">
                   {BMI_CATEGORIES.map((category) => (
                     <div key={category.key} className="flex items-center gap-2 text-xs">
                       <div className={`w-2.5 h-2.5 rounded-full ${category.color}`} />
                       <span className="whitespace-nowrap">
-                        {t(`categories.${category.key}`)} ({category.min}-{category.max})
+                        {t(`categories.${category.key}`)} ({category.min}-{category.max === Infinity ? '∞' : category.max})
                       </span>
                       {category.key === currentCategory.key && (
                         <span className="ml-1 text-primary">← {t('here') || '您在这里'}</span>
@@ -129,7 +157,9 @@ export function BMIIndicator({ weight, height }: BMIIndicatorProps) {
         {/* 说明文字 */}
         <p className="text-xs text-muted-foreground flex items-start">
           <Info className="mr-1.5 h-3 w-3 flex-shrink-0 mt-0.5" />
-          <span>{t('description')}</span>
+          <span>
+            {t('description')} {isChineseLocale ? '当前使用中国BMI标准。' : 'Currently using international BMI standard.'}
+          </span>
         </p>
       </div>
     </div>

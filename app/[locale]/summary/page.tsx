@@ -37,6 +37,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { FoodEntryCard } from "@/components/food-entry-card"
 import { ExerciseEntryCard } from "@/components/exercise-entry-card"
+import { GroupedEntriesDisplay } from "@/components/grouped-entries-display"
 import { BMIIndicator } from "@/components/bmi-indicator"
 import { WeightChangePredictor } from "@/components/weight-change-predictor"
 import { formatNumber } from "@/lib/number-utils"
@@ -633,10 +634,15 @@ function SummaryPageContent({ params }: { params: Promise<{ locale: string }> })
 
   // ▶️ 额外计算：宏量营养素、TEF、BMI 等
   const macros = summary.macros || { carbs: 0, protein: 0, fat: 0 }
-  const totalMacros = macros.carbs + macros.protein + macros.fat
-  const carbsPercent = totalMacros > 0 ? (macros.carbs / totalMacros) * 100 : 0
-  const proteinPercent = totalMacros > 0 ? (macros.protein / totalMacros) * 100 : 0
-  const fatPercent = totalMacros > 0 ? (macros.fat / totalMacros) * 100 : 0
+  // 计算宏量营养素百分比（基于热量而非重量）
+  const carbsCalories = macros.carbs * 4  // 1g碳水 = 4kcal
+  const proteinCalories = macros.protein * 4  // 1g蛋白质 = 4kcal
+  const fatCalories = macros.fat * 9  // 1g脂肪 = 9kcal
+  const totalMacroCalories = carbsCalories + proteinCalories + fatCalories
+
+  const carbsPercent = totalMacroCalories > 0 ? (carbsCalories / totalMacroCalories) * 100 : 0
+  const proteinPercent = totalMacroCalories > 0 ? (proteinCalories / totalMacroCalories) * 100 : 0
+  const fatPercent = totalMacroCalories > 0 ? (fatCalories / totalMacroCalories) * 100 : 0
 
   const MACRO_RANGES = {
     carbs: { min: 45, max: 65 },
@@ -728,22 +734,15 @@ function SummaryPageContent({ params }: { params: Promise<{ locale: string }> })
               </div>
 
               {/* 膳食列表 */}
-              {foodEntries.length > 0 ? (
-                <div className="space-y-3">
-                  {foodEntries.map((entry) => (
-                    <FoodEntryCard
-                      key={entry.log_id}
-                      entry={entry}
-                      onDelete={() => {}}
-                      onUpdate={() => {}}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">
-                  {t('noFoodEntries')}
-                </p>
-              )}
+              <GroupedEntriesDisplay
+                type="food"
+                foodEntries={foodEntries}
+                onDeleteFood={() => {}}
+                onUpdateFood={() => {}}
+                onBatchDeleteFood={() => {}}
+                readOnly={true}
+                targetCalories={userProfile.targetCalories || calculatedTDEE || 2000}
+              />
             </div>
 
             {/* 运动消耗 */}
@@ -759,22 +758,14 @@ function SummaryPageContent({ params }: { params: Promise<{ locale: string }> })
               </div>
 
               {/* 运动列表 */}
-              {exerciseEntries.length > 0 ? (
-                <div className="space-y-3">
-                  {exerciseEntries.map((entry) => (
-                    <ExerciseEntryCard
-                      key={entry.log_id}
-                      entry={entry}
-                      onDelete={() => {}}
-                      onUpdate={() => {}}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground text-center py-4">
-                  {t('noExerciseEntries')}
-                </p>
-              )}
+              <GroupedEntriesDisplay
+                type="exercise"
+                exerciseEntries={exerciseEntries}
+                onDeleteExercise={() => {}}
+                onUpdateExercise={() => {}}
+                onBatchDeleteExercise={() => {}}
+                readOnly={true}
+              />
             </div>
 
             {/* 净卡路里 */}
@@ -933,7 +924,7 @@ function SummaryPageContent({ params }: { params: Promise<{ locale: string }> })
             </div>
 
             {/* 宏量营养素分布 */}
-            {totalMacros > 0 && (
+            {totalMacroCalories > 0 && (
               <div className="space-y-4 border-t pt-6">
                 <h4 className="text-lg font-medium flex items-center">
                   <PieChart className="mr-2 h-5 w-5 text-primary" />

@@ -22,7 +22,7 @@ help:
 # 构建镜像
 build:
 	@echo "🔨 构建 Docker 镜像..."
-	docker build -t snapfit-ai:latest .
+	docker build -t Snapifit-ai:latest .
 
 # 开发环境
 dev:
@@ -63,7 +63,7 @@ health:
 # 进入容器 shell
 shell:
 	@echo "🐚 进入容器 shell..."
-	docker-compose -f deployment/docker/docker-compose.yml exec snapfit-ai sh
+	docker-compose -f deployment/docker/docker-compose.yml exec Snapifit-ai sh
 
 # 清理资源
 clean:

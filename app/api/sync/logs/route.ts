@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { auth } from '@/lib/auth';
 import { syncRateLimiter } from '@/lib/sync-rate-limiter';
 import { logSecurityEvent } from '@/lib/security-monitor';
 import { getClientIP } from '@/lib/ip-utils';
 import { securityEventEnhancer } from '@/lib/security-event-enhancer';
+import { getSupabaseAdmin } from '@/lib/supabase';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 export async function GET(request: Request) {
   try {
@@ -13,12 +15,10 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = await createClient();
     const userId = session.user.id;
+    const supabaseAdmin = await getSupabaseAdmin();
 
-
-
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('daily_logs')
       .select('*')
       .eq('user_id', userId);
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id;
     const ip = getClientIP(request);
+    const supabaseAdmin = await getSupabaseAdmin();
 
     // 🔒 检查同步速率限制
     const limitCheck = syncRateLimiter.checkSyncLimit(userId, ip);
@@ -91,7 +92,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
     const logsToSync = await request.json();
 
     // 🔗 增强最近的安全事件，关联用户ID
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
       // 检查是补丁更新还是完整更新
       if (log.log_data_patch) {
         // 调用RPC函数处理补丁
-        const { error: rpcError } = await supabase.rpc('upsert_log_patch', {
+        const { error: rpcError } = await supabaseAdmin.rpc('upsert_log_patch', {
           p_user_id: userId,
           p_date: log.date,
           p_log_data_patch: log.log_data_patch,
@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
         if (rpcError) errors.push(rpcError);
       } else {
         // 处理完整的日志对象（保持旧的逻辑作为备用）
-        const { error: upsertError } = await supabase
+        const { error: upsertError } = await supabaseAdmin
           .from('daily_logs')
           .upsert({ ...log, user_id: userId }, { onConflict: 'user_id, date' });
         if (upsertError) errors.push(upsertError);

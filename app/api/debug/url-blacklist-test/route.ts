@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { checkDebugAccess } from '@/lib/debug-guard';
 import {
   validateBaseURL,
   getBlockedDomains,
@@ -9,6 +10,9 @@ import {
 } from '@/lib/url-validator';
 
 export async function GET(request: NextRequest) {
+  // 检查调试访问权限
+  const debugCheck = checkDebugAccess();
+  if (debugCheck) return debugCheck;
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -60,6 +64,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // 检查调试访问权限
+  const debugCheck = checkDebugAccess();
+  if (debugCheck) return debugCheck;
+
   try {
     const session = await auth();
     if (!session?.user?.id) {

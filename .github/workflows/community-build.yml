@@ -1,0 +1,322 @@
+name: SnapFit AI Community Edition Build
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}-community
+
+jobs:
+  # Docker 构建 (社区版主要部署方式)
+  docker-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.community
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          VERSION=community
+          FEATURES=full
+
+    - name: Generate deployment files
+      if: github.event_name != 'pull_request'
+      run: |
+        mkdir -p release
+        
+        # 社区版 docker-compose (外部数据库)
+        cat > release/docker-compose.community.yml << 'EOF'
+        version: '3.8'
+        
+        services:
+          snapfit-community:
+            image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            container_name: snapfit-community
+            ports:
+              - "38000:3000"
+            environment:
+              # 数据库配置 (外部 PostgreSQL)
+              - DATABASE_URL=postgresql://username:password@your-db-host:5432/snapfit_ai
+              
+              # 基础配置
+              - NODE_ENV=production
+              - NEXTAUTH_SECRET=your-nextauth-secret-here
+              - NEXTAUTH_URL=http://localhost:38000
+              
+              # OAuth 配置 (多种选择)
+              - GITHUB_CLIENT_ID=your-github-client-id
+              - GITHUB_CLIENT_SECRET=your-github-client-secret
+              - GOOGLE_CLIENT_ID=your-google-client-id
+              - GOOGLE_CLIENT_SECRET=your-google-client-secret
+              
+              # AI 服务配置
+              - OPENAI_API_KEY=your-openai-api-key
+              - OPENAI_BASE_URL=https://api.openai.com/v1
+              
+              # 邮件服务配置
+              - RESEND_API_KEY=your-resend-api-key
+              
+              # 社区版特性
+              - NEXT_PUBLIC_VERSION=community
+              - NEXT_PUBLIC_FEATURES=full
+              - ENABLE_MULTI_TENANT=true
+              - ENABLE_ADMIN_PANEL=true
+              
+              # 安全配置
+              - RATE_LIMIT_ENABLED=true
+              - INVITE_CODE_REQUIRED=false
+              
+            volumes:
+              - snapfit_community_data:/app/data
+            restart: unless-stopped
+            healthcheck:
+              test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+              interval: 30s
+              timeout: 10s
+              retries: 3
+        
+        volumes:
+          snapfit_community_data:
+        EOF
+        
+        # 社区版完整部署 (包含 PostgreSQL)
+        cat > release/docker-compose.community.full.yml << 'EOF'
+        version: '3.8'
+        
+        services:
+          postgres:
+            image: supabase/postgres:17.4.1.043
+            container_name: snapfit-postgres
+            environment:
+              - POSTGRES_DB=snapfit_ai
+              - POSTGRES_USER=snapfit_user
+              - POSTGRES_PASSWORD=snapfit_password
+              - POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256
+            volumes:
+              - postgres_data:/var/lib/postgresql/data
+              - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+            ports:
+              - "5432:5432"
+            restart: unless-stopped
+            healthcheck:
+              test: ["CMD-SHELL", "pg_isready -U snapfit_user -d snapfit_ai"]
+              interval: 10s
+              timeout: 5s
+              retries: 5
+        
+          snapfit-community:
+            image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            container_name: snapfit-community
+            depends_on:
+              postgres:
+                condition: service_healthy
+            ports:
+              - "38000:3000"
+            environment:
+              # 数据库配置 (内部 PostgreSQL)
+              - DATABASE_URL=postgresql://snapfit_user:snapfit_password@postgres:5432/snapfit_ai
+              
+              # 基础配置
+              - NODE_ENV=production
+              - NEXTAUTH_SECRET=your-nextauth-secret-here
+              - NEXTAUTH_URL=http://localhost:38000
+              
+              # OAuth 配置
+              - GITHUB_CLIENT_ID=your-github-client-id
+              - GITHUB_CLIENT_SECRET=your-github-client-secret
+              - GOOGLE_CLIENT_ID=your-google-client-id
+              - GOOGLE_CLIENT_SECRET=your-google-client-secret
+              
+              # AI 服务配置
+              - OPENAI_API_KEY=your-openai-api-key
+              
+              # 社区版特性
+              - NEXT_PUBLIC_VERSION=community
+              - NEXT_PUBLIC_FEATURES=full
+              - ENABLE_MULTI_TENANT=true
+              - ENABLE_ADMIN_PANEL=true
+              
+            volumes:
+              - snapfit_community_data:/app/data
+            restart: unless-stopped
+        
+        volumes:
+          postgres_data:
+          snapfit_community_data:
+        EOF
+        
+        # 社区版环境变量模板
+        cat > release/.env.community.example << 'EOF'
+        # SnapFit AI 社区版配置
+        
+        # 数据库配置
+        DATABASE_URL=postgresql://username:password@localhost:5432/snapfit_ai
+        
+        # 基础配置
+        NODE_ENV=production
+        NEXTAUTH_SECRET=your-very-long-random-secret-here
+        NEXTAUTH_URL=http://localhost:38000
+        
+        # OAuth 配置 (多种选择)
+        # GitHub OAuth
+        GITHUB_CLIENT_ID=your-github-client-id
+        GITHUB_CLIENT_SECRET=your-github-client-secret
+        
+        # Google OAuth
+        GOOGLE_CLIENT_ID=your-google-client-id
+        GOOGLE_CLIENT_SECRET=your-google-client-secret
+        
+        # AI 服务配置
+        OPENAI_API_KEY=sk-your-openai-key-here
+        OPENAI_BASE_URL=https://api.openai.com/v1
+        
+        # 邮件服务配置
+        RESEND_API_KEY=re_your-resend-key-here
+        
+        # 或者 SMTP 配置
+        SMTP_HOST=smtp.gmail.com
+        SMTP_PORT=587
+        SMTP_USER=your-email@gmail.com
+        SMTP_PASS=your-app-password
+        
+        # 社区版特性
+        NEXT_PUBLIC_VERSION=community
+        NEXT_PUBLIC_FEATURES=full
+        ENABLE_MULTI_TENANT=true
+        ENABLE_ADMIN_PANEL=true
+        ENABLE_USER_MANAGEMENT=true
+        
+        # 安全配置
+        RATE_LIMIT_ENABLED=true
+        INVITE_CODE_REQUIRED=false
+        ALLOW_REGISTRATION=true
+        
+        # 日志配置
+        LOG_LEVEL=info
+        EOF
+
+  # Vercel 部署选项
+  vercel-deploy:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[deploy-vercel]')
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Build for Vercel
+      run: npm run build
+      env:
+        NEXT_PUBLIC_VERSION: community
+        NEXT_PUBLIC_FEATURES: full
+        
+    - name: Deploy to Vercel
+      uses: amondnet/vercel-action@v25
+      with:
+        vercel-token: ${{ secrets.VERCEL_TOKEN }}
+        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_COMMUNITY }}
+        working-directory: ./
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: community-deployment-files
+        path: release/
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release/docker-compose.community.yml
+          release/docker-compose.community.full.yml
+          release/.env.community.example
+        body: |
+          ## SnapFit AI 社区版 ${{ github.ref_name }}
+          
+          ### 🌟 社区版特性
+          - ✅ 完整功能集，包含所有高级特性
+          - ✅ 多种 OAuth 登录 (GitHub, Google)
+          - ✅ 多种部署方式 (Docker, Vercel, 本地)
+          - ✅ 支持 PostgreSQL 和 Supabase
+          - ✅ 多租户支持和管理面板
+          - ✅ 社区友好授权 (个人免费，商用需授权)
+          
+          ### 🚀 部署选择
+          
+          #### Docker 部署 (推荐)
+          ```bash
+          # 使用外部数据库
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/docker-compose.community.yml
+          
+          # 或包含 PostgreSQL
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/docker-compose.community.full.yml
+          
+          # 配置环境变量
+          wget https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/.env.community.example
+          cp .env.community.example .env
+          
+          # 启动服务
+          docker-compose -f docker-compose.community.yml up -d
+          ```
+          
+          #### Vercel 部署
+          [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/${{ github.repository }})
+          
+          ### 📋 版本信息
+          - 版本类型: 社区版 (完整功能)
+          - 数据库: PostgreSQL/Supabase
+          - OAuth: GitHub, Google
+          - 部署: Docker, Vercel, 本地
+          - 授权: 社区友好 (个人免费)
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

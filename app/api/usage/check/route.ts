@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { UsageManager } from '@/lib/usage-manager'
-import { UserManager } from '@/lib/user-manager'
+import { secureCache } from '@/lib/cache/secure-cache'
 
 // 检查用户使用限额
 export async function GET(request: NextRequest) {
@@ -14,11 +14,18 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const type = searchParams.get('type') || 'conversation'
 
-    // 获取用户信任等级
-    const userManager = new UserManager()
-    const userResult = await userManager.getUserById(session.user.id)
+    // 获取用户信任等级（使用缓存）
+    console.log('🔧 [API/USAGE/CHECK] Getting user info for:', session.user.id)
 
-    if (!userResult.success || !userResult.user) {
+    const securityContext = {
+      userId: session.user.id,
+      sessionId: session.user.id,
+      permissions: ['user'] // 基本权限
+    }
+
+    const userInfo = await secureCache.getUserBasicInfo(session.user.id, securityContext)
+
+    if (!userInfo) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
@@ -28,7 +35,7 @@ export async function GET(request: NextRequest) {
       case 'conversation':
         const conversationCheck = await usageManager.checkConversationLimit(
           session.user.id,
-          userResult.user.trustLevel
+          userInfo.trust_level
         )
         return NextResponse.json(conversationCheck)
 
@@ -54,11 +61,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { type = 'conversation' } = body
 
-    // 获取用户信任等级
-    const userManager = new UserManager()
-    const userResult = await userManager.getUserById(session.user.id)
+    // 获取用户信任等级（使用缓存）
+    console.log('🔧 [API/USAGE/CHECK] POST - Getting user info for:', session.user.id)
 
-    if (!userResult.success || !userResult.user) {
+    const securityContext = {
+      userId: session.user.id,
+      sessionId: session.user.id,
+      permissions: ['user'] // 基本权限
+    }
+
+    const userInfo = await secureCache.getUserBasicInfo(session.user.id, securityContext)
+
+    if (!userInfo) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
@@ -69,7 +83,7 @@ export async function POST(request: NextRequest) {
       case 'conversation':
         const result = await usageManager.checkAndRecordUsage(
           session.user.id,
-          userResult.user.trustLevel,
+          userInfo.trust_level,
           'conversation_count'
         )
 

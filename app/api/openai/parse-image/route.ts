@@ -13,6 +13,7 @@ export async function POST(req: Request) {
     const type = formData.get("type") as string
     const userWeight = formData.get("userWeight") as string
     const aiConfigStr = formData.get("aiConfig") as string
+    const currentTime = formData.get("currentTime") as string // 用户浏览器当前时间 HH:MM 格式
 
     if (!image) {
       return Response.json({ error: "No image provided" }, { status: 400 })
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
     ;({ session, usageManager } = authResult)
 
     // 获取用户选择的视觉模型，并区分共享/私有模式
-    let selectedModel = "gpt-4o" // 默认视觉模型
+    let selectedModel = "gemini-2.5-flash-preview-05-20" // 默认视觉模型
     let fallbackConfig: { baseUrl: string; apiKey: string } | undefined = undefined
     const isSharedMode = aiConfig?.visionModel?.source === 'shared'
 
@@ -88,44 +89,39 @@ export async function POST(req: Request) {
 
     // 根据类型选择不同的提示词和解析逻辑
     if (type === "food") {
-      // 食物图片解析提示词
+      // 食物图片解析提示词 - 简化版本，只要求AI输出基本信息和每100g营养素
       const prompt = `
         请分析这张食物图片，识别图中的食物，并将其转换为结构化的 JSON 格式。
+        ${currentTime ? `当前时间: ${currentTime}` : ""}
 
         请直接输出 JSON，不要有额外文本。如果无法确定数值，请给出合理估算，并在相应字段标记 is_estimated: true。
 
         每个食物项应包含以下字段:
-        - log_id: 唯一标识符
         - food_name: 食物名称
-        - consumed_grams: 消耗的克数
+        - consumed_grams: 估计消耗的克数
         - meal_type: 餐次类型 (breakfast, lunch, dinner, snack)
         - time_period: 时间段 (morning, noon, afternoon, evening)，根据图片内容推断
-        - nutritional_info_per_100g: 每100克的营养成分，包括 calories, carbohydrates, protein, fat 等
-        - total_nutritional_info_consumed: 基于消耗克数计算的总营养成分
+        - timestamp: 具体时间，格式为 HH:MM (24小时制)。由于只有图片没有文本描述，默认使用当前时间
+        - nutritional_info_per_100g: 每100克的营养成分，包括 calories, carbohydrates, protein, fat, fiber 等
         - is_estimated: 是否为估算值
+
+        注意：只需要提供每100g的营养成分和估计克数，不需要计算总营养成分。
 
         示例输出格式:
         {
           "food": [
             {
-              "log_id": "uuid",
               "food_name": "全麦面包",
               "consumed_grams": 80,
               "meal_type": "breakfast",
               "time_period": "morning",
+              "timestamp": "08:30",
               "nutritional_info_per_100g": {
                 "calories": 265,
                 "carbohydrates": 48.5,
                 "protein": 9.0,
                 "fat": 3.2,
                 "fiber": 7.4
-              },
-              "total_nutritional_info_consumed": {
-                "calories": 212,
-                "carbohydrates": 38.8,
-                "protein": 7.2,
-                "fat": 2.56,
-                "fiber": 5.92
               },
               "is_estimated": true
             }
@@ -143,10 +139,22 @@ export async function POST(req: Request) {
       // 解析结果
       const result = safeJSONParse(resultText)
 
-      // 为每个食物项添加唯一 ID
+      // 为每个食物项添加唯一 ID 并自动计算总营养成分
       if (result.food && Array.isArray(result.food)) {
         result.food.forEach((item: any) => {
           item.log_id = uuidv4()
+
+          // 自动计算总营养成分
+          if (item.nutritional_info_per_100g && item.consumed_grams) {
+            const ratio = item.consumed_grams / 100
+            item.total_nutritional_info_consumed = {}
+
+            Object.entries(item.nutritional_info_per_100g).forEach(([key, value]) => {
+              if (typeof value === 'number') {
+                item.total_nutritional_info_consumed[key] = value * ratio
+              }
+            })
+          }
         })
       }
 
@@ -163,7 +171,6 @@ export async function POST(req: Request) {
         请直接输出 JSON，不要有额外文本。如果无法确定数值，请给出合理估算，并在相应字段标记 is_estimated: true。
 
         每个运动项应包含以下字段:
-        - log_id: 唯一标识符
         - exercise_name: 运动名称
         - exercise_type: 运动类型 (cardio, strength, flexibility, other)
         - duration_minutes: 持续时间(分钟)
@@ -182,7 +189,6 @@ export async function POST(req: Request) {
         {
           "exercise": [
             {
-              "log_id": "uuid",
               "exercise_name": "跑步",
               "exercise_type": "cardio",
               "duration_minutes": 30,

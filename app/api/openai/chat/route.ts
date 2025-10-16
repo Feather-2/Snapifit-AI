@@ -2,6 +2,10 @@
 import { formatDailyStatusForAI } from "@/lib/utils"
 import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/api-auth-helper'
 import type { DailyLog, UserProfile, AIConfig } from "@/lib/types"
+import { z } from 'zod'
+import { streamText, tool } from 'ai'
+import { createOpenAI } from '@ai-sdk/openai'
+import { KeyManager } from '@/lib/key-manager'
 
 export async function POST(req: Request) {
   // 提前声明，便于在 catch 中访问并回滚
@@ -55,7 +59,8 @@ export async function POST(req: Request) {
       //console.log("AI Memory content length:", body.aiMemory?.content?.length || 0)
     }
 
-    const { messages, userProfile, healthData, recentHealthData, systemPrompt: customSystemPrompt, expertRole, aiMemory, images } = body
+    const { messages, userProfile, healthData, recentHealthData, systemPrompt: customSystemPrompt, expertRole, aiMemory, images, allowedTools: allowedToolsRaw } = body
+    const allowedTools: string[] = Array.isArray(allowedToolsRaw) ? allowedToolsRaw.filter((n: unknown) => typeof n === 'string') as string[] : []
 
     // 详细记录接收到的健康数据
     //console.log("=== 接收到的健康数据详情 ===")
@@ -117,22 +122,22 @@ export async function POST(req: Request) {
     }
 
     if (recentHealthData?.length > 0) {
-      //console.log("近期健康数据概览:", recentHealthData.map((log, index) => ({
-      //  天数: index === 0 ? "今天" : index === 1 ? "昨天" : `${index}天前`,
-      //  日期: log.date,
-      //  体重: log.weight,
-      //  BMR: log.calculatedBMR,
-      //  TDEE: log.calculatedTDEE,
-      //  摄入卡路里: log.summary?.totalCaloriesConsumed,
-      //  消耗卡路里: log.summary?.totalCaloriesBurned,
-      //  净卡路里: log.summary ? (log.summary.totalCaloriesConsumed - log.summary.totalCaloriesBurned) : 0,
-      //  热量缺口: log.summary && log.calculatedTDEE ?
-      //    (log.calculatedTDEE - (log.summary.totalCaloriesConsumed - log.summary.totalCaloriesBurned)) : null,
-      //  食物记录数: log.foodEntries?.length || 0,
-      //  运动记录数: log.exerciseEntries?.length || 0,
-      //  有每日状态: !!log.dailyStatus,
-      //  有TEF分析: !!log.tefAnalysis,
-      //})))
+      console.log("近期健康数据概览:", recentHealthData.map((log: any, index: number) => ({
+        天数: index === 0 ? "今天" : index === 1 ? "昨天" : `${index}天前`,
+        日期: log.date,
+        体重: log.weight,
+        BMR: log.calculatedBMR,
+        TDEE: log.calculatedTDEE,
+        摄入卡路里: log.summary?.totalCaloriesConsumed,
+        消耗卡路里: log.summary?.totalCaloriesBurned,
+        净卡路里: log.summary ? (log.summary.totalCaloriesConsumed - log.summary.totalCaloriesBurned) : 0,
+        热量缺口: log.summary && log.calculatedTDEE ?
+          (log.calculatedTDEE - (log.summary.totalCaloriesConsumed - log.summary.totalCaloriesBurned)) : null,
+        食物记录数: log.foodEntries?.length || 0,
+        运动记录数: log.exerciseEntries?.length || 0,
+        有每日状态: !!log.dailyStatus,
+        有TEF分析: !!log.tefAnalysis,
+      })))
     }
 
     //console.log("专家角色信息:", {
@@ -371,17 +376,30 @@ export async function POST(req: Request) {
         历史健康数据趋势 (最近${historicalData.length}天):
         ${historicalData.map((dayLog: any, index: number) => {
           const dayLabel = index === 0 ? "昨天" : `${index + 1}天前`
+
+          // 检查是否有饮食记录
+          const hasFoodData = dayLog.foodEntries?.length > 0
+          const hasExerciseData = dayLog.exerciseEntries?.length > 0
+          const hasWeightData = dayLog.weight !== undefined
+          const hasStatusData = !!dayLog.dailyStatus
+
+          // 如果完全没有数据，显示简化信息
+          if (!hasFoodData && !hasExerciseData && !hasWeightData && !hasStatusData) {
+            return `
+        ${dayLabel} (${dayLog.date}): 无记录数据`
+          }
+
           return `
         ${dayLabel} (${dayLog.date}):
         - 体重: ${dayLog.weight ? `${dayLog.weight} kg` : "未记录"}
         - BMR: ${dayLog.calculatedBMR?.toFixed(0) || "未计算"} kcal
         - TDEE: ${dayLog.calculatedTDEE?.toFixed(0) || "未计算"} kcal
-        - 摄入: ${dayLog.summary?.totalCaloriesConsumed?.toFixed(0) || "0"} kcal
+        ${hasFoodData || hasExerciseData ? `- 摄入: ${dayLog.summary?.totalCaloriesConsumed?.toFixed(0) || "0"} kcal
         - 消耗: ${dayLog.summary?.totalCaloriesBurned?.toFixed(0) || "0"} kcal
         - 净卡路里: ${dayLog.summary ? (dayLog.summary.totalCaloriesConsumed - dayLog.summary.totalCaloriesBurned).toFixed(0) : "0"} kcal
-        - 热量缺口: ${dayLog.summary && dayLog.calculatedTDEE ? (dayLog.calculatedTDEE - (dayLog.summary.totalCaloriesConsumed - dayLog.summary.totalCaloriesBurned)).toFixed(0) : "无法计算"} kcal
-        - 宏量营养素: 蛋白质 ${dayLog.summary?.macros?.protein?.toFixed(1) || "0"}g (${dayLog.summary?.macros?.protein && dayLog.summary?.totalCaloriesConsumed ? ((dayLog.summary.macros.protein * 4 / dayLog.summary.totalCaloriesConsumed) * 100).toFixed(1) : "0"}%), 碳水 ${dayLog.summary?.macros?.carbs?.toFixed(1) || "0"}g (${dayLog.summary?.macros?.carbs && dayLog.summary?.totalCaloriesConsumed ? ((dayLog.summary.macros.carbs * 4 / dayLog.summary.totalCaloriesConsumed) * 100).toFixed(1) : "0"}%), 脂肪 ${dayLog.summary?.macros?.fat?.toFixed(1) || "0"}g (${dayLog.summary?.macros?.fat && dayLog.summary?.totalCaloriesConsumed ? ((dayLog.summary.macros.fat * 9 / dayLog.summary.totalCaloriesConsumed) * 100).toFixed(1) : "0"}%)
-        - 食物记录: ${dayLog.foodEntries?.length || 0}条, 运动记录: ${dayLog.exerciseEntries?.length || 0}条
+        - 热量缺口: ${dayLog.summary && dayLog.calculatedTDEE ? (dayLog.calculatedTDEE - (dayLog.summary.totalCaloriesConsumed - dayLog.summary.totalCaloriesBurned)).toFixed(0) : "无法计算"} kcal` : "- 饮食运动: 无记录"}
+        ${hasFoodData ? `- 宏量营养素: 蛋白质 ${dayLog.summary?.macros?.protein?.toFixed(1) || "0"}g (${dayLog.summary?.macros?.protein && dayLog.summary?.totalCaloriesConsumed ? ((dayLog.summary.macros.protein * 4 / dayLog.summary.totalCaloriesConsumed) * 100).toFixed(1) : "0"}%), 碳水 ${dayLog.summary?.macros?.carbs?.toFixed(1) || "0"}g (${dayLog.summary?.macros?.carbs && dayLog.summary?.totalCaloriesConsumed ? ((dayLog.summary.macros.carbs * 4 / dayLog.summary.totalCaloriesConsumed) * 100).toFixed(1) : "0"}%), 脂肪 ${dayLog.summary?.macros?.fat?.toFixed(1) || "0"}g (${dayLog.summary?.macros?.fat && dayLog.summary?.totalCaloriesConsumed ? ((dayLog.summary.macros.fat * 9 / dayLog.summary.totalCaloriesConsumed) * 100).toFixed(1) : "0"}%)` : ""}
+        - 记录数量: 食物${dayLog.foodEntries?.length || 0}条, 运动${dayLog.exerciseEntries?.length || 0}条
         ${dayLog.dailyStatus ? `- 状态: ${formatDailyStatusForAI(dayLog.dailyStatus)}` : ""}
         ${dayLog.tefAnalysis ? `- TEF增强: ×${dayLog.tefAnalysis.enhancementMultiplier.toFixed(2)} (${dayLog.tefAnalysis.enhancementFactors.join(", ") || "无"})` : ""}
         ${dayLog.foodEntries?.length > 0 ? `
@@ -415,22 +433,40 @@ export async function POST(req: Request) {
           const expertName = expertNames[expertId] || expertId
           const updateTime = memory.lastUpdated ? new Date(memory.lastUpdated).toLocaleString('zh-CN') : "未知"
           const version = memory.version || 1
+
+          // 检查记忆是否有时间标记
+          const hasTimeWarning = memory.content?.startsWith('[该内容距今时间较长，可能会有更新]')
+          const daysSinceUpdate = memory.lastUpdated ?
+            Math.floor((Date.now() - new Date(memory.lastUpdated).getTime()) / (1000 * 60 * 60 * 24)) : null
+
           return `
         【${expertName}的记忆】
         ${memory.content}
-        (更新时间: ${updateTime}, 版本: ${version})`
+        (更新时间: ${updateTime}, 版本: ${version}${hasTimeWarning ? ', ⚠️ 该记忆距今较长，建议确认是否仍然准确' : ''})`
         }).join('\n')}
 
         注意:
         1. 你可以查看所有专家的记忆来提供更全面的建议
         2. 但你只能更新自己专业领域的记忆
-        3. 如果本次对话中有重要的新信息需要记住，可以在回答末尾提出更新记忆的请求
+        3. 如果看到记忆内容以"[该内容距今时间较长，可能会有更新]"开头，说明这是较旧的记忆，请在使用时主动询问用户该信息是否仍然准确
+        4. 如果本次对话中有重要的新信息需要记住，可以在回答末尾提出更新记忆的请求
 
-        记忆更新格式要求:
+        ⚠️ 团队协作重要原则 - 主动剪枝避免重复:
+        - **必须主动检查其他专家的记忆内容**：在更新自己的记忆前，仔细查看其他专家已记录的信息
+        - **严禁重复记录相同信息**：如果其他专家已经记录了某项信息，你不得在自己的记忆中重复记录
+        - **以其他专家的记录为准**：当发现重复内容时，应删除自己记忆中的重复部分，以其他专家的专业记录为准
+        - **主动进行内容剪枝**：定期检查并清理自己记忆中与其他专家重复的内容
+        - **专业分工明确**：只记录与自己专业领域直接相关的独特信息
+        - **交叉引用而非重复**：如需引用其他专家的信息，使用"参考营养师记忆"等方式，而不是重复记录
+
+        记忆处理原则:
+        - 对于标记为"较长时间"的记忆，使用时要谨慎，建议先确认信息的准确性
+        - 当用户确认或更新了旧记忆中的信息时，应该更新记忆内容（移除时间标记）
         - 记忆内容必须极度精简，不超过500字
         - 只记录核心事实，避免冗余描述
         - 不能包含特殊符号，使用简洁的中文表达
         - 避免复杂句式
+        - **更新记忆前必须检查团队其他专家的记忆，避免重复内容**
         `
           }
         } else if (aiMemory.content) {
@@ -468,11 +504,30 @@ export async function POST(req: Request) {
         更新原因：[简要说明为什么需要更新记忆]
         [/MEMORY_UPDATE_REQUEST]
 
-        记忆更新的原则：
-        1. 只记录对长期健康管理有价值的信息
-        2. 避免记录临时性的数据（如今天吃了什么）
-        3. 重点记录用户的偏好、限制、目标变化、重要的健康状况等
-        4. 保持记忆内容简洁明了，不超过500字
+        ⚠️ 记忆更新的重要原则：
+        1. **这是替换操作，不是补充操作**：新记忆内容将完全替换你之前的记忆
+        2. **必须结合并重写**：将之前的重要信息与新信息结合，重新组织成完整的记忆内容
+        3. **保留重要历史信息**：不要丢失之前记录的重要信息
+        4. **整合新旧信息**：将新发现的信息与已有记忆合并，形成更完整的用户画像
+        5. **🔥 团队协作剪枝原则**：更新记忆前必须检查上述团队记忆，如果其他专家已记录相同信息，必须从自己的记忆中删除重复内容
+        6. **专业分工明确**：只记录与自己专业领域直接相关的独特信息，避免跨领域重复
+        7. **以其他专家为准**：当发现重复时，删除自己记忆中的重复部分，以其他专家的专业记录为准
+        8. 只记录对长期健康管理有价值的信息
+        9. 避免记录临时性的数据（如今天吃了什么）
+        10. 保持记忆内容简洁明了，总共不超过500字
+
+        记忆更新示例：
+
+        **基础更新示例：**
+        - 如果之前记忆："用户对乳制品过敏，目标减重5kg"
+        - 新发现："用户开始力量训练，希望增肌"
+        - 正确的新记忆内容："用户对乳制品过敏。健身目标已从单纯减重5kg调整为减脂增肌并重，开始进行力量训练。"
+
+        **团队协作剪枝示例：**
+        - 营养师记忆："用户对乳制品过敏，偏好低碳水饮食"
+        - 健身教练之前记忆："用户对乳制品过敏，目标减重，开始力量训练"
+        - 健身教练发现重复后的正确记忆："目标从减重调整为减脂增肌，开始力量训练，偏好上肢训练"
+        - 说明：删除了与营养师重复的"乳制品过敏"信息，专注于运动相关的独特信息
 
         `
 
@@ -524,99 +579,160 @@ export async function POST(req: Request) {
       return cleanMsg
     })
 
-    //console.log("Creating stream with shared client...")
+    // 🔍 输出完整的上下文信息到控制台
+    console.log("=== AI 上下文信息 ===")
+    console.log("1. 系统提示词:")
+    console.log(systemPrompt)
+    console.log("\n2. 对话消息 (最近5条):")
+    console.log(JSON.stringify(cleanMessages.slice(-5), null, 2))
+    console.log("\n3. 用户档案:")
+    console.log(JSON.stringify(userProfile, null, 2))
+    console.log("\n4. 今日健康数据:")
+    console.log(JSON.stringify(healthData, null, 2))
+    console.log("\n5. 近期健康数据:")
+    console.log(JSON.stringify(recentHealthData, null, 2))
+    console.log("\n6. AI记忆:")
+    console.log(JSON.stringify(aiMemory, null, 2))
+    console.log("\n7. 专家角色:")
+    console.log(JSON.stringify(expertRole, null, 2))
+    console.log("\n8. 模型配置:")
+    console.log(`选择的模型: ${selectedModel}`)
+    console.log(`共享模式: ${isSharedMode}`)
+    console.log("=== 上下文信息结束 ===\n")
 
-    // 使用真正的流式API（复用之前已声明的 cleanMessages）
-    const { stream, keyInfo } = await sharedClient.streamText({
-      model: selectedModel,
-      messages: cleanMessages,
-      system: systemPrompt,
-    })
+    // ========== 使用 AI SDK (tools) 流式响应（私有模式优先） ==========
+    if (modelConfig?.source === 'private' && fallbackConfig?.apiKey) {
+      const openai = createOpenAI({ apiKey: fallbackConfig.apiKey, baseURL: fallbackConfig.baseUrl })
+      const model = openai.chat(selectedModel)
 
-    //console.log("Stream created successfully with key:", keyInfo?.id)
+      const cookie = req.headers.get('cookie') || ''
+      const isToolAllowed = (name: string) => allowedTools.length === 0 || allowedTools.includes(name)
 
-    // 转换 SSE 流为 AI SDK 兼容格式
-    const encoder = new TextEncoder()
-    const transformedStream = new ReadableStream({
-      async start(controller) {
-        let isControllerClosed = false
-
-        const closeController = () => {
-          if (!isControllerClosed) {
-            isControllerClosed = true
-            controller.close()
+      const healthTool = tool({
+        description: '调用内置健康工具',
+        parameters: z.object({
+          name: z.string(),
+          params: z.record(z.any()).default({})
+        }),
+        execute: async ({ name, params }) => {
+          if (!isToolAllowed(name)) {
+            return { success: false, error: `工具未被允许: ${name}` }
           }
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/health-data`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', cookie },
+            body: JSON.stringify({ tool: name, params })
+          })
+          return await res.json()
         }
+      })
 
-        const enqueueData = (data: Uint8Array) => {
-          if (!isControllerClosed) {
-            controller.enqueue(data)
+      const externalMCP = tool({
+        description: '调用外部 MCP Provider 工具',
+        parameters: z.object({
+          provider_id: z.string(),
+          tool_name: z.string(),
+          params: z.record(z.any()).default({})
+        }),
+        execute: async ({ provider_id, tool_name, params }) => {
+          if (!isToolAllowed(tool_name)) {
+            return { success: false, error: `工具未被允许: ${tool_name}` }
           }
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/bridge`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', cookie },
+            body: JSON.stringify({ action: 'call_tool', provider_id, tool_name, params })
+          })
+          return await res.json()
         }
+      })
 
-        try {
-          const reader = stream.body?.getReader()
-          if (!reader) {
-            throw new Error('No stream reader available')
+      const result = await streamText({
+        model,
+        system: systemPrompt,
+        messages: cleanMessages as any,
+        tools: { healthTool, externalMCP },
+        maxSteps: 4
+      })
+
+      return result.toDataStreamResponse()
+    }
+
+    // ========== 共享模式：尝试用共享池的Key + AI SDK tools ==========
+    try {
+      const keyManager = new KeyManager()
+      const { key, error } = await keyManager.getAvailableKey(selectedModel)
+      if (!key || error) throw new Error(error || 'No shared key available')
+
+      const openai = createOpenAI({ apiKey: key.apiKey, baseURL: key.baseUrl })
+      const model = openai.chat(selectedModel)
+      const cookie = req.headers.get('cookie') || ''
+      const isToolAllowed = (name: string) => allowedTools.length === 0 || allowedTools.includes(name)
+
+      const healthTool = tool({
+        description: '调用内置健康工具',
+        parameters: z.object({ name: z.string(), params: z.record(z.any()).default({}) }),
+        execute: async ({ name, params }) => {
+          if (!isToolAllowed(name)) {
+            return { success: false, error: `工具未被允许: ${name}` }
           }
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/health-data`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ tool: name, params })
+          })
+          return await res.json()
+        }
+      })
+      const externalMCP = tool({
+        description: '调用外部 MCP Provider 工具',
+        parameters: z.object({ provider_id: z.string(), tool_name: z.string(), params: z.record(z.any()).default({}) }),
+        execute: async ({ provider_id, tool_name, params }) => {
+          if (!isToolAllowed(tool_name)) {
+            return { success: false, error: `工具未被允许: ${tool_name}` }
+          }
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/bridge`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ action: 'call_tool', provider_id, tool_name, params })
+          })
+          return await res.json()
+        }
+      })
 
-          const decoder = new TextDecoder('utf-8')
-          let buffer = ''
+      const result = await streamText({ model, system: systemPrompt, messages: cleanMessages as any, tools: { healthTool, externalMCP }, maxSteps: 4 })
 
-          while (true) {
-            const { done, value } = await reader.read()
-            if (done) break
+      // 简单成功计数
+      if (key.id) {
+        try { await keyManager.logKeyUsage(key.id, { sharedKeyId: key.id, userId: session.user.id, apiEndpoint: '/chat/completions', modelUsed: selectedModel, success: true }) } catch {}
+      }
 
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop() || ''
-
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6)
-                if (data === '[DONE]') {
-                  // 发送结束标记
-                  const finishChunk = `d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n`
-                  enqueueData(encoder.encode(finishChunk))
-                  closeController()
-                  return
-                }
-
-                try {
-                  const parsed = JSON.parse(data)
-                  const content = parsed.choices?.[0]?.delta?.content
-                  if (content) {
-                    // 直接发送文本块，不使用缓冲
-                    const textChunk = `0:"${content.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"\n`
-                    enqueueData(encoder.encode(textChunk))
-                  }
-                } catch (e) {
-                  // 忽略解析错误
-                  console.warn('Failed to parse SSE data:', data)
+      return result.toDataStreamResponse()
+    } catch (e) {
+      // 回退到旧的 SharedOpenAIClient 流式
+      const { stream } = await sharedClient.streamText({ model: selectedModel, messages: cleanMessages, system: systemPrompt })
+      const encoder = new TextEncoder()
+      const transformedStream = new ReadableStream({
+        async start(controller) {
+          let isControllerClosed = false
+          const closeController = () => { if (!isControllerClosed) { isControllerClosed = true; controller.close() } }
+          const enqueueData = (data: Uint8Array) => { if (!isControllerClosed) controller.enqueue(data) }
+          try {
+            const reader = stream.body?.getReader(); if (!reader) throw new Error('No stream reader available')
+            const decoder = new TextDecoder('utf-8'); let buffer = ''
+            while (true) {
+              const { done, value } = await reader.read(); if (done) break
+              buffer += decoder.decode(value, { stream: true }); const lines = buffer.split('\n'); buffer = lines.pop() || ''
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  const data = line.slice(6)
+                  if (data === '[DONE]') { enqueueData(encoder.encode(`d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n`)); closeController(); return }
+                  try { const parsed = JSON.parse(data); const content = parsed.choices?.[0]?.delta?.content; if (content) enqueueData(encoder.encode(`0:"${content.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"\n`)) } catch {}
                 }
               }
             }
-          }
-
-          // 如果没有正常结束，发送结束标记
-          const finishChunk = `d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n`
-          enqueueData(encoder.encode(finishChunk))
-          closeController()
-        } catch (error) {
-          console.error('Stream transformation error:', error)
-          if (!isControllerClosed) {
-            controller.error(error)
-          }
+            enqueueData(encoder.encode(`d:{"finishReason":"stop","usage":{"promptTokens":0,"completionTokens":0}}\n`)); closeController()
+          } catch (error) { if (!isControllerClosed) controller.error(error) }
         }
-      }
-    })
-
-    return new Response(transformedStream, {
-      headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked',
-      },
-    })
+      })
+      return new Response(transformedStream, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' } })
+    }
   } catch (error) {
     console.error('Chat API error:', error)
 

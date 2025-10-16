@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 export async function GET() {
   try {
+    // 获取数据库客户端
+    const supabaseAdmin = await getSupabaseAdmin()
+
     // 1. 获取所有活跃的共享Key
     const { data: keysData, error: keysError } = await supabaseAdmin
       .from('shared_keys')

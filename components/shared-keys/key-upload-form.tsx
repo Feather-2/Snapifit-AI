@@ -17,7 +17,7 @@ interface SharedKeyConfig {
   baseUrl: string
   apiKey: string
   availableModels: string[]
-  dailyLimit: number
+  dailyLimit: number | string // 允许字符串以支持临时空值
   description: string
   tags: string[]
 }
@@ -196,6 +196,31 @@ export function KeyUploadForm({
       return;
     }
 
+    // 验证和规范化 dailyLimit
+    let finalDailyLimit = config.dailyLimit
+    if (typeof finalDailyLimit === 'string') {
+      if (finalDailyLimit === '') {
+        finalDailyLimit = 150 // 默认值
+      } else {
+        const parsed = parseInt(finalDailyLimit)
+        if (isNaN(parsed)) {
+          finalDailyLimit = 150
+        } else {
+          finalDailyLimit = Math.min(Math.max(parsed, 150), 99999)
+        }
+      }
+    }
+
+    // 确保 dailyLimit 在有效范围内
+    if (finalDailyLimit !== 999999 && (finalDailyLimit < 150 || finalDailyLimit > 99999)) {
+      toast({
+        title: t('upload.messages.uploadFailed'),
+        description: t('upload.errors.invalidDailyLimit'),
+        variant: "destructive"
+      })
+      return
+    }
+
     setIsLoading(true)
     try {
       const response = await fetch("/api/shared-keys", {
@@ -206,6 +231,7 @@ export function KeyUploadForm({
         },
         body: JSON.stringify({
           ...config,
+          dailyLimit: finalDailyLimit,
           // 确保发送的是 availableModels 而不是其他字段名
           availableModels: config.availableModels
         })
@@ -504,10 +530,30 @@ export function KeyUploadForm({
                       type="number"
                       value={config.dailyLimit === 999999 ? "" : config.dailyLimit}
                       onChange={(e) => {
-                        const value = parseInt(e.target.value)
+                        const inputValue = e.target.value
+
+                        // 如果输入为空，允许空值（用户正在删除）
+                        if (inputValue === '') {
+                          setConfig(prev => ({ ...prev, dailyLimit: '' as any }))
+                          return
+                        }
+
+                        const value = parseInt(inputValue)
                         if (isNaN(value)) {
+                          // 如果输入无效，保持当前值不变
+                          return
+                        }
+
+                        // 只在用户完成输入时应用范围限制
+                        setConfig(prev => ({ ...prev, dailyLimit: value }))
+                      }}
+                      onBlur={(e) => {
+                        // 在失去焦点时应用范围限制和默认值
+                        const inputValue = e.target.value
+                        if (inputValue === '' || isNaN(parseInt(inputValue))) {
                           setConfig(prev => ({ ...prev, dailyLimit: 150 }))
                         } else {
+                          const value = parseInt(inputValue)
                           setConfig(prev => ({ ...prev, dailyLimit: Math.min(Math.max(value, 150), 99999) }))
                         }
                       }}
@@ -536,7 +582,13 @@ export function KeyUploadForm({
                         </Label>
                       </div>
                       <p className="text-sm text-primary font-medium">
-                        💡 {t('upload.supportUsers')} <span className="font-semibold">{config.dailyLimit === 999999 ? t('upload.unlimited') : Math.floor(config.dailyLimit / 150)}</span> {t('upload.usersCount')}
+                        💡 {t('upload.supportUsers')} <span className="font-semibold">{
+                          config.dailyLimit === 999999
+                            ? t('upload.unlimited')
+                            : typeof config.dailyLimit === 'number'
+                              ? Math.floor(config.dailyLimit / 150)
+                              : Math.floor((parseInt(config.dailyLimit) || 150) / 150)
+                        }</span> {t('upload.usersCount')}
                       </p>
                     </div>
                   </div>

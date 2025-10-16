@@ -3,14 +3,19 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, Home, MessageSquare, Settings, MoreHorizontal } from "lucide-react"
+import { useSession, signOut } from "next-auth/react"
+import { Menu, X, Home, MessageSquare, Settings, MoreHorizontal, LogIn, LogOut, User, Dumbbell } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Separator } from "@/components/ui/separator"
 import { useTranslation } from "@/hooks/use-i18n"
 import { LanguageSwitcher } from "@/components/language-switcher"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { GitHubStar } from "@/components/github-star"
+import { UserAvatar } from "@/components/user/user-avatar"
+import { TrustLevelBadge } from "@/components/user/user-badge"
+import { UsageProgress } from "@/components/usage/usage-indicator"
 import type { Locale } from "@/i18n"
 
 interface MobileNavProps {
@@ -20,7 +25,17 @@ interface MobileNavProps {
 export function MobileNav({ locale }: MobileNavProps) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
+  const { data: session } = useSession()
   const t = useTranslation('navigation')
+
+  const handleSignOut = async () => {
+    await signOut({ callbackUrl: "/" })
+    setOpen(false)
+  }
+
+  const handleSignIn = () => {
+    window.location.href = `/${locale}/signin`
+  }
 
   const navItems = [
     {
@@ -32,6 +47,11 @@ export function MobileNav({ locale }: MobileNavProps) {
       name: t('chat'),
       href: `/${locale}/chat`,
       icon: MessageSquare,
+    },
+    {
+      name: t('exercise'),
+      href: `/${locale}/exercise`,
+      icon: Dumbbell,
     },
     {
       name: t('settings'),
@@ -70,6 +90,58 @@ export function MobileNav({ locale }: MobileNavProps) {
           </SheetHeader>
 
           <div className="flex flex-col h-full pt-0">
+            {/* User Info Section */}
+            {session?.user ? (
+              <div className="py-4 border-b">
+                <div className="flex items-center space-x-3 px-4">
+                  <UserAvatar
+                    user={{
+                      username: session.user.name || 'User',
+                      displayName: session.user.displayName || session.user.name || 'User',
+                      avatarUrl: session.user.image || '',
+                      trustLevel: session.user.trustLevel
+                    }}
+                    size="lg"
+                    showTrustLevel={true}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">
+                      {session.user.displayName || session.user.name}
+                    </div>
+                    {session.user.displayName && session.user.name && session.user.displayName !== session.user.name && (
+                      <div className="text-xs text-muted-foreground truncate">
+                        @{session.user.name}
+                      </div>
+                    )}
+                    <div className="text-xs text-muted-foreground truncate">
+                      {session.user.email}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trust Level and Usage */}
+                <div className="px-4 mt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <TrustLevelBadge
+                      trustLevel={session.user.trustLevel}
+                      showLabel={true}
+                      size="sm"
+                    />
+                  </div>
+
+                  <UsageProgress showRefresh={false} />
+                </div>
+              </div>
+            ) : (
+              <div className="py-4 border-b">
+                <div className="px-4">
+                  <Button onClick={handleSignIn} className="w-full">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    {t('userMenu.signIn')}
+                  </Button>
+                </div>
+              </div>
+            )}
 
             {/* Navigation Links */}
             <nav className="flex-1 py-2 overflow-y-auto">
@@ -95,6 +167,23 @@ export function MobileNav({ locale }: MobileNavProps) {
 
             {/* Footer Actions */}
             <div className="border-t pt-4 pb-4 space-y-4">
+              {/* User Actions */}
+              {session?.user && (
+                <div className="px-4">
+                  <Button
+                    onClick={handleSignOut}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    {t('userMenu.signOut')}
+                  </Button>
+                </div>
+              )}
+
+              <Separator />
+
+              {/* Settings */}
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-muted-foreground">{t('theme')}</span>
                 <ThemeToggle />
@@ -104,7 +193,7 @@ export function MobileNav({ locale }: MobileNavProps) {
                 <LanguageSwitcher />
               </div>
               <div className="pt-2">
-                <GitHubStar repo="Feather-2/SnapFit-AI" className="w-full" />
+                <GitHubStar repo="Feather-2/Snapifit-AI" className="w-full" />
               </div>
             </div>
           </div>

@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/debug-guard';
 import { auth } from '@/lib/auth';
-import { userBanManager } from '@/lib/user-ban-manager';
+import { getUserBanManager } from '@/lib/user-ban-manager';
 import { logSecurityEvent } from '@/lib/security-monitor';
+import { getSupabaseAdmin } from '@/lib/supabase';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 import { getClientIP } from '@/lib/ip-utils';
 
 export async function POST(request: NextRequest) {
+  // 检查调试访问权限
+  const debugCheck = checkDebugAccess();
+  if (debugCheck) return debugCheck;
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -14,6 +21,7 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id;
     const ip = getClientIP(request);
     const { action = 'simulate_violations' } = await request.json();
+    const userBanManager = getUserBanManager();
 
     let result: any = {
       userId,
@@ -48,10 +56,10 @@ export async function POST(request: NextRequest) {
 
         // 检查是否应该触发封禁
         const shouldBan = await userBanManager.checkAndAutoBan(userId);
-        
+
         // 检查用户是否被封禁
         const isBanned = await userBanManager.isUserBanned(userId);
-        
+
         result = {
           ...result,
           violations,
@@ -64,7 +72,7 @@ export async function POST(request: NextRequest) {
       case 'check_status':
         const banStatus = await userBanManager.isUserBanned(userId);
         const banDetails = banStatus ? await userBanManager.getBanDetails(userId) : null;
-        
+
         result = {
           ...result,
           isBanned: banStatus,
@@ -79,7 +87,7 @@ export async function POST(request: NextRequest) {
           30, // 30分钟
           'medium'
         );
-        
+
         result = {
           ...result,
           banResult: manualBanResult,
@@ -89,7 +97,7 @@ export async function POST(request: NextRequest) {
 
       case 'unban':
         const unbanResult = await userBanManager.unbanUser(userId, 'Test unban');
-        
+
         result = {
           ...result,
           unbanResult,
@@ -100,9 +108,9 @@ export async function POST(request: NextRequest) {
       case 'check_rules':
         // 检查当前的封禁规则和用户的违规情况
         const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
-        
+
         // 这里我们需要直接查询数据库来检查用户的违规记录
-        const { supabaseAdmin } = await import('@/lib/supabase');
+        const supabaseAdmin = await getSupabaseAdmin();
         const { data: userEvents, error } = await supabaseAdmin
           .from('security_events')
           .select('*')
@@ -154,6 +162,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  // 检查调试访问权限
+  const debugCheck = checkDebugAccess();
+  if (debugCheck) return debugCheck;
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -161,13 +172,14 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = session.user.id;
-    
+
     // 获取用户的封禁状态和相关信息
+    const userBanManager = getUserBanManager();
     const isBanned = await userBanManager.isUserBanned(userId);
     const banDetails = isBanned ? await userBanManager.getBanDetails(userId) : null;
-    
+
     // 获取最近的安全事件
-    const { supabaseAdmin } = await import('@/lib/supabase');
+    const supabaseAdmin = await getSupabaseAdmin();
     const { data: recentEvents, error } = await supabaseAdmin
       .from('security_events')
       .select('*')

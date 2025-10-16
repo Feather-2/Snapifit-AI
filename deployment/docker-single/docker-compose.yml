@@ -1,0 +1,219 @@
+# SnapFit AI - 单容器 Docker Compose 配置
+# 适用于连接外部 Supabase 数据库的部署
+
+version: '3.8'
+
+services:
+  # ==========================================
+  # SnapFit AI 主应用
+  # ==========================================
+  snapfit-ai:
+    build:
+      context: ../../
+      dockerfile: deployment/docker-single/Dockerfile
+      args:
+        - NODE_ENV=production
+
+    # 容器名称
+    container_name: snapfit-ai-single
+
+    # 端口映射
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+    # 环境变量
+    environment:
+      # 基础配置
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - NEXT_TELEMETRY_DISABLED=1
+
+      # 部署配置
+      - DEPLOYMENT_TYPE=${DEPLOYMENT_TYPE:-http}
+      - FORCE_HTTPS=${FORCE_HTTPS:-false}
+      - DB_SSL=${DB_SSL:-false}
+
+      # 数据库配置
+      - DB_PROVIDER=${DB_PROVIDER:-supabase}
+
+      # Supabase 配置
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+
+      # 认证配置
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+
+      # OAuth 配置
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+
+      # 安全配置
+      - KEY_ENCRYPTION_SECRET=${KEY_ENCRYPTION_SECRET}
+
+      # 邮件配置
+      - RESEND_API_KEY=${RESEND_API_KEY}
+      - FROM_EMAIL=${FROM_EMAIL}
+
+      # AI API 配置
+      - DEFAULT_OPENAI_API_KEY=${DEFAULT_OPENAI_API_KEY}
+      - DEFAULT_OPENAI_BASE_URL=${DEFAULT_OPENAI_BASE_URL:-https://api.openai.com}
+
+      # 应用元数据
+      - APP_NAME=${APP_NAME:-SnapFit AI}
+      - APP_VERSION=${APP_VERSION:-1.0.0}
+      - DOMAIN=${DOMAIN:-localhost}
+
+      # 日志配置
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # 时区配置
+      - TZ=${TZ:-Asia/Shanghai}
+
+      # 权限管理配置
+      - ALLOW_NON_SUPER_ADMIN_SHARE_KEYS=${ALLOW_NON_SUPER_ADMIN_SHARE_KEYS:-true}
+      - ALLOW_NON_SUPER_ADMIN_CREATE_INVITE_CODES=${ALLOW_NON_SUPER_ADMIN_CREATE_INVITE_CODES:-true}
+      - ALLOW_NON_THIRD_PARTY_SOURCES=${ALLOW_NON_THIRD_PARTY_SOURCES:-true}
+
+    # 从 .env 文件加载环境变量
+    env_file:
+      - .env
+
+    # 重启策略
+    restart: unless-stopped
+
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # 网络配置
+    networks:
+      - snapfit-network
+
+    # 卷挂载
+    volumes:
+      # 持久化缓存目录
+      - app-cache:/app/.next/cache
+      # 日志目录（可选）
+      - ./logs:/app/logs
+
+    # 标签
+    labels:
+      - "com.snapfit.service=app"
+      - "com.snapfit.version=1.0.0"
+      - "com.snapfit.deployment=single"
+      - "traefik.enable=true"
+      - "traefik.http.routers.snapfit.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.services.snapfit.loadbalancer.server.port=3000"
+
+# ==========================================
+# 可选服务（根据需要启用）
+# ==========================================
+
+  # Redis 缓存（可选）
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: snapfit-redis-single
+  #   restart: unless-stopped
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - snapfit-network
+  #   command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  # Nginx 反向代理（可选）
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: snapfit-nginx-single
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #   depends_on:
+  #     - snapfit-ai
+  #   networks:
+  #     - snapfit-network
+  #   restart: unless-stopped
+
+# ==========================================
+# 网络配置
+# ==========================================
+networks:
+  snapfit-network:
+    driver: bridge
+    name: snapfit-single-network
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+# ==========================================
+# 卷配置
+# ==========================================
+volumes:
+  # 应用缓存
+  app-cache:
+    driver: local
+    name: snapfit-single-app-cache
+
+  # Redis 数据（如果启用）
+  # redis-data:
+  #   driver: local
+  #   name: snapfit-single-redis-data
+
+# ==========================================
+# 配置说明
+# ==========================================
+# 1. 此配置适用于连接外部 Supabase 数据库
+# 2. 环境变量通过 .env 文件配置
+# 3. 默认端口 3000，可通过 APP_PORT 环境变量修改
+# 4. 支持健康检查和自动重启
+# 5. 包含资源限制和日志轮转
+# 6. 可选服务（Redis、Nginx）默认禁用
+# 7. 支持 Traefik 标签用于反向代理
+# 8. 与 docker-full 的区别：不包含 PostgreSQL 容器
+#
+# 使用方法:
+# 1. 配置 .env 文件中的 Supabase 连接信息
+# 2. 运行: docker-compose up -d
+# 3. 访问: http://localhost:3000
+#
+# 优势:
+# - 轻量级部署（只有应用容器）
+# - 使用托管数据库（Supabase）
+# - 快速启动和扩展
+# - 适合云环境部署
+# ==========================================

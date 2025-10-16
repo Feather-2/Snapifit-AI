@@ -1,79 +1,150 @@
 import createMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
 import { locales, defaultLocale } from './i18n';
-import { createClient } from '@supabase/supabase-js';
 import { getClientIP } from './lib/ip-utils';
-import { checkUserBan } from './lib/user-ban-middleware';
 import { checkRequestSize } from './lib/request-size-limiter';
+import { addSecurityHeaders, addCorsHeaders } from './middleware-security-headers';
+import { EnvConfig } from './lib/env-config';
 
-// 简化的安全事件记录函数（避免循环依赖）
-async function logSecurityEvent(event: {
+// 注意：数据库相关检查已移到各自的 API 路由中处理
+
+// 安全配置
+const SECURITY_CONFIG = {
+  // 最大请求大小（字节）
+  maxRequestSize: 10 * 1024 * 1024, // 10MB
+  // 最大 User-Agent 长度
+  maxUserAgentLength: 512,
+  // 最大 IP 地址长度
+  maxIpLength: 45, // IPv6 最大长度
+  // 敏感信息过滤
+  sensitiveHeaders: ['authorization', 'cookie', 'x-api-key'],
+};
+
+// 输入验证和清理函数
+function sanitizeInput(input: string, maxLength: number): string {
+  if (!input || typeof input !== 'string') return '';
+
+  // 移除潜在的危险字符
+  const cleaned = input
+    .replace(/[<>'"&]/g, '') // 移除 HTML/JS 注入字符
+    .replace(/[\x00-\x1f\x7f-\x9f]/g, '') // 移除控制字符
+    .trim();
+
+  // 限制长度
+  return cleaned.length > maxLength ? cleaned.substring(0, maxLength) : cleaned;
+}
+
+// 验证 IP 地址格式
+function isValidIP(ip: string): boolean {
+  if (!ip || ip.length > SECURITY_CONFIG.maxIpLength) return false;
+
+  // IPv4 正则
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+  // IPv6 正则（简化版）
+  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
+
+  return ipv4Regex.test(ip) || ipv6Regex.test(ip) || ip === '::1' || ip === '127.0.0.1';
+}
+
+// 安全的错误响应（不泄露系统信息）
+function createSecureErrorResponse(message: string, status: number = 400) {
+  return NextResponse.json(
+    {
+      error: 'Request blocked',
+      message: sanitizeInput(message, 100),
+      timestamp: new Date().toISOString(),
+    },
+    { status }
+  );
+}
+
+/**
+ * 异步记录安全事件到数据库（非阻塞）
+ */
+async function logSecurityEventAsync(event: {
   ipAddress: string;
   userAgent?: string;
   eventType: string;
   severity: string;
   description: string;
   metadata?: Record<string, any>;
-  userId?: string; // 可选的用户ID
+  userId?: string;
 }) {
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // 输入验证和清理
+    const cleanEvent = {
+      ipAddress: sanitizeInput(event.ipAddress, SECURITY_CONFIG.maxIpLength),
+      userAgent: event.userAgent ? sanitizeInput(event.userAgent, SECURITY_CONFIG.maxUserAgentLength) : 'unknown',
+      eventType: sanitizeInput(event.eventType, 50),
+      severity: sanitizeInput(event.severity, 20),
+      description: sanitizeInput(event.description, 500),
+      userId: event.userId ? sanitizeInput(event.userId, 100) : undefined,
+    };
 
-    await supabase.from('security_events').insert({
-      ip_address: event.ipAddress,
-      user_id: event.userId || null, // 如果没有用户ID则为null
-      user_agent: event.userAgent,
-      event_type: event.eventType,
-      severity: event.severity,
-      description: event.description,
-      metadata: event.metadata || {}
+    // 验证 IP 地址
+    if (!isValidIP(cleanEvent.ipAddress)) {
+      console.warn('Invalid IP address in security event:', event.ipAddress);
+      return;
+    }
+
+    // 记录到控制台
+    console.log('Security Event:', {
+      ip: cleanEvent.ipAddress,
+      type: cleanEvent.eventType,
+      severity: cleanEvent.severity,
+      description: cleanEvent.description,
+      timestamp: new Date().toISOString()
+    });
+
+    // 异步记录到数据库（非阻塞）
+    fetch('/api/security/log-event', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Internal-Request': 'true',
+      },
+      body: JSON.stringify(cleanEvent),
+    }).catch(error => {
+      console.error('Failed to log security event to database:', error);
     });
   } catch (error) {
     console.error('Failed to log security event:', error);
   }
 }
 
-// 尝试从请求中获取用户ID（如果可能）
-async function tryGetUserIdFromRequest(req: NextRequest): Promise<string | undefined> {
-  try {
-    // 尝试从Authorization头获取token
-    const authHeader = req.headers.get('authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return undefined;
-    }
+// 从请求中提取基本信息（不涉及数据库操作）
+function extractRequestInfo(req: NextRequest) {
+  const authHeader = req.headers.get('authorization');
+  const userAgent = req.headers.get('user-agent') || 'unknown';
 
-    const token = authHeader.substring(7);
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
-
-    const { data: { user }, error } = await supabase.auth.getUser(token);
-    return user?.id;
-  } catch (error) {
-    // 忽略错误，返回undefined
-    return undefined;
-  }
+  return {
+    hasAuthToken: authHeader?.startsWith('Bearer ') || false,
+    userAgent: sanitizeInput(userAgent, SECURITY_CONFIG.maxUserAgentLength),
+    path: req.nextUrl.pathname,
+    method: req.method,
+  };
 }
 
-// 速率限制配置
-const RATE_LIMIT_CONFIG = {
-  // 同步API限制：每分钟最多20次请求（在专用限制器中还有更细粒度的控制）
-  sync: { requests: 20, window: 60 * 1000 },
-  // AI API限制：每分钟最多10次请求
-  ai: { requests: 10, window: 60 * 1000 },
-  // 上传路由限制：每分钟最多3次请求
-  upload: { requests: 3, window: 60 * 1000 },
-  // 管理API限制：每分钟最多20次请求
-  admin: { requests: 20, window: 60 * 1000 },
-  // 一般API限制：每分钟最多30次请求
-  api: { requests: 30, window: 60 * 1000 },
-  // 全局限制：每分钟最多50次请求
-  global: { requests: 50, window: 60 * 1000 }
-};
+// 动态速率限制配置（支持环境变量控制）
+function getRateLimitConfig() {
+  const rateLimits = EnvConfig.rateLimits;
+  return {
+    // 同步API限制：每分钟请求数（在专用限制器中还有更细粒度的控制）
+    sync: { requests: rateLimits.sync, window: 60 * 1000 },
+    // AI API限制：每分钟请求数
+    ai: { requests: rateLimits.ai, window: 60 * 1000 },
+    // 上传路由限制：每分钟请求数
+    upload: { requests: rateLimits.upload, window: 60 * 1000 },
+    // 管理API限制：每分钟请求数
+    admin: { requests: rateLimits.admin, window: 60 * 1000 },
+    // 认证API限制：每分钟请求数（session查询频繁）
+    auth: { requests: rateLimits.auth, window: 60 * 1000 },
+    // 一般API限制：每分钟请求数
+    api: { requests: rateLimits.api, window: 60 * 1000 },
+    // 全局限制：每分钟请求数
+    global: { requests: rateLimits.global, window: 60 * 1000 }
+  };
+}
 
 // 内存中的速率限制存储（生产环境建议使用Redis）
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -96,37 +167,16 @@ setInterval(() => {
   }
 }, 60 * 1000); // 每分钟清理一次
 
-function getRateLimitKey(ip: string, path: string): string {
-  return `${ip}:${path}`;
-}
 
-// Supabase客户端（用于检查IP封禁）
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
-async function checkIPBan(ip: string): Promise<boolean> {
-  try {
-    const { data, error } = await supabase
-      .rpc('is_ip_banned', { check_ip: ip });
-
-    if (error) {
-      console.error('Error checking IP ban:', error);
-      return false;
-    }
-
-    return data && data.length > 0 && data[0].is_banned;
-  } catch (error) {
-    console.error('Error in IP ban check:', error);
-    return false;
-  }
-}
+// 注意：维护模式和 IP 封禁检查已移到 API 路由中处理
+// 中间件现在只处理基本的速率限制和请求验证
 
 function getApiCategory(path: string): keyof typeof RATE_LIMIT_CONFIG {
   if (path.startsWith('/api/sync/')) return 'sync';
   if (path.startsWith('/api/ai/') || path.startsWith('/api/openai/')) return 'ai';
   if (path.startsWith('/api/admin/')) return 'admin';
+  if (path.startsWith('/api/auth/')) return 'auth';
   if (path.includes('upload') || path.includes('image')) return 'upload';
   if (path.startsWith('/api/')) return 'api';
   return 'global';
@@ -135,31 +185,30 @@ function getApiCategory(path: string): keyof typeof RATE_LIMIT_CONFIG {
 // getClientIP 函数已移动到 lib/ip-utils.ts
 
 async function checkRateLimit(req: NextRequest): Promise<NextResponse | null> {
+  // 🔧 检查是否启用速率限制
+  if (!EnvConfig.enableRateLimit) {
+    return null; // 速率限制被禁用，直接通过
+  }
+
   const ip = getClientIP(req);
   const path = req.nextUrl.pathname;
 
-  // 🚫 首先检查IP是否被封禁
-  const isBanned = await checkIPBan(ip);
-  if (isBanned) {
-    return NextResponse.json(
-      {
-        error: 'IP address is banned',
-        code: 'IP_BANNED',
-        message: 'Your IP address has been banned due to suspicious activity. Please contact support if you believe this is an error.'
-      },
-      {
-        status: 403,
-        headers: {
-          'X-Ban-Status': 'banned',
-          'X-Ban-Reason': 'security_violation'
-        }
-      }
-    );
+  // 验证 IP 地址
+  if (!isValidIP(ip)) {
+    logSecurityEventAsync({
+      ipAddress: ip,
+      eventType: 'invalid_ip',
+      severity: 'high',
+      description: 'Invalid IP address detected',
+      userAgent: req.headers.get('user-agent') || 'unknown'
+    });
+    return createSecureErrorResponse('Invalid request', 400);
   }
 
   // 🔒 进行速率限制检查
   const category = getApiCategory(path);
-  const config = RATE_LIMIT_CONFIG[category];
+  const rateLimitConfig = getRateLimitConfig();
+  const config = rateLimitConfig[category];
 
   // 创建更精确的限制键：IP + 具体路径
   const limitKey = `${ip}:${path}`;
@@ -176,14 +225,13 @@ async function checkRateLimit(req: NextRequest): Promise<NextResponse | null> {
     });
   } else {
     if (ipRecord.count >= config.requests) {
-      // 尝试获取用户ID
-      const userId = await tryGetUserIdFromRequest(req);
+      // 获取请求信息
+      const requestInfo = extractRequestInfo(req);
 
       // 记录速率限制违规
-      await logSecurityEvent({
+      logSecurityEventAsync({
         ipAddress: ip,
-        userId,
-        userAgent: req.headers.get('user-agent') || 'unknown',
+        userAgent: requestInfo.userAgent,
         eventType: 'rate_limit_exceeded',
         severity: 'medium',
         description: `Rate limit exceeded for ${category} API: ${path}`,
@@ -193,7 +241,7 @@ async function checkRateLimit(req: NextRequest): Promise<NextResponse | null> {
           limit: config.requests,
           window: config.window,
           attempts: ipRecord.count + 1,
-          hasUserId: !!userId
+          hasAuthToken: requestInfo.hasAuthToken
         }
       });
 
@@ -252,35 +300,20 @@ export default async function middleware(req: NextRequest) {
     return securityResponse;
   }
 
-  // 👤 第三层：用户封禁检查（仅对已认证的API路径）
-  // 注意：这里只检查已经有用户会话的请求
-  if (path.startsWith('/api/') && !isPublicApiPath(path)) {
-    const userBanResponse = await checkUserBan(req);
-    if (userBanResponse) {
-      return userBanResponse;
-    }
-  }
-
-  // 🚫 API路由不需要国际化处理，直接通过
+  // 🚫 API路由不需要国际化处理，但需要添加安全头
+  // 注意：数据库相关的检查（IP封禁、用户封禁、维护模式）已移到各自的 API 路由中处理
   if (path.startsWith('/api/')) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    const origin = req.headers.get('origin') || undefined;
+    return addCorsHeaders(addSecurityHeaders(response), origin);
   }
 
-  // 🌐 只对非API路由进行国际化处理
-  return intlMiddleware(req);
+  // 🌐 对非API路由进行国际化处理并添加安全头
+  const response = intlMiddleware(req);
+  return addSecurityHeaders(response);
 }
 
-// 判断是否为公共API路径（不需要认证的路径）
-function isPublicApiPath(path: string): boolean {
-  const publicPaths = [
-    '/api/auth',           // 认证相关
-    '/api/debug',          // 调试端点
-    '/api/health',         // 健康检查
-    '/api/public'          // 公共API
-  ];
-
-  return publicPaths.some(publicPath => path.startsWith(publicPath));
-}
+// 注意：公共API路径的判断已移到各自的 API 路由中处理
 
 export const config = {
   // 匹配所有路径，除了以下路径：

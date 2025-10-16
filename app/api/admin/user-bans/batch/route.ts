@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { userBanManager } from '@/lib/user-ban-manager';
+import { getUserBanManager } from '@/lib/user-ban-manager';
 import { InputValidator, ValidationRules } from '@/lib/input-validator';
 import { logSecurityEvent } from '@/lib/security-monitor';
 import { getClientIP } from '@/lib/ip-utils';
@@ -44,23 +44,23 @@ export async function POST(request: NextRequest) {
     // 验证输入
     const validator = new InputValidator();
     const validationRules: ValidationRules = {
-      action: { 
-        required: true, 
-        type: 'string', 
-        allowedValues: ['ban', 'unban', 'extend', 'modify'] 
+      action: {
+        required: true,
+        type: 'string',
+        allowedValues: ['ban', 'unban', 'extend', 'modify']
       },
-      userIds: { 
-        required: true, 
+      userIds: {
+        required: true,
         type: 'array',
         minLength: 1,
         maxLength: 100 // 限制批量操作的数量
       },
       reason: { required: true, type: 'string', minLength: 1, maxLength: 500 },
       duration: { required: false, type: 'number', min: 0 },
-      severity: { 
-        required: false, 
-        type: 'string', 
-        allowedValues: ['low', 'medium', 'high', 'critical'] 
+      severity: {
+        required: false,
+        type: 'string',
+        allowedValues: ['low', 'medium', 'high', 'critical']
       }
     };
 
@@ -72,23 +72,24 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    const { 
-      action, 
-      userIds, 
-      reason, 
-      duration = 0, 
-      severity = 'medium' 
+    const {
+      action,
+      userIds,
+      reason,
+      duration = 0,
+      severity = 'medium'
     } = body;
 
     const results = [];
     let successCount = 0;
     let errorCount = 0;
+    const userBanManager = getUserBanManager();
 
     // 批量处理每个用户
     for (const userId of userIds) {
       try {
         let result;
-        
+
         switch (action) {
           case 'ban':
             // 检查用户是否已经被封禁
@@ -169,7 +170,7 @@ export async function POST(request: NextRequest) {
         }
 
         results.push(result);
-        
+
         if (result.success) {
           successCount++;
         } else {

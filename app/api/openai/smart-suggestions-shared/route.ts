@@ -74,7 +74,7 @@ const expertPrompts = {
 ${JSON.stringify(dataSummary, null, 2)}
 
 **输出要求:**
-请严格按照以下JSON格式返回，不要添加任何额外的解释或文本。
+请严格按照以下JSON格式返回，不要添加任何额外的解释或文本。必须返回有效的JSON对象。
 
 \`\`\`json
 {
@@ -91,6 +91,8 @@ ${JSON.stringify(dataSummary, null, 2)}
   "summary": "对今日营养摄入的简要评价（30字内）"
 }
 \`\`\`
+
+重要：请确保返回的是完整、有效的JSON格式，不要截断或省略任何部分。
 `
   }),
   exercise: (dataSummary: any) => ({
@@ -102,7 +104,7 @@ ${JSON.stringify(dataSummary, null, 2)}
 ${JSON.stringify(dataSummary, null, 2)}
 
 **输出要求:**
-请严格按照以下JSON格式返回，不要添加任何额外的解释或文本。
+请严格按照以下JSON格式返回，不要添加任何额外的解释或文本。必须返回有效的JSON对象。
 
 \`\`\`json
 {
@@ -119,6 +121,8 @@ ${JSON.stringify(dataSummary, null, 2)}
   "summary": "对今日运动表现的简要评价（30字内）"
 }
 \`\`\`
+
+重要：请确保返回的是完整、有效的JSON格式，不要截断或省略任何部分。
 `
   }),
   metabolism: (dataSummary: any) => ({
@@ -447,43 +451,128 @@ export async function POST(req: Request) {
                 }));
 
                 const singleTimeout = VERCEL_CONFIG.smartSuggestions.getSingleRequestTimeout();
-                const timeoutPromise = new Promise((_, reject) => {
-                  setTimeout(() => reject(new Error('Request timeout')), singleTimeout);
-                });
 
-                const requestPromise = sharedClient.generateText({
-                  model: selectedModel,
-                  prompt,
-                  response_format: { type: "json_object" },
-                  max_tokens: VERCEL_CONFIG.optimizations.limitOutputTokens ? 800 : undefined,
-                });
+                // 🛡️ 带重试的请求函数
+                const makeRequestWithRetry = async (retries = 2) => {
+                  for (let attempt = 1; attempt <= retries; attempt++) {
+                    try {
+                      console.log(`[Smart Suggestions] Attempt ${attempt}/${retries} for ${key}`);
 
-                const { text, keyInfo } = await Promise.race([requestPromise, timeoutPromise]) as any;
+                      const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error(`Request timeout after ${singleTimeout}ms`)), singleTimeout);
+                      });
 
-                // 统一的 JSON 提取函数，支持 ```json、```、或无 code fence
-                const extractJSON = (raw: string) => {
-                  const fenceRegex = /```(?:json)?\s*([\s\S]*?)```/i;
-                  const match = raw.match(fenceRegex);
-                  return (match ? match[1] : raw).trim();
+                      const requestPromise = sharedClient.generateText({
+                        model: selectedModel,
+                        prompt,
+                        response_format: { type: "json_object" },
+                        max_tokens: VERCEL_CONFIG.optimizations.limitOutputTokens ? 4096 : undefined, // 🔧 增加到 2000 tokens
+                        temperature: 0.6, // 降低温度以获得更一致的输出
+                      });
+
+                      const result = await Promise.race([requestPromise, timeoutPromise]) as any;
+
+                      // 验证返回结果
+                      if (!result.text || result.text.trim().length === 0) {
+                        throw new Error('Empty response from AI');
+                      }
+
+                      return result;
+                    } catch (error) {
+                      console.warn(`[Smart Suggestions] Attempt ${attempt} failed for ${key}:`, error.message);
+
+                      if (attempt === retries) {
+                        throw error; // 最后一次尝试失败，抛出错误
+                      }
+
+                      // 等待一段时间后重试
+                      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                    }
+                  }
                 };
 
+                const { text, keyInfo } = await makeRequestWithRetry();
+
+                // 🛡️ 增强的 JSON 提取函数，支持多种格式
+                const extractJSON = (raw: string) => {
+                  if (!raw || raw.trim().length === 0) {
+                    return '';
+                  }
+
+                  // 尝试提取 code fence 中的内容
+                  const fenceRegex = /```(?:json)?\s*([\s\S]*?)```/i;
+                  const fenceMatch = raw.match(fenceRegex);
+                  if (fenceMatch && fenceMatch[1].trim()) {
+                    return fenceMatch[1].trim();
+                  }
+
+                  // 尝试提取 { } 包围的 JSON 对象
+                  const jsonRegex = /\{[\s\S]*\}/;
+                  const jsonMatch = raw.match(jsonRegex);
+                  if (jsonMatch && jsonMatch[0].trim()) {
+                    return jsonMatch[0].trim();
+                  }
+
+                  // 如果都没找到，返回原始文本
+                  return raw.trim();
+                };
+
+                // 🔍 调试 AI 返回的原始内容
+                console.log(`[Smart Suggestions] AI raw response for ${key}:`, text.substring(0, 200) + (text.length > 200 ? '...' : ''));
+
+                // 🛡️ 健壮性检查：确保响应不为空
+                if (!text || text.trim().length === 0) {
+                  throw new Error(`AI returned empty response for ${key}`);
+                }
+
                 let jsonString = extractJSON(text);
+                console.log(`[Smart Suggestions] Extracted JSON for ${key}:`, jsonString.substring(0, 200) + (jsonString.length > 200 ? '...' : ''));
+
+                // 🛡️ 健壮性检查：确保提取的 JSON 不为空
+                if (!jsonString || jsonString.trim().length === 0) {
+                  console.warn(`[Smart Suggestions] Empty JSON extracted for ${key}, using full text as fallback`);
+                  jsonString = text.trim();
+                }
 
                 let result: any;
                 try {
                   result = JSON.parse(jsonString);
+                  console.log(`[Smart Suggestions] Successfully parsed JSON for ${key}`);
                 } catch (e) {
-                  // 尝试修复并重新解析可能的不完整/无效 JSON
+                  console.warn(`[Smart Suggestions] Initial JSON parse failed for ${key}:`, e.message);
+
+                  // 🛡️ 第一次修复：使用 jsonrepair 修复提取的 JSON
                   try {
+                    console.log(`[Smart Suggestions] Attempting to repair extracted JSON for ${key}`);
                     const repaired = jsonrepair(jsonString);
                     result = JSON.parse(repaired);
+                    console.log(`[Smart Suggestions] Successfully repaired and parsed JSON for ${key}`);
                   } catch (e2) {
-                    // 最后再尝试使用完整文本修复一次
+                    console.warn(`[Smart Suggestions] JSON repair failed for ${key}:`, e2.message);
+
+                    // 🛡️ 第二次修复：使用完整文本修复
                     try {
+                      console.log(`[Smart Suggestions] Attempting to repair full text for ${key}`);
                       const repairedFull = jsonrepair(text);
                       result = JSON.parse(repairedFull);
+                      console.log(`[Smart Suggestions] Successfully repaired full text for ${key}`);
                     } catch (e3) {
-                      throw e; // 继续由外层捕获处理
+                      console.warn(`[Smart Suggestions] Full text repair failed for ${key}:`, e3.message);
+
+                      // 🛡️ 最后的兜底：创建默认响应
+                      console.log(`[Smart Suggestions] Creating fallback response for ${key}`);
+                      const categoryName = expertPrompts[key as keyof typeof expertPrompts]?.(dataSummary)?.category || key;
+                      result = {
+                        category: categoryName,
+                        priority: "low",
+                        suggestions: [{
+                          title: "建议生成失败",
+                          description: "AI 服务暂时不可用，请稍后重试。如果问题持续存在，请联系技术支持。",
+                          actionable: false,
+                          icon: "⚠️"
+                        }],
+                        summary: "AI 分析暂时不可用"
+                      };
                     }
                   }
                 }

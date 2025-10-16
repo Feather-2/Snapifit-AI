@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { auth } from '@/lib/auth';
 import { syncRateLimiter } from '@/lib/sync-rate-limiter';
 import { logSecurityEvent } from '@/lib/security-monitor';
 import { getClientIP } from '@/lib/ip-utils';
+import { getSupabaseAdmin } from '@/lib/supabase';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 export async function GET(request: Request) {
   try {
@@ -12,12 +14,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = await createClient();
     const userId = session.user.id;
+    const supabaseAdmin = await getSupabaseAdmin();
 
     console.log(`[API/SYNC/MEMORIES/GET] Fetching AI memories for user: ${userId}`);
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('ai_memories')
       .select('*')
       .eq('user_id', userId);
@@ -59,6 +61,7 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id;
     const ip = getClientIP(request);
+    const supabaseAdmin = await getSupabaseAdmin();
 
     // 🔒 检查同步速率限制
     const limitCheck = syncRateLimiter.checkSyncLimit(userId, ip);
@@ -92,7 +95,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const supabase = await createClient();
     const memoriesToSync = await request.json();
 
     if (!memoriesToSync || typeof memoriesToSync !== 'object') {
@@ -102,7 +104,7 @@ export async function POST(request: NextRequest) {
     console.log(`[API/SYNC/MEMORIES/POST] Attempting to sync ${Object.keys(memoriesToSync).length} memories for user: ${userId}`);
 
     // 使用RPC函数批量更新
-    const { data, error } = await supabase.rpc('upsert_ai_memories', {
+    const { data, error } = await supabaseAdmin.rpc('upsert_ai_memories', {
       p_user_id: userId,
       p_memories: memoriesToSync
     });

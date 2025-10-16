@@ -51,12 +51,38 @@ export function useUsageLimit() {
   const [isInitialized, setIsInitialized] = useState(false)
 
   // 节流配置
-  const THROTTLE_MINUTES = 1 // 自动刷新间隔：1分钟（减少延迟）
+  const THROTTLE_MINUTES = 3 // 自动刷新间隔：3分钟（减少频繁请求）
   const CACHE_KEY = 'usageInfo_cache'
   const CACHE_TIMESTAMP_KEY = 'usageInfo_timestamp'
 
   // 添加全局事件监听器用于跨组件同步
   const USAGE_UPDATE_EVENT = 'usageInfoUpdated'
+
+  // 全局请求去重：防止多个组件同时发起相同请求
+  const globalRequestCache = useCallback(() => {
+    if (typeof window === 'undefined') return { get: () => null, set: () => {}, has: () => false }
+
+    if (!(window as any).__usageRequestCache) {
+      (window as any).__usageRequestCache = new Map()
+    }
+
+    return {
+      get: (key: string) => (window as any).__usageRequestCache.get(key),
+      set: (key: string, promise: Promise<any> | null) => {
+        if (promise === null) {
+          (window as any).__usageRequestCache.delete(key)
+          return
+        }
+        (window as any).__usageRequestCache.set(key, promise)
+        // 5秒后清除缓存，避免内存泄漏
+        setTimeout(() => {
+          (window as any).__usageRequestCache.delete(key)
+        }, 5000)
+      },
+      has: (key: string) => (window as any).__usageRequestCache.has(key),
+      delete: (key: string) => (window as any).__usageRequestCache.delete(key)
+    }
+  }, [])
 
   // 检查是否需要刷新（节流机制）
   const shouldRefresh = useCallback(() => {
@@ -82,7 +108,6 @@ export function useUsageLimit() {
         const diffMinutes = (now.getTime() - timestamp.getTime()) / (1000 * 60)
 
         if (diffMinutes < 5) {
-          console.log('[Usage] Loading from cache')
           setUsageInfo(data)
           setLastFetched(timestamp)
           return true
@@ -119,25 +144,62 @@ export function useUsageLimit() {
 
     // 如果不是强制刷新且不需要刷新，返回当前数据
     if (!forceRefresh && !shouldRefresh() && usageInfo) {
-      console.log('[Usage] Using cached data (throttled)')
       return usageInfo
+    }
+
+    // 检查是否有正在进行的相同请求
+    const requestCache = globalRequestCache()
+    const requestKey = `usage_check_${type}_${session.user.id}`
+
+    if (requestCache.has(requestKey)) {
+      try {
+        const cachedResult = await requestCache.get(requestKey)
+        // 如果缓存的请求成功，更新本地状态
+        if (cachedResult) {
+          setUsageInfo(cachedResult)
+          setIsInitialized(true)
+          setLastFetched(new Date())
+        }
+        return cachedResult
+      } catch (err) {
+        // 如果缓存的请求失败，清除缓存并继续执行新请求
+        requestCache.delete(requestKey) // 清除失败的缓存
+      }
     }
 
     try {
       setLoading(true)
       setError(null)
 
-      console.log('[Usage] Fetching fresh data from API')
-      const response = await fetch(`/api/usage/check?type=${type}`)
-      const data = await response.json()
+      // 获取新数据
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to check usage limit')
-      }
+      // 创建请求Promise
+      const requestPromise = (async () => {
+        const response = await fetch(`/api/usage/check?type=${type}`)
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || `HTTP ${response.status}: Failed to check usage limit`)
+        }
+
+        return await response.json()
+      })()
+
+      // 缓存请求Promise
+      requestCache.set(requestKey, requestPromise)
+
+      const data = await requestPromise
 
       setUsageInfo(data)
       saveToCache(data)
       setIsInitialized(true)
+      setLastFetched(new Date())
+
+      // 广播更新事件给其他组件
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(USAGE_UPDATE_EVENT, { detail: data }))
+      }
+
       return data
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error'
@@ -147,7 +209,7 @@ export function useUsageLimit() {
     } finally {
       setLoading(false)
     }
-  }, [session, shouldRefresh, usageInfo, saveToCache])
+  }, [session, shouldRefresh, usageInfo, saveToCache, globalRequestCache])
 
   // 记录使用量
   const recordUsage = useCallback(async (type: string = 'conversation') => {
@@ -188,7 +250,6 @@ export function useUsageLimit() {
 
   // 手动刷新使用信息
   const refreshUsageInfo = useCallback(async () => {
-    console.log('[Usage] Manual refresh triggered')
     return await checkUsageLimit('conversation', true)
   }, [checkUsageLimit])
 
@@ -321,7 +382,6 @@ export function useUsageLimit() {
 
     const handleUsageUpdate = (event: CustomEvent) => {
       const updatedData = event.detail as UsageInfo
-      console.log('[Usage] Received cross-component update:', updatedData)
       setUsageInfo(updatedData)
     }
 
@@ -335,26 +395,41 @@ export function useUsageLimit() {
   // 初始化时加载缓存数据，然后获取最新信息
   useEffect(() => {
     if (session?.user && !isInitialized) {
-      console.log('[Usage] Initializing usage data')
+      // 检查用户信任等级，如果是0级用户，直接设置为无权限状态
+      const userTrustLevel = session.user.trustLevel || 0
+
+      if (userTrustLevel === 0) {
+        // 对于信任等级0的用户，直接设置无权限状态
+        setUsageInfo({
+          allowed: false,
+          currentUsage: 0,
+          dailyLimit: 0,
+          remaining: 0,
+          resetTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          error: '信任等级不足，无法使用对话功能'
+        })
+        setIsInitialized(true)
+        return
+      }
 
       // 先尝试从缓存加载
       const hasCache = loadFromCache()
 
       if (hasCache) {
         setIsInitialized(true)
-        // 有缓存时，在后台静默刷新
+        // 有缓存时，延迟更长时间再后台刷新，避免频繁请求
         setTimeout(() => {
           checkUsageLimit('conversation', false)
-        }, 1000)
+        }, 5000) // 从1秒改为5秒
       } else {
         // 没有缓存时，立即获取数据
         checkUsageLimit('conversation', true)
       }
 
-      // 获取统计数据（不阻塞主要功能）
+      // 获取统计数据延迟更长时间，避免与主要请求冲突
       setTimeout(() => {
         fetchUsageStats(7)
-      }, 2000)
+      }, 10000) // 从2秒改为10秒
     }
   }, [session, isInitialized, loadFromCache, checkUsageLimit, fetchUsageStats])
 

@@ -33,7 +33,7 @@ export function AgentAdvice({ dailyLog, userProfile }: AgentAdviceProps) {
       source: "shared", // 默认使用共享模型
     },
     visionModel: {
-      name: "gpt-4o",
+      name: "gemini-2.5-flash-preview-05-20",
       baseUrl: "https://api.openai.com",
       apiKey: "",
       source: "shared", // 默认使用共享模型

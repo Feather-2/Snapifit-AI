@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, MessageSquare, Settings } from "lucide-react"
+import { Home, MessageSquare, Settings, Dumbbell } from "lucide-react"
 import { useTranslation } from "@/hooks/use-i18n"
 import type { Locale } from "@/i18n"
 
@@ -21,6 +21,11 @@ export function MainNavLinks({ locale }: { locale: Locale }) {
       name: t('chat'),
       href: `/${locale}/chat`,
       icon: MessageSquare,
+    },
+    {
+      name: t('exercise'),
+      href: `/${locale}/exercise`,
+      icon: Dumbbell,
     },
     {
       name: t('settings'),

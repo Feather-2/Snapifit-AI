@@ -38,7 +38,8 @@ export async function GET() {
     } else {
       // 测试 Supabase 连接（仅在配置正确时）
       try {
-        const { supabaseAdmin } = await import('@/lib/supabase');
+        const { getSupabaseAdmin } = await import('@/lib/supabase');
+        const supabaseAdmin = await getSupabaseAdmin();
         const { data, error } = await supabaseAdmin
           .from('users')
           .select('count')

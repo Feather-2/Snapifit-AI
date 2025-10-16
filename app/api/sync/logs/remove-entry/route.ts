@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { createClient } from '@/lib/supabase/server';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
@@ -9,9 +9,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const supabase = await createClient();
     const userId = session.user.id;
     const { date, entryType, logId, lastModified } = await request.json();
+    const supabaseAdmin = await getSupabaseAdmin();
 
     if (!date || !entryType || !logId) {
       return NextResponse.json({
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     console.log(`[API/SYNC/REMOVE-ENTRY] Removing ${entryType} entry ${logId} for user: ${userId}, date: ${date}`);
 
     // 🔍 首先检查当前日志数据
-    const { data: currentLog, error: fetchError } = await supabase
+    const { data: currentLog, error: fetchError } = await supabaseAdmin
       .from('daily_logs')
       .select('log_data')
       .eq('user_id', userId)
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     console.log(`[API/SYNC/REMOVE-ENTRY] Current log data:`, JSON.stringify(currentLog.log_data, null, 2));
 
     // 🗑️ 调用数据库函数安全删除条目
-    const { data, error } = await supabase.rpc('remove_log_entry', {
+    const { data, error } = await supabaseAdmin.rpc('remove_log_entry', {
       p_user_id: userId,
       p_date: date,
       p_entry_type: entryType,

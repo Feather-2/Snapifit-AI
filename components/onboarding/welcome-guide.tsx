@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useTranslation } from '@/hooks/use-i18n';
 import {
   Heart,
   Share2,
@@ -15,7 +16,7 @@ import {
   X
 } from 'lucide-react';
 
-const WELCOME_GUIDE_KEY = 'snapfit-ai-welcome-guide-read';
+const WELCOME_GUIDE_KEY = 'Snapifit-ai-welcome-guide-read';
 
 interface WelcomeGuideProps {
   isOpen: boolean;
@@ -27,35 +28,37 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
+  const t = useTranslation('onboarding')
+
   const steps = [
     {
       icon: <Heart className="w-8 h-8 text-red-500" />,
-      title: "欢迎来到 Snapifit AI 社区版",
-      content: "这是一个为L站（Linux.do）设计的特殊版本，佬可以在此记录您的健康数据，获得智能建议。佬们的团课赛博私教。",
-      highlight: "专为Linux.do社区定制"
+      title: t('welcome.title'),
+      content: t('welcome.content'),
+      highlight: t('welcome.highlight')
     },
     {
       icon: <Share2 className="w-8 h-8 text-blue-500" />,
-      title: "AI共享流转 - 公益共建",
-      content: "这是一个分享版本，佬们可以在 头像——共享服务 这里进行AI共建，分享您手头好用的key，实现公益站的AI共享流转。我们还进行了一些设置，您每日的额度通常是较为宽裕的。",
-      highlight: "共享AI资源，互助共赢",
-      actionText: "前往共享设置",
+      title: t('sharing.title'),
+      content: t('sharing.content'),
+      highlight: t('sharing.highlight'),
+      actionText: t('sharing.actionText'),
       actionLink: "/settings/keys"
     },
     {
       icon: <Shield className="w-8 h-8 text-green-500" />,
-      title: "私有配置 - 更加稳定",
-      content: "当然，您也可以使用自己的key，可能会更加稳定。您可以在 我的档案与设置——AI设置 这里来配置自己的私有模型。该模型会存储在浏览器中，不会被上传。",
-      highlight: "数据安全，本地存储",
-      actionText: "配置私有模型",
+      title: t('private.title'),
+      content: t('private.content'),
+      highlight: t('private.highlight'),
+      actionText: t('private.actionText'),
       actionLink: "/settings?tab=ai"
     },
     {
       icon: <RefreshCw className="w-8 h-8 text-purple-500" />,
-      title: "多端同步 - 数据流转",
-      content: "如您使用多端，可以在新设备使用前，点击主页的\"刷新\"按钮或设置里的\"云同步\"，将会获取最新的数据。",
-      highlight: "跨设备数据同步",
-      actionText: "了解同步功能",
+      title: t('sync.title'),
+      content: t('sync.content'),
+      highlight: t('sync.highlight'),
+      actionText: t('sync.actionText'),
       actionLink: "/settings?tab=data"
     }
   ];
@@ -121,7 +124,7 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
           <div className="sm:hidden">
             <div className="flex items-center justify-between mb-3">
               <DialogTitle className="text-lg font-semibold">
-                初次使用指南
+                {t('guide.title')}
               </DialogTitle>
               <Button
                 variant="ghost"
@@ -134,7 +137,7 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
             </div>
             <div className="flex justify-center">
               <Badge variant="secondary" className="text-xs px-3 py-1">
-                第 {currentStep + 1} 步，共 {steps.length} 步
+                {t('guide.step', { current: currentStep + 1, total: steps.length })}
               </Badge>
             </div>
           </div>
@@ -142,9 +145,9 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
           {/* 桌面端标题布局 */}
           <div className="hidden sm:flex items-center justify-between">
             <DialogTitle className="flex items-center gap-3 text-xl">
-              <span>初次使用指南</span>
+              <span>{t('guide.title')}</span>
               <Badge variant="secondary" className="text-xs">
-                {currentStep + 1} / {steps.length}
+                {t('guide.stepOf', { current: currentStep + 1, total: steps.length })}
               </Badge>
             </DialogTitle>
           </div>
@@ -168,11 +171,11 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
             <div className="flex items-center justify-center gap-2 py-2 px-4 bg-muted/30 rounded-full mx-auto w-fit">
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <span>👈</span>
-                <span>左滑下一步</span>
+                <span>{t('guide.swipeHint')}</span>
               </div>
               <div className="w-px h-3 bg-border"></div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <span>右滑上一步</span>
+                <span>{t('guide.swipeHintRight')}</span>
                 <span>👉</span>
               </div>
             </div>
@@ -276,7 +279,7 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
                     className="flex-1 h-12 text-sm font-medium rounded-xl border-2"
                     size="sm"
                   >
-                    上一步
+                    {t('guide.previous')}
                   </Button>
                 )}
                 <Button
@@ -284,7 +287,7 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
                   className="flex-1 bg-primary hover:bg-primary/90 h-12 text-sm font-medium shadow-lg rounded-xl"
                   size="sm"
                 >
-                  {currentStep < steps.length - 1 ? '下一步' : '开始使用'}
+                  {currentStep < steps.length - 1 ? t('guide.next') : t('guide.start')}
                 </Button>
               </div>
               <div className="flex justify-center">
@@ -294,7 +297,7 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
                   className="text-muted-foreground text-sm h-8 px-4"
                   size="sm"
                 >
-                  跳过引导
+                  {t('guide.skip')}
                 </Button>
               </div>
             </div>
@@ -307,7 +310,7 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
                 className="text-muted-foreground text-sm h-9"
                 size="sm"
               >
-                跳过引导
+                {t('guide.skip')}
               </Button>
 
               <div className="flex gap-2">
@@ -318,7 +321,7 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
                     className="h-9 text-sm font-medium"
                     size="sm"
                   >
-                    上一步
+                    {t('guide.previous')}
                   </Button>
                 )}
                 <Button
@@ -326,7 +329,7 @@ export function WelcomeGuide({ isOpen, onClose }: WelcomeGuideProps) {
                   className="bg-primary hover:bg-primary/90 h-9 text-sm font-medium shadow-sm"
                   size="sm"
                 >
-                  {currentStep < steps.length - 1 ? '下一步' : '开始使用'}
+                  {currentStep < steps.length - 1 ? t('guide.next') : t('guide.start')}
                 </Button>
               </div>
             </div>

@@ -112,6 +112,8 @@ export interface DailyStatus {
   wakeTime?: string // 起床时间 (HH:MM格式)
   sleepQuality?: number // 睡眠质量 1-6
   sleepNotes?: string // 睡眠补充说明
+  sleepHours?: number // 睡眠时长（小时）
+  waterIntake?: number // 水分摄入（升）
 }
 
 // 日志类型
@@ -292,4 +294,189 @@ export interface UserAuth {
 
 export interface AppState {
   // ... existing code ...
+}
+
+// MCP 相关类型定义
+export interface MCPToolProvider {
+  id: string
+  name: string
+  description: string
+  serverUrl: string // 支持URL (https://...) 或命令行命令 (rednote-mcp --stdio)
+  serverUrlHash?: string // 用于检查重复的 URL 哈希
+  serverId: string
+  authConfig?: {
+    type: 'oauth' | 'apikey' | 'none'
+    credentials?: Record<string, string>
+  }
+  encryptedCredentials?: string // 加密的凭据存储
+  tools: MCPTool[]
+  isActive: boolean
+  isAuthed?: boolean // 认证状态
+  createdAt: string
+  updatedAt: string
+  userId: string
+  tenantId?: string
+  lastUsedAt?: string // 最后使用时间
+  usageCount?: number // 使用次数
+  errorCount?: number // 错误次数
+  lastErrorAt?: string // 最后错误时间
+  lastErrorMessage?: string // 最后错误消息
+  allowedOrigins?: string[] // 允许的来源域名
+  ipWhitelist?: string[] // IP 白名单
+  connectionTimeout?: number // 连接超时时间
+  requestTimeout?: number // 请求超时时间
+  maxConcurrentRequests?: number // 最大并发请求数
+}
+
+export interface MCPTool {
+  name: string
+  description: string
+  inputSchema: Record<string, any>
+  outputSchema?: Record<string, any>
+  category: 'health_data' | 'analysis' | 'recommendation' | 'external'
+  permissions: string[]
+  rateLimit?: {
+    requests: number
+    window: number // seconds
+  }
+}
+
+export interface MCPRequest {
+  id: string
+  method: string
+  params: Record<string, any>
+  timestamp: number
+}
+
+export interface MCPResponse {
+  id: string
+  result?: any
+  error?: {
+    code: number
+    message: string
+    data?: any
+  }
+  timestamp: number
+}
+
+export interface HealthDataContext {
+  userId: string
+  dateRange: {
+    start: string
+    end: string
+  }
+  dataTypes: ('weight' | 'food' | 'exercise' | 'sleep' | 'mood')[]
+  aggregationLevel: 'daily' | 'weekly' | 'monthly'
+  includeAnalysis: boolean
+  includePredictions: boolean
+}
+
+export interface RAGQuery {
+  query: string
+  context: HealthDataContext
+  vectorThreshold: number
+  maxResults: number
+  includeMetadata: boolean
+}
+
+export interface RAGResult {
+  documents: {
+    content: string
+    metadata: Record<string, any>
+    score: number
+    source: string
+  }[]
+  query: string
+  totalResults: number
+  processingTime: number
+}
+
+export interface FunctionCallTool {
+  name: string
+  description: string
+  parameters: Record<string, any>
+  handler: (params: any, context: any) => Promise<any>
+  permissions: string[]
+  category: string
+}
+
+export interface AIToolContext {
+  userId: string
+  sessionId: string
+  userProfile: UserProfile
+  healthData: DailyLog[]
+  permissions: string[]
+  rateLimits: Record<string, number>
+}
+
+// 新增：MCP 认证状态
+export interface MCPAuthStatus {
+  isAuthed: boolean
+  authType: 'oauth' | 'apikey' | 'none'
+  authUrl?: string
+  expiresAt?: string
+  refreshToken?: string
+  lastAuthAt?: string
+  authError?: string
+}
+
+// 新增：MCP 使用统计
+export interface MCPUsageStats {
+  providerId: string
+  totalRequests: number
+  successfulRequests: number
+  failedRequests: number
+  averageResponseTime: number
+  lastRequestAt?: string
+  requestsByTool: Record<string, number>
+  errorsByType: Record<string, number>
+}
+
+// 新增：MCP 健康检查
+export interface MCPHealthCheck {
+  providerId: string
+  isHealthy: boolean
+  responseTime: number
+  lastCheckAt: string
+  availableTools: number
+  connectionType: string
+  errors: string[]
+  warnings: string[]
+}
+
+// 新增：MCP 配置验证
+export interface MCPConfigValidation {
+  isValid: boolean
+  errors: string[]
+  warnings: string[]
+  suggestions: string[]
+  securityScore: number // 0-100 的安全评分
+}
+
+// 新增：MCP 事件日志
+export interface MCPEventLog {
+  id: string
+  providerId: string
+  eventType: 'connection' | 'tool_call' | 'auth' | 'error' | 'config_change'
+  eventData: Record<string, any>
+  userId: string
+  timestamp: string
+  severity: 'info' | 'warning' | 'error' | 'critical'
+  message: string
+}
+
+// 新增：MCP 安全配置
+export interface MCPSecurityConfig {
+  enableEncryption: boolean
+  requireAuth: boolean
+  allowedOrigins: string[]
+  ipWhitelist: string[]
+  rateLimits: {
+    requestsPerMinute: number
+    burstLimit: number
+    toolSpecificLimits: Record<string, number>
+  }
+  tokenExpiration: number
+  auditLogging: boolean
+  dataRetentionDays: number
 }

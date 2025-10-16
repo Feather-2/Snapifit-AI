@@ -18,6 +18,7 @@ import { useLocalStorage } from "@/hooks/use-local-storage"
 import { useIndexedDB } from "@/hooks/use-indexed-db"
 import { useAIMemory } from "@/hooks/use-ai-memory"
 import { useSync } from "@/hooks/use-sync"
+import { useDataImport } from "@/hooks/use-data-import"
 import type { AIConfig, ModelConfig } from "@/lib/types"
 import type { OpenAIModel } from "@/lib/openai-client"
 import {
@@ -31,7 +32,8 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import { Check, ChevronsUpDown, Download, Loader2, Network, Plus, RefreshCw, Settings, Upload, UploadCloud, X } from "lucide-react"
+import { Check, CheckCircle, ChevronsUpDown, Download, Gift, Loader2, Network, Plus, RefreshCw, Settings, Shield, Ticket, Upload, UploadCloud, Users, X } from "lucide-react"
+import Link from "next/link"
 import { useTranslation } from "@/hooks/use-i18n"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -100,7 +102,7 @@ const defaultAIConfig: AIConfig = {
     }
   },
   visionModel: {
-    name: "gpt-4o",
+    name: "gemini-2.5-flash-preview-05-20",
     baseUrl: "https://api.openai.com",
     apiKey: "",
     source: 'shared', // 默认使用共享模型
@@ -233,6 +235,94 @@ const SharedPoolConfigurator = ({
   );
 };
 
+// 邀请码兑换组件
+const InviteCodeRedemption = () => {
+  const { toast } = useToast()
+  const t = useTranslation('settings')
+  const [code, setCode] = useState('')
+  const [isRedeeming, setIsRedeeming] = useState(false)
+
+  const handleRedeem = async () => {
+    if (!code.trim()) {
+      toast({
+        title: t('inviteCodes.redemption.enterCode'),
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsRedeeming(true)
+    try {
+      const response = await fetch('/api/invite-codes/use', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: code.trim() })
+      })
+
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: t('inviteCodes.redemption.success'),
+          description: t('inviteCodes.redemption.successDescription'),
+        })
+        setCode('')
+        // 延迟刷新页面
+        setTimeout(() => {
+          window.location.reload()
+        }, 2000)
+      } else {
+        toast({
+          title: t('inviteCodes.redemption.failed'),
+          description: result.error || t('inviteCodes.redemption.invalidCode'),
+          variant: "destructive"
+        })
+      }
+    } catch (error) {
+      toast({
+        title: t('inviteCodes.redemption.failed'),
+        description: t('inviteCodes.redemption.networkError'),
+        variant: "destructive"
+      })
+    } finally {
+      setIsRedeeming(false)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Input
+          placeholder={t('inviteCodes.redemption.placeholder')}
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          className="flex-1"
+          maxLength={17} // 12字符 + 2个连字符 + 一些容错
+        />
+        <Button
+          onClick={handleRedeem}
+          disabled={isRedeeming || !code.trim()}
+          className="px-6"
+        >
+          {isRedeeming ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {t('inviteCodes.redemption.redeeming')}
+            </>
+          ) : (
+            t('inviteCodes.redemption.redeem')
+          )}
+        </Button>
+      </div>
+      <div className="text-xs text-muted-foreground">
+        <p>• {t('inviteCodes.redemption.formatInfo')}</p>
+        <p>• {t('inviteCodes.redemption.upgradeInfo')}</p>
+        <p>• {t('inviteCodes.redemption.oneTimeUse')}</p>
+      </div>
+    </div>
+  )
+}
+
 function SettingsContent() {
   const { toast } = useToast()
   const t = useTranslation('settings')
@@ -246,12 +336,14 @@ function SettingsContent() {
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get('tab')
     // 更健壮的检查，确保 activeTab 始终是字符串
-    return (tabParam && ['profile', 'goals', 'ai', 'data'].includes(tabParam)) ? tabParam : 'profile'
+    const validTabs = ['account', 'profile', 'goals', 'ai', 'data', 'inviteCodes']
+    return (tabParam && validTabs.includes(tabParam)) ? tabParam : 'account'
   })
 
   const { clearAllData } = useIndexedDB("healthLogs")
   const { memories, updateMemory, clearMemory, clearAllMemories } = useAIMemory()
   const { isSyncing, lastSynced, syncProgress, syncAll, pushMemories, pullMemories, pushProfile, pullProfile, shouldAutoSync, clearThrottleState, SYNC_THROTTLE_MINUTES } = useSync()
+  const { importData, isImporting, importProgress } = useDataImport()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 记忆编辑状态管理
@@ -390,6 +482,16 @@ function SettingsContent() {
   const [formData, setFormData] = useState(defaultUserProfile)
   const [aiFormData, setAIFormData] = useState(defaultAIConfig)
 
+  // 账户信息状态
+  const [accountData, setAccountData] = useState({
+    displayName: '',
+    email: '',
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  })
+  const [isUpdatingAccount, setIsUpdatingAccount] = useState(false)
+
   // 模型列表状态
   const [agentModels, setAgentModels] = useState<OpenAIModel[]>([])
   const [chatModels, setChatModels] = useState<OpenAIModel[]>([])
@@ -409,6 +511,19 @@ function SettingsContent() {
   useEffect(() => {
     setAIFormData(aiConfig)
   }, [aiConfig])
+
+  // 初始化账户数据
+  useEffect(() => {
+    if (session?.user) {
+      setAccountData({
+        displayName: session.user.displayName || session.user.name || '',
+        email: session.user.email || '',
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      })
+    }
+  }, [session])
 
   // 获取可用的共享Key列表，并只在组件挂载时运行一次
   useEffect(() => {
@@ -508,6 +623,114 @@ function SettingsContent() {
       return newConfig;
     });
   };
+
+  // 处理账户信息输入变化
+  const handleAccountInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setAccountData(prev => {
+      const newData = {
+        ...prev,
+        [name]: value
+      }
+
+      // 如果修改的是新密码，清空确认密码字段
+      if (name === 'newPassword') {
+        newData.confirmPassword = ''
+      }
+
+      return newData
+    })
+  }, [])
+
+  // 更新账户信息
+  const handleUpdateAccount = useCallback(async () => {
+    if (!session?.user?.id) {
+      toast({
+        title: t('account.error'),
+        description: t('account.userNotLoggedIn'),
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // 验证邮箱格式
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (accountData.email && !emailRegex.test(accountData.email)) {
+      toast({
+        title: t('account.emailFormatError'),
+        description: t('account.enterValidEmail'),
+        variant: 'destructive'
+      })
+      return
+    }
+
+    // 验证密码
+    if (accountData.newPassword) {
+      if (accountData.newPassword !== accountData.confirmPassword) {
+        toast({
+          title: t('account.passwordMismatchTitle'),
+          description: t('account.passwordMismatchDescription'),
+          variant: 'destructive'
+        })
+        return
+      }
+      if (accountData.newPassword.length < 8) {
+        toast({
+          title: t('account.passwordTooShort'),
+          description: t('account.passwordMinLength'),
+          variant: 'destructive'
+        })
+        return
+      }
+    }
+
+    setIsUpdatingAccount(true)
+    try {
+      const response = await fetch('/api/user/update-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          displayName: accountData.displayName,
+          email: accountData.email,
+          currentPassword: accountData.currentPassword || undefined,
+          newPassword: accountData.newPassword || undefined
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || t('account.updateFailed'))
+      }
+
+      // 清空密码字段
+      setAccountData(prev => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      }))
+
+      toast({
+        title: t('account.updateSuccess'),
+        description: t('account.updateSuccessDescription')
+      })
+
+      // 刷新session以获取最新数据
+      window.location.reload()
+    } catch (error) {
+      console.error('Update account error:', error)
+      toast({
+        title: t('account.updateFailed'),
+        description: error instanceof Error ? error.message : t('account.unknownError'),
+        variant: 'destructive'
+      })
+    } finally {
+      setIsUpdatingAccount(false)
+    }
+  }, [accountData, session, toast])
 
   // 保存用户配置
   const handleSaveProfile = useCallback(async () => {
@@ -618,7 +841,7 @@ function SettingsContent() {
       if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
         console.error("❌ Non-JSON response:", text.substring(0, 200));
-        throw new Error("服务器返回了非JSON响应，可能是API地址错误或服务器故障");
+        throw new Error(t('ai.serverReturnedNonJsonResponse'));
       }
 
       const result = await response.json();
@@ -640,9 +863,9 @@ function SettingsContent() {
 
       // 特殊处理常见错误
       if (error.message?.includes("Unexpected token '<'")) {
-        errorMessage = "API地址可能不正确：服务器返回了网页而不是API响应";
+        errorMessage = t('ai.apiAddressMayBeIncorrect');
       } else if (error.message?.includes("Failed to fetch")) {
-        errorMessage = "网络连接失败：请检查API地址和网络连接";
+        errorMessage = t('ai.networkConnectionFailed');
       }
 
       toast({
@@ -779,92 +1002,25 @@ function SettingsContent() {
     }
   }, [userProfile, aiConfig, toast, t]);
 
-  // 导入数据
+  // 导入数据（使用新的hook）
   const handleImportData = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const content = e.target?.result as string;
-          const importedData = JSON.parse(content);
+      const result = await importData(file, setUserProfile, setAIConfig, t);
 
-          if (!importedData.userProfile || !importedData.healthLogs) {
-            throw new Error(t('data.importErrorDescription'));
-          }
+      if (result.success) {
+        // 重新加载页面以确保状态同步
+        setTimeout(() => window.location.reload(), result.cloudSuccess ? 1000 : 2000);
+      }
 
-          setUserProfile(importedData.userProfile);
-          if (importedData.aiConfig) {
-            setAIConfig(importedData.aiConfig);
-          }
-
-          const dbOpenRequest = window.indexedDB.open(DB_NAME, DB_VERSION);
-
-          dbOpenRequest.onupgradeneeded = (event) => {
-            const db = (event.target as IDBOpenDBRequest).result;
-            if (!db.objectStoreNames.contains("healthLogs")) {
-              db.createObjectStore("healthLogs");
-            }
-            if (!db.objectStoreNames.contains("aiMemories")) {
-              db.createObjectStore("aiMemories");
-            }
-          };
-
-          dbOpenRequest.onsuccess = (event) => {
-            const db = (event.target as IDBOpenDBRequest).result;
-            const transaction = db.transaction(["healthLogs", "aiMemories"], "readwrite");
-            const healthLogsStore = transaction.objectStore("healthLogs");
-            const aiMemoriesStore = transaction.objectStore("aiMemories");
-
-            healthLogsStore.clear().onsuccess = () => {
-              Object.entries(importedData.healthLogs).forEach(([key, value]) => {
-                healthLogsStore.add(value, key);
-              });
-            };
-
-            if (importedData.aiMemories) {
-              aiMemoriesStore.clear().onsuccess = () => {
-                Object.entries(importedData.aiMemories).forEach(([key, value]) => {
-                  aiMemoriesStore.add(value, key);
-                });
-              };
-            }
-
-            transaction.oncomplete = () => {
-              toast({
-                title: t('data.importSuccessTitle'),
-                description: t('data.importSuccessDescription'),
-              });
-              // 重新加载页面以确保状态同步
-              window.location.reload();
-            };
-
-            transaction.onerror = (event) => {
-              console.error("Import transaction error:", (event.target as IDBTransaction).error);
-              throw new Error(t('data.importErrorDescription'));
-            };
-          };
-
-          dbOpenRequest.onerror = (event) => {
-            console.error("DB open error on import:", (event.target as IDBOpenDBRequest).error);
-            throw new Error(t('data.importErrorDescription'));
-          };
-
-        } catch (error) {
-          console.error("Import data failed:", error);
-          toast({
-            title: t('data.importErrorTitle'),
-            description: error instanceof Error ? error.message : t('data.importErrorDescription'),
-            variant: "destructive",
-          });
-        }
-      };
-
-      reader.readAsText(file);
+      // 清空文件输入
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     },
-    [setUserProfile, setAIConfig, toast, t]
+    [importData, setUserProfile, setAIConfig, t]
   );
 
   // 清空所有数据
@@ -942,41 +1098,326 @@ function SettingsContent() {
       <h1 className="text-2xl md:text-3xl font-bold mb-6">{t('title')}</h1>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        {/* 移动端：水平滚动布局 */}
-        <TabsList className="md:hidden flex h-auto p-1 bg-muted rounded-lg overflow-x-auto w-full">
-          <TabsTrigger
-            value="profile"
-            className="flex-shrink-0 text-sm px-3 py-2 whitespace-nowrap"
-          >
-            {t('tabs.profile')}
-          </TabsTrigger>
-          <TabsTrigger
-            value="goals"
-            className="flex-shrink-0 text-sm px-3 py-2 whitespace-nowrap"
-          >
-            {t('tabs.goals')}
-          </TabsTrigger>
-          <TabsTrigger
-            value="ai"
-            className="flex-shrink-0 text-sm px-3 py-2 whitespace-nowrap"
-          >
-            {t('tabs.ai')}
-          </TabsTrigger>
-          <TabsTrigger
-            value="data"
-            className="flex-shrink-0 text-sm px-3 py-2 whitespace-nowrap"
-          >
-            {t('tabs.data')}
-          </TabsTrigger>
+        {/* 移动端：两行网格布局 */}
+        <TabsList className="md:hidden h-auto p-1 bg-muted rounded-lg w-full flex-col space-y-1">
+          {/* 第一行：主要功能 */}
+          <div className="grid grid-cols-4 gap-1 w-full">
+            <TabsTrigger
+              value="account"
+              className="text-xs px-2 py-2 h-auto flex flex-col items-center gap-1"
+            >
+              <span className="text-[10px] leading-tight text-center">{t('tabs.account')}</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="profile"
+              className="text-xs px-2 py-2 h-auto flex flex-col items-center gap-1"
+            >
+              <span className="text-[10px] leading-tight text-center">{t('tabs.profile')}</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="goals"
+              className="text-xs px-2 py-2 h-auto flex flex-col items-center gap-1"
+            >
+              <span className="text-[10px] leading-tight text-center">{t('tabs.goals')}</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="ai"
+              className="text-xs px-2 py-2 h-auto flex flex-col items-center gap-1"
+            >
+              <span className="text-[10px] leading-tight text-center">{t('tabs.ai')}</span>
+            </TabsTrigger>
+          </div>
+
+          {/* 第二行：扩展功能 */}
+          <div className="grid gap-1 w-full grid-cols-2">
+            <TabsTrigger
+              value="data"
+              className="text-xs px-2 py-2 h-auto flex flex-col items-center gap-1"
+            >
+              <span className="text-[10px] leading-tight text-center">{t('tabs.data')}</span>
+            </TabsTrigger>
+            <TabsTrigger
+              value="inviteCodes"
+              className="text-xs px-2 py-2 h-auto flex flex-col items-center gap-1"
+            >
+              <span className="text-[10px] leading-tight text-center">{t('tabs.inviteCodes')}</span>
+            </TabsTrigger>
+          </div>
         </TabsList>
 
         {/* 桌面端：网格布局 */}
-        <TabsList className="hidden md:grid w-full grid-cols-4">
+        <TabsList className="hidden md:grid w-full grid-cols-6">
+          <TabsTrigger value="account" className="text-base px-4">{t('tabs.account')}</TabsTrigger>
           <TabsTrigger value="profile" className="text-base px-4">{t('tabs.profile')}</TabsTrigger>
           <TabsTrigger value="goals" className="text-base px-4">{t('tabs.goals')}</TabsTrigger>
           <TabsTrigger value="ai" className="text-base px-4">{t('tabs.ai')}</TabsTrigger>
           <TabsTrigger value="data" className="text-base px-4">{t('tabs.data')}</TabsTrigger>
+          <TabsTrigger value="inviteCodes" className="text-base px-4">{t('tabs.inviteCodes')}</TabsTrigger>
         </TabsList>
+
+        {/* 账户信息 */}
+        <TabsContent value="account">
+          <Card>
+            <CardHeader className="px-4 md:px-6">
+              <CardTitle>{t('account.title')}</CardTitle>
+              <CardDescription>{t('account.description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 px-4 md:px-6">
+              {/* 当前账户信息显示 */}
+              {session?.user && (
+                <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                  <h4 className="font-medium text-sm">{t('account.currentAccountInfo')}</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">{t('account.username')}：</span>
+                      <span className="font-medium">{session.user.name}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{t('account.trustLevel')}：</span>
+                      <span className="font-medium">LV{session.user.trustLevel || 0}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{t('account.loginMethod')}：</span>
+                      <span className="font-medium">
+                        {(session.user as any).provider === 'github' ? t('account.loginMethods.github') :
+                         (session.user as any).provider === 'google' ? t('account.loginMethods.google') :
+                         t('account.loginMethods.credentials')}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">{t('account.registrationTime')}：</span>
+                      <span className="font-medium">
+                        {(session.user as any).createdAt ? new Date((session.user as any).createdAt).toLocaleDateString('zh-CN') : t('account.unknown')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 基本信息编辑 */}
+              <div className="space-y-4">
+                <h4 className="font-medium">{t('account.basicInfo')}</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="displayName">{t('account.displayName')}</Label>
+                    <Input
+                      id="displayName"
+                      name="displayName"
+                      value={accountData.displayName}
+                      onChange={handleAccountInputChange}
+                      placeholder={t('account.displayNamePlaceholder')}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t('account.displayNameHelp')}
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">{t('account.email')}</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={accountData.email}
+                      onChange={handleAccountInputChange}
+                      placeholder={t('account.emailPlaceholder')}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      {t('account.emailHelp')}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 密码修改 */}
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">{t('account.changePassword')}</h4>
+                  {((session?.user as any)?.provider === 'github' || (session?.user as any)?.provider === 'google') && (
+                    <Badge variant="outline" className="text-xs">
+                      {t('account.oauthUser')}
+                    </Badge>
+                  )}
+                </div>
+
+                {((session?.user as any)?.provider === 'github' || (session?.user as any)?.provider === 'google') ? (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-start gap-3">
+                      <div className="text-amber-600 dark:text-amber-400 mt-0.5">
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                      <div className="space-y-1">
+                        <h5 className="font-medium text-amber-900 dark:text-amber-100">{t('account.setPassword')}</h5>
+                        <p className="text-sm text-amber-800 dark:text-amber-200">
+                          {t('account.setPasswordNotice')}
+                          <strong className="block mt-1">{t('account.setPasswordWarning')}</strong>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {t('account.changePasswordDescription')}
+                  </p>
+                )}
+
+                <div className="space-y-4">
+                  {/* 对于已有密码的用户，需要输入当前密码 */}
+                  {(session?.user as any)?.provider === 'credentials' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword">{t('account.currentPassword')}</Label>
+                      <Input
+                        id="currentPassword"
+                        name="currentPassword"
+                        type="password"
+                        value={accountData.currentPassword}
+                        onChange={handleAccountInputChange}
+                        placeholder={t('account.currentPasswordPlaceholder')}
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">
+                        {(session?.user as any)?.provider === 'credentials' ? t('account.newPassword') : t('account.setPassword')}
+                      </Label>
+                      <Input
+                        id="newPassword"
+                        name="newPassword"
+                        type="password"
+                        value={accountData.newPassword}
+                        onChange={handleAccountInputChange}
+                        placeholder={
+                          (session?.user as any)?.provider === 'credentials'
+                            ? t('account.newPasswordPlaceholder')
+                            : t('account.setPasswordPlaceholder')
+                        }
+                      />
+                    </div>
+
+                    {/* 确认密码字段只在输入新密码后显示 */}
+                    {accountData.newPassword && (
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">{t('account.confirmPassword')}</Label>
+                        <Input
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          type="password"
+                          value={accountData.confirmPassword}
+                          onChange={handleAccountInputChange}
+                          placeholder={t('account.confirmPasswordPlaceholder')}
+                        />
+                        {accountData.newPassword && accountData.confirmPassword &&
+                         accountData.newPassword !== accountData.confirmPassword && (
+                          <p className="text-xs text-destructive">
+                            {t('account.passwordMismatch')}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      • {t('account.passwordRequirements')}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      • {t('account.passwordRecommendation')}
+                    </p>
+                    {((session?.user as any)?.provider === 'github' || (session?.user as any)?.provider === 'google') && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400">
+                        • {t('account.oauthPasswordNote')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* 原来的密码修改部分，现在移除 */}
+              {false && (
+                <div className="space-y-4 pt-4 border-t">
+                  <h4 className="font-medium">修改密码</h4>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword">当前密码</Label>
+                      <Input
+                        id="currentPassword"
+                        name="currentPassword"
+                        type="password"
+                        value={accountData.currentPassword}
+                        onChange={handleAccountInputChange}
+                        placeholder="输入当前密码"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="newPassword">新密码</Label>
+                        <Input
+                          id="newPassword"
+                          name="newPassword"
+                          type="password"
+                          value={accountData.newPassword}
+                          onChange={handleAccountInputChange}
+                          placeholder="输入新密码"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirmPassword">确认新密码</Label>
+                        <Input
+                          id="confirmPassword"
+                          name="confirmPassword"
+                          type="password"
+                          value={accountData.confirmPassword}
+                          onChange={handleAccountInputChange}
+                          placeholder="再次输入新密码"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      密码至少需要6个字符
+                    </p>
+                  </div>
+                </div>
+              )}
+
+
+            </CardContent>
+            <CardFooter className="px-4 md:px-6">
+              <div className="flex flex-col md:flex-row gap-3 w-full">
+                <Button
+                  onClick={handleUpdateAccount}
+                  disabled={isUpdatingAccount}
+                  className="w-full md:w-auto"
+                >
+                  {isUpdatingAccount ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      {t('account.updating')}
+                    </>
+                  ) : (
+                    t('account.saveAccount')
+                  )}
+                </Button>
+
+                {/* 管理面板按钮 - 仅管理员可见 */}
+                {session?.user && ((session.user as any)?.role === 'admin' || (session.user as any)?.role === 'super_admin') && (
+                  <Button
+                    asChild
+                    variant="outline"
+                    className="w-full md:w-auto"
+                  >
+                    <Link href="/admin" className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      {t('account.adminPanel')}
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </CardFooter>
+          </Card>
+        </TabsContent>
 
         {/* 个人信息 */}
         <TabsContent value="profile">
@@ -1871,21 +2312,57 @@ function SettingsContent() {
               <div className="space-y-2">
                 <h3 className="text-lg font-medium">{t('data.importData')}</h3>
                 <p className="text-sm text-muted-foreground">{t('data.importDescription')}</p>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="file"
-                    accept=".json"
-                    onChange={handleImportData}
-                    className="hidden"
-                    ref={fileInputRef}
-                  />
-                  <Button
-                    variant="outline"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    <UploadCloud className="mr-2 h-4 w-4" />
-                    {t('data.selectFile')}
-                  </Button>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="file"
+                      accept=".json"
+                      onChange={handleImportData}
+                      className="hidden"
+                      ref={fileInputRef}
+                      disabled={isImporting}
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isImporting}
+                    >
+                      {isImporting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {t('data.importing')}
+                        </>
+                      ) : (
+                        <>
+                          <UploadCloud className="mr-2 h-4 w-4" />
+                          {t('data.selectFile')}
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* 导入进度显示 */}
+                  {importProgress && (
+                    <div className="space-y-2 p-3 bg-muted/50 rounded-lg">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground">{importProgress.message}</span>
+                        <span className="font-medium">{importProgress.progress}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div
+                          className="bg-primary h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${importProgress.progress}%` }}
+                        />
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {importProgress.stage === 'parsing' && '正在解析文件...'}
+                        {importProgress.stage === 'local' && '正在更新本地数据...'}
+                        {importProgress.stage === 'cloud' && '正在同步到云端...'}
+                        {importProgress.stage === 'complete' && '导入完成'}
+                        {importProgress.stage === 'error' && '导入失败'}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1913,6 +2390,131 @@ function SettingsContent() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* 邀请码管理 */}
+        <TabsContent value="inviteCodes">
+          <Card>
+            <CardHeader className="px-4 md:px-6">
+              <CardTitle>{t('inviteCodes.title')}</CardTitle>
+              <CardDescription>{t('inviteCodes.description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* 用户等级信息 */}
+              <div className="bg-muted/30 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">{t('inviteCodes.currentLevel')}</span>
+                  <span className="text-lg font-bold text-primary">
+                    LV{session?.user?.trustLevel || 0}
+                  </span>
+                </div>
+                {session?.user?.trustLevel && session.user.trustLevel >= 3 ? (
+                  <p className="text-sm text-green-600 dark:text-green-400">
+                    {t('inviteCodes.canCreateCodes')}
+                  </p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    {t('inviteCodes.needsConfiguration')}
+                  </p>
+                )}
+              </div>
+
+              {/* 邀请码管理入口 */}
+              <Card className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0">
+                    <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <Ticket className="h-6 w-6 text-white" />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-semibold mb-2">{t('inviteCodes.title')}</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {session?.user?.trustLevel && session.user.trustLevel >= 3
+                        ? t('inviteCodes.managementDescription')
+                        : t('inviteCodes.upgradeDescription')
+                      }
+                    </p>
+
+                    {/* 功能列表 */}
+                    <div className="space-y-2 mb-4">
+                      {session?.user?.trustLevel && session.user.trustLevel >= 3 ? (
+                        <>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            {t('inviteCodes.viewAndManage')}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            {t('inviteCodes.createNew')}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            {t('inviteCodes.viewStatistics')}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Gift className="h-4 w-4 text-amber-600" />
+                            {t('inviteCodes.useInviteCode')}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Shield className="h-4 w-4 text-amber-600" />
+                            {t('inviteCodes.unlockDailyQuota')}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Users className="h-4 w-4 text-amber-600" />
+                            {t('inviteCodes.getCreatePermission')}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    <Button
+                      asChild
+                      className="w-full sm:w-auto"
+                      variant={session?.user?.trustLevel && session.user.trustLevel >= 3 ? "default" : "default"}
+                    >
+                      <Link href="/invite-codes" className="flex items-center gap-2">
+                        {session?.user?.trustLevel && session.user.trustLevel >= 3 ? (
+                          <>
+                            <Settings className="h-4 w-4" />
+                            {t('inviteCodes.manageInviteCodes')}
+                          </>
+                        ) : (
+                          <>
+                            <Gift className="h-4 w-4" />
+                            {t('inviteCodes.upgradeToLV3')}
+                          </>
+                        )}
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+
+              {/* 邀请码兑换区域 */}
+              {(!session?.user?.trustLevel || session.user.trustLevel < 3) && (
+                <Card className="border-2 border-dashed border-primary/20 bg-primary/5">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Ticket className="h-5 w-5 text-primary" />
+                      {t('inviteCodes.quickRedemption')}
+                    </CardTitle>
+                    <CardDescription>
+                      {t('inviteCodes.quickRedemptionDescription')}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <InviteCodeRedemption />
+                  </CardContent>
+                </Card>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+
       </Tabs>
 
       {/* 关于与帮助 */}
@@ -1960,17 +2562,17 @@ function SettingsContent() {
           </div>
 
           <div>
-            <h3 className="text-lg font-medium">使用引导</h3>
+            <h3 className="text-lg font-medium">{t('about.guideTitle')}</h3>
             <p className="text-sm text-muted-foreground mb-3">
-              重新查看初次使用时的引导说明，了解Snapifit AI社区版的特色功能。
+              {t('about.guideDescription')}
             </p>
             <Button
               variant="outline"
               onClick={() => {
                 resetGuide();
                 toast({
-                  title: "引导已重置",
-                  description: "欢迎引导将在页面刷新后显示",
+                  title: t('about.guideReset'),
+                  description: t('about.guideResetDescription'),
                 });
               }}
               className="flex items-center gap-2"
@@ -1978,7 +2580,7 @@ function SettingsContent() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              重新显示使用引导
+              {t('about.showGuide')}
             </Button>
           </div>
         </CardContent>

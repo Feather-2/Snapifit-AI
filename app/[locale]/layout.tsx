@@ -3,11 +3,10 @@ import type { Metadata } from "next"
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import "../globals.css"
-import { Toaster } from "@/components/ui/toaster"
-import { MainNav } from "@/components/main-nav"
 import { locales, type Locale } from '@/i18n';
 import { Providers } from "@/components/providers";
 import { auth } from "@/lib/auth";
+import { ClientLayout } from "@/components/layout/ClientLayout";
 
 export const metadata: Metadata = {
   title: "Snapifit AI",
@@ -44,11 +43,9 @@ export default async function LocaleLayout({
       timeZone="Asia/Shanghai"
       initialSession={session}
     >
-      <div className="min-h-screen bg-background">
-        <MainNav locale={locale} />
-        <main>{children}</main>
-      </div>
-      <Toaster />
+      <ClientLayout locale={locale}>
+        {children}
+      </ClientLayout>
     </Providers>
   )
 }

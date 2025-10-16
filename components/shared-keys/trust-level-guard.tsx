@@ -1,6 +1,7 @@
 "use client"
 
 import { useSession } from "next-auth/react"
+import { usePathname } from "next/navigation"
 import { Card, CardContent } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -20,6 +21,8 @@ export function TrustLevelGuard({
   showCurrentLevel = true
 }: TrustLevelGuardProps) {
   const { data: session, status } = useSession()
+  const pathname = usePathname()
+  const locale = pathname.split('/')[1] || 'zh'
   const t = useTranslation('sharedKeys')
 
   // 加载中状态
@@ -48,7 +51,7 @@ export function TrustLevelGuard({
             {t('trustLevel.loginDescription')}
           </p>
           <Button asChild>
-            <a href="/api/auth/signin">
+            <a href={`/${locale}/signin`}>
               <ExternalLink className="w-4 h-4 mr-2" />
               {t('trustLevel.loginButton')}
             </a>
@@ -102,17 +105,11 @@ export function TrustLevelGuard({
               </div>
             </div>
 
-            <Button asChild variant="outline">
-              <a
-                href="https://linux.do"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2"
-              >
-                <ExternalLink className="w-4 h-4" />
-                {t('trustLevel.visitCommunity')}
-              </a>
-            </Button>
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                {t('trustLevel.contactAdmin')}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -130,12 +127,17 @@ export function useTrustLevelCheck() {
   const userTrustLevel = session?.user?.trustLevel || 0
   const canUseSharedService = userTrustLevel >= 1 && userTrustLevel <= 4
 
+  // 使用动态权限检查（考虑环境变量）
+  const { hasPermission } = require('@/config/trust-level-limits')
+  const canShareKeys = canUseSharedService && hasPermission(userTrustLevel, 'canShareKeys')
+  const canManageKeys = canUseSharedService && hasPermission(userTrustLevel, 'canManageKeys')
+
   return {
     isLoggedIn: !!session?.user,
     trustLevel: userTrustLevel,
     canUseSharedService,
-    canShareKeys: canUseSharedService,
-    canManageKeys: canUseSharedService,
+    canShareKeys,
+    canManageKeys,
     isVipUser: userTrustLevel >= 3 && userTrustLevel <= 4
   }
 }

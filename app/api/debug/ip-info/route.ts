@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientIP, isLocalIP, formatIPForDisplay } from '@/lib/ip-utils';
+import { checkDebugAccess } from '@/lib/debug-utils';
 
 export async function GET(request: NextRequest) {
+  // 检查 debug 访问权限
+  const accessCheck = checkDebugAccess();
+  if (accessCheck) {
+    return accessCheck;
+  }
+
   try {
     // 获取所有可能的IP相关头部
     const headers = {
@@ -18,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     // 获取处理后的客户端IP
     const clientIP = getClientIP(request);
-    
+
     // 获取原始的 req.ip
     const rawIP = request.ip;
 

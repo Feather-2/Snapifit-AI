@@ -18,9 +18,10 @@ interface ExerciseEntryCardProps {
   entry: ExerciseEntry
   onDelete: () => void
   onUpdate: (updatedEntry: ExerciseEntry) => void
+  readOnly?: boolean // 新增只读模式属性
 }
 
-export function ExerciseEntryCard({ entry, onDelete, onUpdate }: ExerciseEntryCardProps) {
+export function ExerciseEntryCard({ entry, onDelete, onUpdate, readOnly = false }: ExerciseEntryCardProps) {
   const t = useTranslation('dashboard.exerciseCard')
   const [isEditing, setIsEditing] = useState(false)
   const [editedEntry, setEditedEntry] = useState<ExerciseEntry>({ ...entry })
@@ -219,14 +220,16 @@ export function ExerciseEntryCard({ entry, onDelete, onUpdate }: ExerciseEntryCa
                 <p className="text-xs text-muted-foreground mt-1">{t('muscleGroups')}: {entry.muscle_groups.join(", ")}</p>
               )}
             </div>
-            <div className="flex space-x-1 self-end sm:self-start">
-              <Button size="icon" variant="ghost" onClick={() => setIsEditing(true)} className="h-8 w-8 touch-manipulation">
-                <Edit2 className="h-4 w-4" />
-              </Button>
-              <Button size="icon" variant="ghost" onClick={onDelete} className="h-8 w-8 text-destructive hover:text-destructive touch-manipulation">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {!readOnly && (
+              <div className="flex space-x-1 self-end sm:self-start">
+                <Button size="icon" variant="ghost" onClick={() => setIsEditing(true)} className="h-8 w-8 touch-manipulation">
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={onDelete} className="h-8 w-8 text-destructive hover:text-destructive touch-manipulation">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

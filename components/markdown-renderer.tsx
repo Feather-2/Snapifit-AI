@@ -6,6 +6,7 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { cn } from "@/lib/utils"
 import "katex/dist/katex.min.css"
+import { Mermaid } from "@/components/mermaid"
 
 interface MarkdownRendererProps {
   content: string
@@ -42,14 +43,24 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
           blockquote: ({ children }) => (
             <blockquote className="border-l-4 border-muted-foreground pl-4 italic my-2">{children}</blockquote>
           ),
-          code: ({ inline, children }) =>
-            inline ? (
-              <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono break-words word-break-break-all">{children}</code>
-            ) : (
+          code: (props) => {
+            const { inline, className, children } = props as any
+            const codeContent = String(children)
+            const isMermaid = typeof className === 'string' && className.includes('language-mermaid')
+            if (inline) {
+              return (
+                <code className="bg-muted px-1 py-0.5 rounded text-sm font-mono break-words word-break-break-all">{children}</code>
+              )
+            }
+            if (isMermaid) {
+              return <Mermaid chart={codeContent} className="my-3" />
+            }
+            return (
               <div className="bg-muted p-3 rounded-md overflow-x-auto my-2 max-w-full w-full">
                 <code className="text-sm font-mono whitespace-pre-wrap break-words word-break-break-all block w-full">{children}</code>
               </div>
-            ),
+            )
+          },
           table: ({ children }) => (
             <div className="overflow-x-auto my-2">
               <table className="min-w-full border-collapse border border-border">{children}</table>

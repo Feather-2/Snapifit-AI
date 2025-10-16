@@ -3,6 +3,20 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Shield, Star, Crown, User } from "lucide-react"
 
+// 获取代理后的头像URL
+function getProxiedAvatarUrl(avatarUrl?: string): string | undefined {
+  if (!avatarUrl) return undefined
+
+  // 对于需要代理的头像URL，使用代理服务
+  // 这里可以根据需要添加特定域名的代理逻辑
+  if (avatarUrl.startsWith('https://') && !avatarUrl.includes('localhost')) {
+    return `/api/proxy/avatar?url=${encodeURIComponent(avatarUrl)}`
+  }
+
+  // 其他头像直接返回
+  return avatarUrl
+}
+
 interface UserAvatarProps {
   user: {
     id?: string
@@ -16,15 +30,15 @@ interface UserAvatarProps {
   className?: string
 }
 
-export function UserAvatar({ 
-  user, 
-  size = 'md', 
+export function UserAvatar({
+  user,
+  size = 'md',
   showTrustLevel = true,
-  className = '' 
+  className = ''
 }: UserAvatarProps) {
   const getTrustLevelBadge = (trustLevel?: number) => {
     if (!trustLevel || trustLevel < 1 || trustLevel > 4) return null
-    
+
     switch (trustLevel) {
       case 1:
         return <Shield className="h-2.5 w-2.5 text-blue-500" title="LV1" />
@@ -46,13 +60,13 @@ export function UserAvatar({
       badge: "w-3 h-3 -top-0.5 -right-0.5"
     },
     sm: {
-      avatar: "h-6 w-6", 
+      avatar: "h-6 w-6",
       fallback: "text-xs",
       badge: "w-3.5 h-3.5 -top-0.5 -right-0.5"
     },
     md: {
       avatar: "h-8 w-8",
-      fallback: "text-xs", 
+      fallback: "text-xs",
       badge: "w-4 h-4 -top-1 -right-1"
     },
     lg: {
@@ -70,12 +84,13 @@ export function UserAvatar({
   const sizes = sizeClasses[size]
   const displayName = user.displayName || user.username || 'User'
   const fallbackText = displayName.charAt(0).toUpperCase()
+  const proxiedAvatarUrl = getProxiedAvatarUrl(user.avatarUrl)
 
   if (!showTrustLevel || !user.trustLevel || user.trustLevel < 1 || user.trustLevel > 4) {
     // 简单头像，无等级角标
     return (
       <Avatar className={`${sizes.avatar} ${className}`}>
-        <AvatarImage src={user.avatarUrl} />
+        <AvatarImage src={proxiedAvatarUrl} />
         <AvatarFallback className={sizes.fallback}>
           {fallbackText}
         </AvatarFallback>
@@ -87,12 +102,12 @@ export function UserAvatar({
   return (
     <div className={`relative ${className}`}>
       <Avatar className={sizes.avatar}>
-        <AvatarImage src={user.avatarUrl} />
+        <AvatarImage src={proxiedAvatarUrl} />
         <AvatarFallback className={sizes.fallback}>
           {fallbackText}
         </AvatarFallback>
       </Avatar>
-      
+
       {/* 信任等级角标 */}
       <div className={`absolute ${sizes.badge} rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-sm`}>
         {getTrustLevelBadge(user.trustLevel)}
@@ -102,15 +117,15 @@ export function UserAvatar({
 }
 
 // 简化版本，只显示头像
-export function SimpleUserAvatar({ 
-  user, 
+export function SimpleUserAvatar({
+  user,
   size = 'md',
-  className = '' 
+  className = ''
 }: Omit<UserAvatarProps, 'showTrustLevel'>) {
   return (
-    <UserAvatar 
-      user={user} 
-      size={size} 
+    <UserAvatar
+      user={user}
+      size={size}
       showTrustLevel={false}
       className={className}
     />
@@ -118,15 +133,15 @@ export function SimpleUserAvatar({
 }
 
 // 带等级的头像（强制显示等级）
-export function TrustLevelAvatar({ 
-  user, 
+export function TrustLevelAvatar({
+  user,
   size = 'md',
-  className = '' 
+  className = ''
 }: Omit<UserAvatarProps, 'showTrustLevel'>) {
   return (
-    <UserAvatar 
-      user={user} 
-      size={size} 
+    <UserAvatar
+      user={user}
+      size={size}
       showTrustLevel={true}
       className={className}
     />
@@ -134,40 +149,40 @@ export function TrustLevelAvatar({
 }
 
 // 头像组合组件（头像 + 用户名 + 等级）
-export function UserAvatarWithName({ 
-  user, 
+export function UserAvatarWithName({
+  user,
   size = 'md',
   showTrustLevel = true,
   layout = 'horizontal',
   className = ''
-}: UserAvatarProps & { 
-  layout?: 'horizontal' | 'vertical' 
+}: UserAvatarProps & {
+  layout?: 'horizontal' | 'vertical'
 }) {
   const isHorizontal = layout === 'horizontal'
-  
+
   return (
     <div className={`flex ${isHorizontal ? 'items-center gap-2' : 'flex-col items-center gap-1'} ${className}`}>
-      <UserAvatar 
-        user={user} 
-        size={size} 
+      <UserAvatar
+        user={user}
+        size={size}
         showTrustLevel={showTrustLevel}
       />
-      
+
       <div className={`${isHorizontal ? 'flex-1 min-w-0' : 'text-center'}`}>
         <p className={`font-medium truncate ${
-          size === 'xs' ? 'text-xs' : 
-          size === 'sm' ? 'text-sm' : 
-          size === 'lg' ? 'text-base' : 
+          size === 'xs' ? 'text-xs' :
+          size === 'sm' ? 'text-sm' :
+          size === 'lg' ? 'text-base' :
           size === 'xl' ? 'text-lg' : 'text-sm'
         }`}>
           {user.displayName || user.username}
         </p>
-        
+
         {user.displayName && user.username && user.displayName !== user.username && (
           <p className={`text-muted-foreground truncate ${
-            size === 'xs' ? 'text-xs' : 
-            size === 'sm' ? 'text-xs' : 
-            size === 'lg' ? 'text-sm' : 
+            size === 'xs' ? 'text-xs' :
+            size === 'sm' ? 'text-xs' :
+            size === 'lg' ? 'text-sm' :
             size === 'xl' ? 'text-base' : 'text-xs'
           }`}>
             @{user.username}
@@ -179,8 +194,8 @@ export function UserAvatarWithName({
 }
 
 // 用于排行榜的用户头像组件
-export function LeaderboardUserAvatar({ 
-  user, 
+export function LeaderboardUserAvatar({
+  user,
   rank,
   className = ''
 }: {
@@ -190,20 +205,20 @@ export function LeaderboardUserAvatar({
 }) {
   const getRankBadge = (rank?: number) => {
     if (!rank || rank > 3) return null
-    
+
     const colors = {
       1: 'bg-yellow-500 text-white',
-      2: 'bg-gray-400 text-white', 
+      2: 'bg-gray-400 text-white',
       3: 'bg-amber-600 text-white'
     }
-    
+
     return (
       <div className={`absolute -top-1 -left-1 w-4 h-4 rounded-full ${colors[rank as keyof typeof colors]} flex items-center justify-center text-xs font-bold`}>
         {rank}
       </div>
     )
   }
-  
+
   return (
     <div className={`relative ${className}`}>
       <UserAvatar user={user} size="md" showTrustLevel={true} />

@@ -1,7 +1,6 @@
 // Supabase 数据库提供商实现
 import { createClient } from '@supabase/supabase-js'
 import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import type {
   DatabaseClient,
   ServerDatabaseClient,
@@ -47,6 +46,11 @@ export class SupabaseProvider implements DatabaseClient {
       }
     }
     return this.client
+  }
+
+  // 公共方法，用于兼容性适配器获取原生客户端
+  public getNativeClient() {
+    return this.getClient()
   }
 
   async select<T = any>(table: string, options?: QueryOptions): Promise<QueryResult<T[]>> {
@@ -194,6 +198,8 @@ export class SupabaseServerProvider extends SupabaseProvider implements ServerDa
   }
 
   async createServerClient() {
+    // 动态导入 cookies 以避免客户端构建错误
+    const { cookies } = await import('next/headers')
     const cookieStore = await cookies()
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

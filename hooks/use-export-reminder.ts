@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useIndexedDB } from './use-indexed-db'
+import { usePageVisibility } from './use-page-visibility'
 
 interface ExportReminderState {
   shouldRemind: boolean
@@ -19,6 +20,7 @@ export function useExportReminder(): ExportReminderState {
   })
 
   const { getAllData, waitForInitialization } = useIndexedDB('healthLogs')
+  const { createSmartInterval, clearSmartInterval } = usePageVisibility()
 
   const checkDataSpan = useCallback(async (): Promise<{ hasData: boolean; spanDays: number }> => {
     try {
@@ -91,7 +93,7 @@ export function useExportReminder(): ExportReminderState {
         const daysDiff = Math.floor(timeDiff / (1000 * 60 * 60 * 24))
 
         setReminderState({
-          shouldRemind: daysDiff >= 2,
+          shouldRemind: daysDiff >= 14,
           daysSinceLastExport: daysDiff,
           lastExportDate: lastExportTime,
           hasEnoughData: true,
@@ -111,10 +113,10 @@ export function useExportReminder(): ExportReminderState {
 
     checkExportReminder()
 
-    // 每小时检查一次
-    const interval = setInterval(checkExportReminder, 60 * 60 * 1000)
+    // 每小时检查一次 - 使用智能定时器，在后台标签页中暂停
+    const interval = createSmartInterval(checkExportReminder, 60 * 60 * 1000)
 
-    return () => clearInterval(interval)
+    return () => clearSmartInterval(interval)
   }, [checkDataSpan])
 
   return reminderState

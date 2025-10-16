@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { ipBanManager } from '@/lib/ip-ban-manager';
+import { getIPBanManager } from '@/lib/ip-ban-manager';
 import { logSecurityEvent } from '@/lib/security-monitor';
 import { getClientIP } from '@/lib/ip-utils';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 // 检查管理员权限
 async function checkAdminPermission(userId: string): Promise<boolean> {
@@ -39,6 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取统计信息
+    const ipBanManager = getIPBanManager();
     const stats = await ipBanManager.getBanStats();
 
     return NextResponse.json({

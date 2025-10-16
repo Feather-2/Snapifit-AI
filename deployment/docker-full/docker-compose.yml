@@ -1,0 +1,304 @@
+# Snapifit AI - 完整技术栈 Docker Compose 配置
+# 包含应用、数据库、缓存、反向代理的完整部署方案
+
+# version 字段已弃用，删除以避免警告
+
+services:
+  # ==========================================
+  # Supabase PostgreSQL 数据库
+  # ==========================================
+  db:
+    image: supabase/postgres:17.4.1.043
+    container_name: snapfit-postgres
+
+    environment:
+      # PostgreSQL 标准配置 - 使用 postgres 作为默认超级用户
+      POSTGRES_DB: ${POSTGRES_DB:-snapfit_ai}
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C --auth-host=scram-sha-256 --auth-local=scram-sha-256"
+      TZ: ${TZ:-Asia/Shanghai}
+
+      # Supabase 特定配置
+      SUPABASE_DB_USER: ${POSTGRES_USER:-snapfit_user}
+      SUPABASE_DB_PASSWORD: ${POSTGRES_PASSWORD}
+
+    volumes:
+      # 数据持久化
+      - postgres_data:/var/lib/postgresql/data
+      # 备份目录
+      - ./backups:/backups
+      # 数据库初始化脚本
+      - ./init-scripts:/docker-entrypoint-initdb.d
+      # 数据库架构文件
+      - ../database/empty_database_schema.sql:/docker-entrypoint-initdb.d/empty_database_schema.sql:ro
+
+    # 数据库端口不暴露到外部，只在Docker内部网络可访问
+    # 如果需要外部访问数据库（如开发调试），取消下面注释
+    # ports:
+    #   - "${POSTGRES_PORT:-5432}:5432"
+
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "${POSTGRES_DB:-snapfit_ai}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+    restart: unless-stopped
+
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - snapfit-network
+
+    labels:
+      - "com.snapfit.service=database"
+      - "com.snapfit.version=17.4.1.043"
+
+  # ==========================================
+  # Redis 缓存 (可选 - 如果不需要可以注释掉整个redis服务)
+  # ==========================================
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: Snapifit-redis
+
+  #   command: >
+  #     redis-server
+  #     --maxmemory 256mb
+  #     --maxmemory-policy allkeys-lru
+  #     --appendonly yes
+  #     --appendfsync everysec
+  #     --save 900 1
+  #     --save 300 10
+  #     --save 60 10000
+
+  #   volumes:
+  #     - redis_data:/data
+  #     - ./redis/redis.conf:/etc/redis/redis.conf:ro
+
+  #   ports:
+  #     - "${REDIS_PORT:-6379}:6379"
+
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  #   restart: unless-stopped
+
+  #   networks:
+  #     - Snapifit-network
+
+  #   labels:
+  #     - "com.Snapifit.service=cache"
+  #     - "com.Snapifit.version=7"
+
+  # ==========================================
+  # SnapFit AI 主应用
+  # ==========================================
+  snapfit-ai:
+    image: snapfit-ai:latest
+    container_name: snapfit-ai-app
+
+    environment:
+      # 基础配置
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - TZ=${TZ:-Asia/Shanghai}
+
+      # 部署配置
+      - DEPLOYMENT_TYPE=${DEPLOYMENT_TYPE:-http}
+      - FORCE_HTTPS=${FORCE_HTTPS:-false}
+      - DB_SSL=${DB_SSL:-false}
+
+      # 数据库配置
+      - DB_PROVIDER=postgresql
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-snapfit_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-snapfit_ai}?sslmode=disable
+
+      # 认证配置
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:38000}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+
+      # OAuth 配置
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+
+      # 安全配置
+      - KEY_ENCRYPTION_SECRET=${KEY_ENCRYPTION_SECRET}
+
+      # Redis 配置 (可选 - 如果启用Redis服务，取消注释)
+      # - REDIS_URL=redis://redis:6379
+
+      # 应用元数据
+      - APP_NAME=${APP_NAME:-Snapifit AI}
+      - APP_VERSION=${APP_VERSION:-1.0.0}
+
+      # 日志配置
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+
+      # 新增 AUTH_TRUST_HOST 配置
+      - AUTH_TRUST_HOST=true
+
+      # 权限管理配置
+      - ALLOW_NON_SUPER_ADMIN_SHARE_KEYS=${ALLOW_NON_SUPER_ADMIN_SHARE_KEYS:-true}
+      - ALLOW_NON_SUPER_ADMIN_CREATE_INVITE_CODES=${ALLOW_NON_SUPER_ADMIN_CREATE_INVITE_CODES:-true}
+      - ALLOW_NON_THIRD_PARTY_SOURCES=${ALLOW_NON_THIRD_PARTY_SOURCES:-true}
+
+    env_file:
+      - .env
+
+    ports:
+      - "${APP_HOST_PORT:-38000}:${APP_CONTAINER_PORT:-3000}"
+
+    volumes:
+      # 应用缓存
+      - app_cache:/app/.next/cache
+      # 日志目录
+      - ./logs:/app/logs
+      # 上传文件 (可选)
+      - ./uploads:/app/uploads
+
+    depends_on:
+      db:
+        condition: service_healthy
+      # Redis是可选的，如果不需要可以注释掉
+      # redis:
+      #   condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+    restart: unless-stopped
+
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
+
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    networks:
+      - snapfit-network
+
+    labels:
+      - "com.snapfit.service=app"
+      - "com.snapfit.version=1.0.0"
+      - "traefik.enable=true"
+      - "traefik.http.routers.snapfit.rule=Host(`${DOMAIN:-localhost}`)"
+      - "traefik.http.services.snapfit.loadbalancer.server.port=3000"
+
+  # ==========================================
+  # Nginx 反向代理 (可选 - 单应用部署通常不需要)
+  # ==========================================
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: Snapifit-nginx
+
+  #   ports:
+  #     - "${HTTP_PORT:-80}:80"
+  #     - "${HTTPS_PORT:-443}:443"
+
+  #   volumes:
+  #     # Nginx 配置
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./nginx/conf.d:/etc/nginx/conf.d:ro
+  #     # SSL 证书 (如果有)
+  #     - ./nginx/ssl:/etc/nginx/ssl:ro
+  #     # 静态文件
+  #     - ./nginx/html:/usr/share/nginx/html:ro
+  #     # 日志
+  #     - ./nginx/logs:/var/log/nginx
+
+  #   depends_on:
+  #     - Snapifit-ai
+
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+  #   restart: unless-stopped
+
+  #   networks:
+  #     - Snapifit-network
+
+  #   labels:
+  #     - "com.Snapifit.service=proxy"
+  #     - "com.Snapifit.version=alpine"
+
+# ==========================================
+# 网络配置
+# ==========================================
+networks:
+  snapfit-network:
+    driver: bridge
+    name: snapfit-network
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.30.0.0/16
+          gateway: 172.30.0.1
+
+# ==========================================
+# 卷配置
+# ==========================================
+volumes:
+  # PostgreSQL 数据
+  postgres_data:
+    driver: local
+    name: snapfit-postgres-data
+
+  # Redis 数据 (如果启用Redis服务，取消注释)
+  # redis_data:
+  #   driver: local
+  #   name: snapfit-redis-data
+
+  # 应用缓存
+  app_cache:
+    driver: local
+    name: snapfit-app-cache
+
+# ==========================================
+# 配置说明
+# ==========================================
+# 1. 简化的技术栈：应用 + 数据库
+# 2. 所有服务都有健康检查和自动重启
+# 3. 数据持久化通过 Docker 卷实现
+# 4. 支持通过环境变量自定义配置
+# 5. 包含资源限制和日志管理
+# 6. 可选服务（Redis、Nginx）默认禁用
+# 7. 适合单应用部署，无需负载均衡

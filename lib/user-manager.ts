@@ -1,4 +1,5 @@
-import { supabaseAdmin } from './supabase'
+import { getSupabaseAdmin } from './supabase'
+import { hasPermission as trustLevelHasPermission } from '@/config/trust-level-limits'
 
 export interface LinuxDoProfile {
   id: number
@@ -33,7 +34,10 @@ export interface UserProfile {
 }
 
 export class UserManager {
-  private supabase = supabaseAdmin
+  // 获取数据库客户端
+  private async getSupabase() {
+    return await getSupabaseAdmin()
+  }
 
   // 创建或更新用户信息（OAuth登录时调用）
   async upsertUser(profile: LinuxDoProfile): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
@@ -42,7 +46,8 @@ export class UserManager {
       const now = new Date().toISOString()
 
       // 检查用户是否已存在
-      const { data: existingUser, error: fetchError } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data: existingUser, error: fetchError } = await supabase
         .from('users')
         .select('*')
         .eq('linux_do_id', linuxDoId)
@@ -69,7 +74,7 @@ export class UserManager {
       let result
       if (existingUser) {
         // 更新现有用户
-        result = await this.supabase
+        result = await supabase
           .from('users')
           .update(userData)
           .eq('id', existingUser.id)
@@ -77,7 +82,7 @@ export class UserManager {
           .single()
       } else {
         // 创建新用户
-        result = await this.supabase
+        result = await supabase
           .from('users')
           .insert({
             ...userData,
@@ -104,7 +109,8 @@ export class UserManager {
   // 根据ID获取用户信息
   async getUserById(userId: string): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
@@ -127,7 +133,8 @@ export class UserManager {
   // 根据Linux.do ID获取用户信息
   async getUserByLinuxDoId(linuxDoId: string): Promise<{ success: boolean; user?: UserProfile; error?: string }> {
     try {
-      const { data, error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('linux_do_id', linuxDoId)
@@ -161,25 +168,27 @@ export class UserManager {
     try {
       const today = new Date().toISOString().split('T')[0]
 
+      const supabase = await this.getSupabase()
+
       // 总用户数
-      const { count: totalUsers } = await this.supabase
+      const { count: totalUsers } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
 
       // 活跃用户数
-      const { count: activeUsers } = await this.supabase
+      const { count: activeUsers } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true)
 
       // 今日新用户
-      const { count: newUsersToday } = await this.supabase
+      const { count: newUsersToday } = await supabase
         .from('users')
         .select('*', { count: 'exact', head: true })
         .gte('created_at', today)
 
       // 顶级贡献者（按共享Key数量）
-      const { data: topContributors } = await this.supabase
+      const { data: topContributors } = await supabase
         .from('users')
         .select(`
           id,
@@ -212,7 +221,8 @@ export class UserManager {
   // 更新用户最后登录时间
   async updateLastLogin(userId: string): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await this.supabase
+      const supabase = await this.getSupabase()
+      const { error } = await supabase
         .from('users')
         .update({
           last_login_at: new Date().toISOString(),
@@ -237,18 +247,18 @@ export class UserManager {
   private formatUserProfile(data: any): UserProfile {
     return {
       id: data.id,
-      linuxDoId: data.linux_do_id,
+      linuxDoId: data.linux_do_id || '',
       username: data.username,
       displayName: data.display_name || data.username,
       email: data.email,
-      avatarUrl: data.avatar_url,
+      avatarUrl: data.avatar_url || '',
       trustLevel: data.trust_level || 0,
-      isActive: data.is_active,
-      isSilenced: data.is_silenced,
-      lastLoginAt: data.last_login_at,
+      isActive: data.is_active !== false, // 默认为 true，除非明确设置为 false
+      isSilenced: data.is_silenced === true, // 默认为 false，除非明确设置为 true
+      lastLoginAt: data.last_login_at || '',
       loginCount: data.login_count || 0,
-      createdAt: data.created_at,
-      updatedAt: data.updated_at
+      createdAt: data.created_at || '',
+      updatedAt: data.updated_at || ''
     }
   }
 
@@ -257,12 +267,24 @@ export class UserManager {
     return trustLevel >= 1 && trustLevel <= 4 // 只有LV1-4可以使用共享服务
   }
 
-  canShareKeys(trustLevel: number): boolean {
-    return this.canUseSharedService(trustLevel) // 必须先能使用共享服务
+  canShareKeys(trustLevel: number, userRole?: string): boolean {
+    // 首先检查基础权限
+    if (!this.canUseSharedService(trustLevel)) {
+      return false
+    }
+
+    // 使用信任等级配置的动态权限检查（考虑环境变量）
+    return trustLevelHasPermission(trustLevel, 'canShareKeys')
   }
 
-  canManageKeys(trustLevel: number): boolean {
-    return this.canUseSharedService(trustLevel) // 必须先能使用共享服务
+  canManageKeys(trustLevel: number, userRole?: string): boolean {
+    // 首先检查基础权限
+    if (!this.canUseSharedService(trustLevel)) {
+      return false
+    }
+
+    // 使用信任等级配置的动态权限检查（考虑环境变量）
+    return trustLevelHasPermission(trustLevel, 'canManageKeys')
   }
 
   isVipUser(trustLevel: number): boolean {

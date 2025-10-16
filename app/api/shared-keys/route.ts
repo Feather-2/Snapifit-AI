@@ -5,6 +5,10 @@ import { auth } from '@/lib/auth' // 引入 next-auth 的 auth 方法
 import { validateBaseURL } from '@/lib/url-validator'
 import { logSecurityEvent } from '@/lib/security-monitor'
 import { getClientIP } from '@/lib/ip-utils'
+import { secureCache } from '@/lib/cache/secure-cache'
+import { PermissionHelper } from '@/lib/env-config'
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 // 获取用户的共享Key列表
 export async function GET(request: NextRequest) {
@@ -46,16 +50,32 @@ export async function POST(request: NextRequest) {
     }
     const userId = session.user.id
 
-    // 检查用户信任等级权限
-    const userManager = new UserManager()
-    const userResult = await userManager.getUserById(userId)
-    if (!userResult.success || !userResult.user) {
+    // 检查用户信任等级权限（使用缓存）
+    console.log('🔧 [API/SHARED-KEYS] POST - Getting user info for:', userId)
+
+    const securityContext = {
+      userId: userId,
+      sessionId: userId,
+      permissions: ['user']
+    }
+
+    const userInfo = await secureCache.getUserBasicInfo(userId, securityContext)
+
+    if (!userInfo) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    if (!userManager.canUseSharedService(userResult.user.trustLevel)) {
+    const userManager = new UserManager()
+    if (!userManager.canUseSharedService(userInfo.trust_level)) {
       return NextResponse.json({
         error: '您的信任等级不足，只有LV1-4用户可以使用共享服务'
+      }, { status: 403 })
+    }
+
+    // 使用统一权限检查（考虑环境变量配置）
+    if (!PermissionHelper.canShareKeysUnified(userInfo.role, userInfo.trust_level)) {
+      return NextResponse.json({
+        error: '您没有分享密钥的权限。根据当前系统配置，只有超级管理员可以分享密钥。'
       }, { status: 403 })
     }
 
@@ -170,16 +190,32 @@ export async function PUT(request: NextRequest) {
     }
     const userId = session.user.id
 
-    // 检查用户信任等级权限
-    const userManager = new UserManager()
-    const userResult = await userManager.getUserById(userId)
-    if (!userResult.success || !userResult.user) {
+    // 检查用户信任等级权限（使用缓存）
+    console.log('🔧 [API/SHARED-KEYS] PUT - Getting user info for:', userId)
+
+    const securityContext = {
+      userId: userId,
+      sessionId: userId,
+      permissions: ['user']
+    }
+
+    const userInfo = await secureCache.getUserBasicInfo(userId, securityContext)
+
+    if (!userInfo) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    if (!userManager.canUseSharedService(userResult.user.trustLevel)) {
+    const userManager = new UserManager()
+    if (!userManager.canUseSharedService(userInfo.trust_level)) {
       return NextResponse.json({
         error: '您的信任等级不足，只有LV1-4用户可以使用共享服务'
+      }, { status: 403 })
+    }
+
+    // 使用统一权限检查（考虑环境变量配置）
+    if (!PermissionHelper.canShareKeysUnified(userInfo.role, userInfo.trust_level)) {
+      return NextResponse.json({
+        error: '您没有管理密钥的权限。根据当前系统配置，只有超级管理员可以管理密钥。'
       }, { status: 403 })
     }
 
@@ -225,16 +261,32 @@ export async function DELETE(request: NextRequest) {
     }
     const userId = session.user.id
 
-    // 检查用户信任等级权限
-    const userManager = new UserManager()
-    const userResult = await userManager.getUserById(userId)
-    if (!userResult.success || !userResult.user) {
+    // 检查用户信任等级权限（使用缓存）
+    console.log('🔧 [API/SHARED-KEYS] DELETE - Getting user info for:', userId)
+
+    const securityContext = {
+      userId: userId,
+      sessionId: userId,
+      permissions: ['user']
+    }
+
+    const userInfo = await secureCache.getUserBasicInfo(userId, securityContext)
+
+    if (!userInfo) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    if (!userManager.canUseSharedService(userResult.user.trustLevel)) {
+    const userManager = new UserManager()
+    if (!userManager.canUseSharedService(userInfo.trust_level)) {
       return NextResponse.json({
         error: '您的信任等级不足，只有LV1-4用户可以使用共享服务'
+      }, { status: 403 })
+    }
+
+    // 使用统一权限检查（考虑环境变量配置）
+    if (!PermissionHelper.canShareKeysUnified(userInfo.role, userInfo.trust_level)) {
+      return NextResponse.json({
+        error: '您没有管理密钥的权限。根据当前系统配置，只有超级管理员可以管理密钥。'
       }, { status: 403 })
     }
 

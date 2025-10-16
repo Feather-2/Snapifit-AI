@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/debug-guard';
 import { auth } from '@/lib/auth';
-import { ipBanManager } from '@/lib/ip-ban-manager';
-import { userBanManager } from '@/lib/user-ban-manager';
+import { getIPBanManager } from '@/lib/ip-ban-manager';
+import { getUserBanManager } from '@/lib/user-ban-manager';
 import { logSecurityEvent } from '@/lib/security-monitor';
 import { getClientIP } from '@/lib/ip-utils';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 export async function POST(request: NextRequest) {
+  // 检查调试访问权限
+  const debugCheck = checkDebugAccess();
+  if (debugCheck) return debugCheck;
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -15,10 +21,13 @@ export async function POST(request: NextRequest) {
 
     const userId = session.user.id;
     const ip = getClientIP(request);
-    
+    const supabaseAdmin = await getSupabaseAdmin();
+
     console.log(`[FULL-BAN-TEST] Starting comprehensive ban test for user ${userId} from IP ${ip}`);
 
     // 第一步：检查当前状态
+    const ipBanManager = getIPBanManager();
+    const userBanManager = getUserBanManager();
     const initialState = {
       user: {
         id: userId,
@@ -41,7 +50,7 @@ export async function POST(request: NextRequest) {
 
     // 第三步：模拟用户级别的速率限制违规
     console.log(`[FULL-BAN-TEST] Creating user-level security events...`);
-    
+
     const userEvents = [];
     for (let i = 0; i < 4; i++) { // 创建4个事件，超过阈值3
       const eventResult = await logSecurityEvent({
@@ -59,7 +68,7 @@ export async function POST(request: NextRequest) {
         }
       });
       userEvents.push(`User event ${i + 1} created`);
-      
+
       // 小延迟确保时间戳不同
       await new Promise(resolve => setTimeout(resolve, 100));
     }
@@ -81,7 +90,7 @@ export async function POST(request: NextRequest) {
     let debugInfo = {};
     if (!userBannedAfterCheck) {
       console.log(`[FULL-BAN-TEST] User not banned, investigating...`);
-      
+
       // 检查数据库中的事件
       const { data: dbEvents, error } = await supabaseAdmin
         .from('security_events')
@@ -154,7 +163,7 @@ export async function POST(request: NextRequest) {
         userBansInDB: userBans || [],
         testSummary: {
           userWasBanned: finalState.user.isBanned,
-          banMethod: finalState.user.isBanned ? 
+          banMethod: finalState.user.isBanned ?
             (userBannedAfterCheck ? 'automatic' : 'manual_fallback') : 'none',
           eventsCreated: userEvents.length,
           testCompleted: true
@@ -174,6 +183,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  // 检查调试访问权限
+  const debugCheck = checkDebugAccess();
+  if (debugCheck) return debugCheck;
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -182,6 +194,7 @@ export async function GET(request: NextRequest) {
 
     const userId = session.user.id;
     const ip = getClientIP(request);
+    const supabaseAdmin = await getSupabaseAdmin();
 
     // 获取当前状态
     const currentState = {

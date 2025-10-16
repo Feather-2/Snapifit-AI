@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/debug-guard';
 import { auth } from '@/lib/auth';
-import { ipBanManager } from '@/lib/ip-ban-manager';
+import { getIPBanManager } from '@/lib/ip-ban-manager';
 import { getClientIP } from '@/lib/ip-utils';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 export async function POST(request: NextRequest) {
+  // 检查调试访问权限
+  const debugCheck = checkDebugAccess();
+  if (debugCheck) return debugCheck;
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -15,9 +21,12 @@ export async function POST(request: NextRequest) {
     const { targetIP } = await request.json();
     const checkIP = targetIP || ip;
 
+    // 获取数据库客户端
+    const supabaseAdmin = await getSupabaseAdmin()
+
     // 检查最近的安全事件
     const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
-    
+
     const { data: recentEvents, error } = await supabaseAdmin
       .from('security_events')
       .select('*')
@@ -31,6 +40,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 检查当前封禁状态
+    const ipBanManager = getIPBanManager();
     const isBanned = await ipBanManager.isIPBanned(checkIP);
 
     // 手动触发自动封禁检查

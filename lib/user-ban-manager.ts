@@ -3,7 +3,7 @@
  * 管理用户账户的封禁和限制
  */
 
-import { supabaseAdmin } from './supabase';
+import { getSupabaseAdmin } from './supabase';
 import { logSecurityEvent } from './security-monitor';
 
 export interface UserBanRecord {
@@ -31,6 +31,7 @@ export class UserBanManager {
   private static instance: UserBanManager;
   private bannedUsers = new Map<string, UserBanRecord>();
   private readonly CACHE_REFRESH_INTERVAL = 5 * 60 * 1000; // 5分钟刷新缓存
+  private refreshInterval: NodeJS.Timeout | null = null;
 
   // 自动封禁规则配置
   private readonly AUTO_BAN_RULES: UserBanRule[] = [
@@ -85,13 +86,56 @@ export class UserBanManager {
   ];
 
   constructor() {
-    // 定期刷新缓存
-    setInterval(() => {
-      this.refreshBanCache();
-    }, this.CACHE_REFRESH_INTERVAL);
+    // 获取数据库提供商配置
+    const DB_PROVIDER = process.env.DB_PROVIDER || 'supabase'
+
+    // 无论使用哪种数据库，都需要初始化基本功能
+    // 只在服务器端或可见页面中启动定期刷新
+    if (typeof window === 'undefined') {
+      // 服务器端始终运行
+      this.startRefreshInterval();
+    } else {
+      // 客户端根据页面可见性决定
+      this.setupVisibilityListener();
+    }
 
     // 初始化时加载封禁列表
     this.refreshBanCache();
+  }
+
+  private startRefreshInterval() {
+    if (this.refreshInterval) return;
+    this.refreshInterval = setInterval(() => {
+      this.refreshBanCache();
+    }, this.CACHE_REFRESH_INTERVAL);
+  }
+
+  private stopRefreshInterval() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
+  }
+
+  private setupVisibilityListener() {
+    if (typeof document === 'undefined') return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('[UserBanManager] Page hidden, stopping refresh interval');
+        this.stopRefreshInterval();
+      } else {
+        console.log('[UserBanManager] Page visible, starting refresh interval');
+        this.startRefreshInterval();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 初始状态检查
+    if (!document.hidden) {
+      this.startRefreshInterval();
+    }
   }
 
   static getInstance(): UserBanManager {
@@ -118,6 +162,7 @@ export class UserBanManager {
 
     // 从数据库查询
     try {
+      const supabaseAdmin = await getSupabaseAdmin();
       const { data: banRecord, error } = await supabaseAdmin
         .from('user_bans')
         .select('*')
@@ -182,6 +227,7 @@ export class UserBanManager {
       };
 
       // 保存到数据库
+      const supabaseAdmin = await getSupabaseAdmin();
       const { data, error } = await supabaseAdmin
         .from('user_bans')
         .insert({
@@ -282,6 +328,7 @@ export class UserBanManager {
     try {
       const timeWindow = new Date(Date.now() - rule.timeWindow * 60 * 1000);
 
+      const supabaseAdmin = await getSupabaseAdmin();
       const { data: events, error } = await supabaseAdmin
         .from('security_events')
         .select('id')
@@ -307,6 +354,7 @@ export class UserBanManager {
   async unbanUser(userId: string, reason: string = 'manual'): Promise<{ success: boolean; error?: string }> {
     try {
       // 更新数据库
+      const supabaseAdmin = await getSupabaseAdmin();
       const { error } = await supabaseAdmin
         .from('user_bans')
         .update({
@@ -348,6 +396,7 @@ export class UserBanManager {
    */
   async getBanDetails(userId: string): Promise<{ success: boolean; data?: UserBanRecord; error?: string }> {
     try {
+      const supabaseAdmin = await getSupabaseAdmin();
       const { data: banRecord, error } = await supabaseAdmin
         .from('user_bans')
         .select('*')
@@ -392,6 +441,8 @@ export class UserBanManager {
   }> {
     try {
       const offset = (page - 1) * limit;
+
+      const supabaseAdmin = await getSupabaseAdmin();
 
       // 获取总数
       const { count, error: countError } = await supabaseAdmin
@@ -446,6 +497,7 @@ export class UserBanManager {
    */
   private async refreshBanCache(): Promise<void> {
     try {
+      const supabaseAdmin = await getSupabaseAdmin();
       const { data: bans, error } = await supabaseAdmin
         .from('user_bans')
         .select('*')
@@ -486,5 +538,7 @@ export class UserBanManager {
   }
 }
 
-// 导出单例实例
-export const userBanManager = UserBanManager.getInstance();
+// 导出单例实例获取函数（延迟初始化）
+export function getUserBanManager() {
+  return UserBanManager.getInstance();
+}

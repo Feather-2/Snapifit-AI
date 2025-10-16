@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { KeyManager } from '@/lib/key-manager';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
 
 // 限制更新频率，避免过于频繁的调用
 const UPDATE_COOLDOWN_MINUTES = 30;
 
 export async function POST() {
   const keyManager = new KeyManager();
+  const supabaseAdmin = await getSupabaseAdmin();
 
   try {
     // 1. 检查是否有需要更新的密钥
@@ -22,7 +23,7 @@ export async function POST() {
     }
 
     if (!keysNeedingUpdate || keysNeedingUpdate.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'No keys need updating at this time.',
         nextUpdateAvailable: new Date(Date.now() + UPDATE_COOLDOWN_MINUTES * 60 * 1000).toISOString()
       });
@@ -41,7 +42,7 @@ export async function POST() {
       try {
         const apiKey = keyManager.decryptApiKeyPublic(key.api_key_encrypted);
         const firstModel = key.available_models && key.available_models.length > 0 ? key.available_models[0] : 'gpt-4o';
-        
+
         // 设置较短的超时时间
         const { availableModels } = await keyManager.testApiKey(key.base_url, apiKey, firstModel);
 
@@ -49,12 +50,12 @@ export async function POST() {
           // 更新模型列表并清除更新标记
           const { error: updateError } = await supabaseAdmin
             .from('shared_keys')
-            .update({ 
-              available_models: availableModels, 
+            .update({
+              available_models: availableModels,
               updated_at: new Date().toISOString(),
-              metadata: supabaseAdmin.rpc('jsonb_delete_key', { 
-                input_jsonb: key.metadata || {}, 
-                key_to_delete: 'needs_model_update' 
+              metadata: supabaseAdmin.rpc('jsonb_delete_key', {
+                input_jsonb: key.metadata || {},
+                key_to_delete: 'needs_model_update'
               })
             })
             .eq('id', key.id);
@@ -117,6 +118,7 @@ export async function POST() {
 // GET 方法用于检查更新状态
 export async function GET() {
   try {
+    const supabaseAdmin = await getSupabaseAdmin();
     const { data: keysNeedingUpdate, error } = await supabaseAdmin
       .from('shared_keys')
       .select('id, updated_at')

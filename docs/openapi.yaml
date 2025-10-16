@@ -1,0 +1,349 @@
+openapi: 3.0.3
+info:
+  title: Snapifit Health MCP API
+  version: 1.0.0
+  description: |
+    用于管理 API Key、调用内置健康工具（MCP Producer）以及通过安全代理/桥接调用外部 MCP Provider 的统一接口。
+servers:
+  - url: http://localhost:3000
+    description: 本地开发环境
+tags:
+  - name: API Keys
+    description: 用户 API Key 的签发、列表与撤销
+  - name: MCP Internal Tools
+    description: 内置健康工具（不经外部进程，内部 Registry 执行）
+  - name: MCP Secure Proxy
+    description: 前端安全代理通道（短期 HMAC Token + 白名单 + 并发/大小限制）
+  - name: MCP Bridge
+    description: 外部 MCP Provider 的工具发现/调用与健康检查
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    SessionCookie:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+  schemas:
+    ApiKeyItem:
+      type: object
+      properties:
+        id: { type: string }
+        user_id: { type: string, format: uuid }
+        name: { type: string, nullable: true }
+        prefix: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+          nullable: true
+        allowed_tools:
+          type: array
+          items: { type: string }
+          nullable: true
+        expires_at: { type: string, format: date-time, nullable: true }
+        last_used_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        metadata: { type: object, nullable: true }
+    CreateApiKeyRequest:
+      type: object
+      properties:
+        name: { type: string }
+        scopes:
+          type: array
+          items: { type: string }
+        allowedTools:
+          type: array
+          items: { type: string }
+        ttlDays: { type: integer, minimum: 1, maximum: 365 }
+    CreateApiKeyResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        key: { type: string, description: 仅在签发时返回一次的明文 Key }
+        id: { type: string }
+        prefix: { type: string }
+        expiresAt: { type: string, format: date-time, nullable: true }
+    ListKeysResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        keys:
+          type: array
+          items: { $ref: '#/components/schemas/ApiKeyItem' }
+    RevokeResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+    HealthDataPostRequest:
+      type: object
+      properties:
+        tool:
+          type: string
+          description: 工具枚举，如 BMI_CALCULATOR、GET_USER_PROFILE 等
+        params:
+          type: object
+          additionalProperties: true
+        context:
+          type: object
+          additionalProperties: true
+    HealthDataResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        result: { type: object, additionalProperties: true }
+        timestamp: { type: string, format: date-time }
+    SecureProxyTokenResponse:
+      type: object
+      properties:
+        token: { type: string }
+        issuedAt: { type: string, format: date-time }
+    SecureProxyPostRequest:
+      type: object
+      required: [tool, securityToken]
+      properties:
+        tool: { type: string }
+        params: { type: object, additionalProperties: true }
+        context: { type: object, additionalProperties: true }
+        securityToken: { type: string }
+    SecureProxyResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        result: { type: object, additionalProperties: true, nullable: true }
+        duration: { type: number, nullable: true }
+        timestamp: { type: string, format: date-time, nullable: true }
+        tool: { type: string, nullable: true }
+        error: { type: string, nullable: true }
+    MCPBridgeCallRequest:
+      type: object
+      required: [action, provider_id, tool_name]
+      properties:
+        action:
+          type: string
+          enum: [call_tool]
+        provider_id: { type: string }
+        tool_name: { type: string }
+        params: { type: object, additionalProperties: true }
+    MCPBridgeCallResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        result: { type: object, additionalProperties: true, nullable: true }
+        error: { type: object, nullable: true }
+        duration: { type: number, nullable: true }
+        timestamp: { type: string, format: date-time, nullable: true }
+    MCPBridgeStatusResponse:
+      type: object
+      properties:
+        status: { type: string }
+        timestamp: { type: string, format: date-time }
+        providers:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              name: { type: string }
+              isActive: { type: boolean }
+    MCPBridgeHealthCheckResponse:
+      type: object
+      properties:
+        providerId: { type: string }
+        healthy: { type: boolean }
+        checkedAt: { type: string, format: date-time }
+        error: { type: string, nullable: true }
+
+paths:
+  /api/keys:
+    get:
+      tags: [API Keys]
+      summary: 列表当前用户的 API Keys
+      description: 需要登录会话。也可在 Apifox 中通过 Cookie 调试。
+      security:
+        - SessionCookie: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ListKeysResponse' }
+        '401': { description: 未授权 }
+    post:
+      tags: [API Keys]
+      summary: 签发新的 API Key
+      description: 需要登录会话；响应体中的 key 仅返回一次。
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateApiKeyRequest' }
+            example:
+              name: CI Key
+              ttlDays: 90
+              scopes: [call:health-tools]
+              allowedTools: [bmi_calculator, nutrition_calculator]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CreateApiKeyResponse' }
+        '401': { description: 未授权 }
+
+  /api/keys/{id}:
+    delete:
+      tags: [API Keys]
+      summary: 撤销指定 API Key
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: path
+          name: id
+          schema: { type: string }
+          required: true
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RevokeResponse' }
+        '401': { description: 未授权 }
+
+  /api/mcp/health-data:
+    get:
+      tags: [MCP Internal Tools]
+      summary: 列出可用的内置健康工具
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  tools:
+                    type: array
+                    items: { type: string }
+                  count: { type: integer }
+    post:
+      tags: [MCP Internal Tools]
+      summary: 调用内置健康工具
+      security:
+        - ApiKeyAuth: []
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HealthDataPostRequest' }
+            example:
+              tool: BMI_CALCULATOR
+              params: { weight: 68, height: 170 }
+      responses:
+        '200':
+          description: 执行结果
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthDataResponse' }
+        '401': { description: 未授权 }
+
+  /api/mcp/secure-proxy/token:
+    get:
+      tags: [MCP Secure Proxy]
+      summary: 获取短期 HMAC 安全令牌
+      description: 支持会话或 X-API-Key；令牌有效期约 5 分钟。
+      security:
+        - ApiKeyAuth: []
+        - SessionCookie: []
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SecureProxyTokenResponse' }
+        '401': { description: 未授权 }
+
+  /api/mcp/secure-proxy:
+    post:
+      tags: [MCP Secure Proxy]
+      summary: 通过安全代理调用允许的工具
+      description: 需携带 X-API-Key 或会话 + 有效的 securityToken。
+      security:
+        - ApiKeyAuth: []
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SecureProxyPostRequest' }
+            example:
+              tool: bmi_calculator
+              params: { weight: 68, height: 170 }
+              securityToken: hmac_xxx
+      responses:
+        '200':
+          description: 执行结果
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SecureProxyResponse' }
+        '401': { description: 未授权 }
+        '403': { description: 工具不在白名单 }
+
+  /api/mcp/bridge:
+    get:
+      tags: [MCP Bridge]
+      summary: 状态/健康检查
+      security:
+        - SessionCookie: []
+      parameters:
+        - in: query
+          name: action
+          required: true
+          schema:
+            type: string
+            enum: [status, health_check]
+        - in: query
+          name: providerId
+          schema: { type: string }
+          description: 健康检查时需要
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/MCPBridgeStatusResponse'
+                  - $ref: '#/components/schemas/MCPBridgeHealthCheckResponse'
+        '401': { description: 未授权 }
+    post:
+      tags: [MCP Bridge]
+      summary: 调用外部 MCP Provider 的工具
+      security:
+        - SessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MCPBridgeCallRequest' }
+            example:
+              action: call_tool
+              provider_id: local-fs
+              tool_name: read_file
+              params: { path: "/etc/hosts" }
+      responses:
+        '200':
+          description: 成功（或业务失败）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MCPBridgeCallResponse' }
+        '401': { description: 未授权 }
+
+

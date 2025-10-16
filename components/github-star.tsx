@@ -61,7 +61,7 @@ export function GitHubStar({ repo, className }: GitHubStarProps) {
         const response = await fetch(`https://api.github.com/repos/${repo}`, {
           headers: {
             'Accept': 'application/vnd.github.v3+json',
-            'User-Agent': 'SnapFit-AI-App'
+            'User-Agent': 'Snapifit-AI-App'
           }
         })
 

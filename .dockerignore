@@ -65,12 +65,26 @@ test/
 *.spec.js
 *.spec.ts
 
+# Test scripts and debug files
+test-*.js
+check-*.js
+run-*.js
+quick-start.bat
+test_*.js
+
+# Debug and test directories
+app/debug/
+app/[locale]/test-*/
+hooks/__tests__/
+
+# Scripts directory (contains test and setup scripts)
+scripts/
+
 # Documentation
 docs/
 *.md
 
-# Scripts
-scripts/
+# Shell scripts and batch files
 *.sh
 *.bat
 

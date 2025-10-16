@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { userBanManager } from '@/lib/user-ban-manager';
+import { getUserBanManager } from '@/lib/user-ban-manager';
 import { InputValidator, ValidationRules } from '@/lib/input-validator';
 import { logSecurityEvent } from '@/lib/security-monitor';
 import { getClientIP } from '@/lib/ip-utils';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 // 检查管理员权限
 async function checkAdminPermission(userId: string): Promise<boolean> {
@@ -45,6 +47,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
 
     // 获取被封禁用户列表
+    const userBanManager = getUserBanManager();
     const result = await userBanManager.getBannedUsers(page, limit);
 
     if (result.error) {
@@ -98,10 +101,10 @@ export async function POST(request: NextRequest) {
       userId: { required: true, type: 'string', minLength: 1 },
       reason: { required: true, type: 'string', minLength: 1, maxLength: 500 },
       duration: { required: false, type: 'number', min: 0 },
-      severity: { 
-        required: false, 
-        type: 'string', 
-        allowedValues: ['low', 'medium', 'high', 'critical'] 
+      severity: {
+        required: false,
+        type: 'string',
+        allowedValues: ['low', 'medium', 'high', 'critical']
       }
     };
 
@@ -129,6 +132,7 @@ export async function POST(request: NextRequest) {
     // 这里应该添加用户存在性检查
 
     // 执行封禁
+    const userBanManager = getUserBanManager();
     const result = await userBanManager.banUser(
       userId,
       reason,
@@ -207,6 +211,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // 执行解封
+    const userBanManager = getUserBanManager();
     const result = await userBanManager.unbanUser(cleanUserId, reason);
 
     if (!result.success) {

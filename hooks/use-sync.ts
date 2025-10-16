@@ -217,6 +217,10 @@ export const useSync = () => {
         if (isLocalLogEffectivelyEmpty) {
           // 本地为空，直接使用服务器数据
           const logDataFromServer = serverLog.log_data as Partial<DailyLog>;
+          // 🔧 修复日期格式：确保使用本地时区的 yyyy-MM-dd 格式
+          const serverDate = new Date(serverLog.date);
+          const normalizedDate = `${serverDate.getFullYear()}-${String(serverDate.getMonth() + 1).padStart(2, '0')}-${String(serverDate.getDate()).padStart(2, '0')}`;
+          console.log(`[Sync] Date normalization: ${serverLog.date} → ${normalizedDate} (local timezone)`);
           const purifiedLog: DailyLog = {
             foodEntries: [],
             exerciseEntries: [],
@@ -235,7 +239,7 @@ export const useSync = () => {
               sleepQuality: 3,
             },
             ...logDataFromServer,
-            date: serverLog.date,
+            date: normalizedDate, // 使用标准化的日期格式
           };
           logsToUpdate.push(purifiedLog);
         } else if (new Date(serverLog.last_modified) >= new Date(localLog.last_modified || 0)) {
@@ -272,12 +276,16 @@ export const useSync = () => {
             serverData.exerciseEntries || []
           );
 
+            // 🔧 修复日期格式：确保使用本地时区的 yyyy-MM-dd 格式
+            const serverDate = new Date(serverLog.date);
+            const normalizedDate = `${serverDate.getFullYear()}-${String(serverDate.getMonth() + 1).padStart(2, '0')}-${String(serverDate.getDate()).padStart(2, '0')}`;
+            console.log(`[Sync] Date normalization: ${serverLog.date} → ${normalizedDate} (local timezone)`);
             const mergedLog: DailyLog = {
               ...localLog, // 保留本地数据作为基础
               ...serverData, // 服务器数据覆盖
               foodEntries: mergedFoodEntries, // 使用合并后的数组
               exerciseEntries: mergedExerciseEntries, // 使用合并后的数组
-              date: serverLog.date, // 强制使用服务器的日期
+              date: normalizedDate, // 使用标准化的日期格式
               last_modified: serverLog.last_modified, // 使用服务器时间戳
             };
 

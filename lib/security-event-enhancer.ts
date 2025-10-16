@@ -3,7 +3,7 @@
  * 用于补充和关联安全事件中缺失的用户信息
  */
 
-import { supabaseAdmin } from './supabase';
+import { getSupabaseAdmin } from './supabase';
 
 export interface SecurityEventUpdate {
   eventId?: string;
@@ -28,6 +28,7 @@ export class SecurityEventEnhancer {
    */
   async enhanceRecentEvents(userId: string, ipAddress: string, timeWindow: number = 5): Promise<number> {
     try {
+      const supabaseAdmin = await getSupabaseAdmin();
       const windowStart = new Date(Date.now() - timeWindow * 60 * 1000);
 
       // 查找最近时间窗口内，相同IP但缺少用户ID的安全事件
@@ -45,13 +46,13 @@ export class SecurityEventEnhancer {
 
       // 更新这些事件，添加用户ID
       const eventIds = events.map(event => event.id);
-      
+
       const { error: updateError } = await supabaseAdmin
         .from('security_events')
-        .update({ 
+        .update({
           user_id: userId,
           metadata: supabaseAdmin.raw(`
-            COALESCE(metadata, '{}'::jsonb) || 
+            COALESCE(metadata, '{}'::jsonb) ||
             '{"enhanced": true, "enhanced_at": "${new Date().toISOString()}", "enhancement_reason": "user_activity_correlation"}'::jsonb
           `)
         })
@@ -85,6 +86,8 @@ export class SecurityEventEnhancer {
     }>;
   }> {
     try {
+      const supabaseAdmin = await getSupabaseAdmin();
+
       // 获取用户最近的活动IP
       const { data: userActivity, error: activityError } = await supabaseAdmin
         .from('security_events')
@@ -99,11 +102,11 @@ export class SecurityEventEnhancer {
 
       // 分析IP使用模式
       const ipPatterns = new Map<string, { count: number; firstSeen: Date; lastSeen: Date }>();
-      
+
       for (const activity of userActivity) {
         const ip = activity.ip_address;
         const timestamp = new Date(activity.created_at);
-        
+
         if (!ipPatterns.has(ip)) {
           ipPatterns.set(ip, { count: 1, firstSeen: timestamp, lastSeen: timestamp });
         } else {
@@ -121,14 +124,14 @@ export class SecurityEventEnhancer {
       for (const [ipAddress, pattern] of ipPatterns) {
         if (pattern.count >= 3) { // 只处理有足够活动的IP
           const enhanced = await this.enhanceEventsByIPPattern(
-            userId, 
-            ipAddress, 
-            pattern.firstSeen, 
+            userId,
+            ipAddress,
+            pattern.firstSeen,
             pattern.lastSeen
           );
-          
+
           totalEnhanced += enhanced;
-          
+
           if (enhanced > 0) {
             patterns.push({
               ipAddress,
@@ -150,12 +153,14 @@ export class SecurityEventEnhancer {
    * 基于IP模式增强安全事件
    */
   private async enhanceEventsByIPPattern(
-    userId: string, 
-    ipAddress: string, 
-    startTime: Date, 
+    userId: string,
+    ipAddress: string,
+    startTime: Date,
     endTime: Date
   ): Promise<number> {
     try {
+      const supabaseAdmin = await getSupabaseAdmin();
+
       // 查找时间范围内相同IP但缺少用户ID的事件
       const { data: events, error } = await supabaseAdmin
         .from('security_events')
@@ -172,10 +177,10 @@ export class SecurityEventEnhancer {
       // 更新事件
       const { error: updateError } = await supabaseAdmin
         .from('security_events')
-        .update({ 
+        .update({
           user_id: userId,
           metadata: supabaseAdmin.raw(`
-            COALESCE(metadata, '{}'::jsonb) || 
+            COALESCE(metadata, '{}'::jsonb) ||
             '{"enhanced": true, "enhanced_at": "${new Date().toISOString()}", "enhancement_reason": "ip_pattern_correlation"}'::jsonb
           `)
         })
@@ -197,12 +202,13 @@ export class SecurityEventEnhancer {
    * 记录增强操作活动
    */
   private async logEnhancementActivity(
-    userId: string, 
-    ipAddress: string, 
-    enhancedCount: number, 
+    userId: string,
+    ipAddress: string,
+    enhancedCount: number,
     timeWindow: number
   ): Promise<void> {
     try {
+      const supabaseAdmin = await getSupabaseAdmin();
       await supabaseAdmin.from('security_events').insert({
         user_id: userId,
         ip_address: ipAddress,
@@ -236,6 +242,7 @@ export class SecurityEventEnhancer {
     }>;
   }> {
     try {
+      const supabaseAdmin = await getSupabaseAdmin();
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 

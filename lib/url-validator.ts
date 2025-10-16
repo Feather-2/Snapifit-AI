@@ -3,6 +3,8 @@
  * 用于验证Base URL，封禁官方API地址，只允许第三方源站
  */
 
+import { EnvConfig } from './env-config'
+
 // 被封禁的URL黑名单
 const URL_BLACKLIST = [
   // OpenAI 官方 - 防止社区被官方封禁
@@ -169,22 +171,26 @@ export function validateBaseURL(url: string): URLValidationResult {
     };
   }
 
-  // 检查黑名单
-  const blockedDomain = checkBlacklist(hostname);
-  if (blockedDomain) {
-    return {
-      isValid: false,
-      isBlocked: true,
-      reason: '此URL被封禁，不允许使用',
-      blockedDomain
-    };
+  // 检查黑名单（如果启用了非第三方源站限制）
+  if (!EnvConfig.allowNonThirdPartySources) {
+    const blockedDomain = checkBlacklist(hostname);
+    if (blockedDomain) {
+      return {
+        isValid: false,
+        isBlocked: true,
+        reason: '此URL被封禁，不允许使用官方API地址',
+        blockedDomain
+      };
+    }
   }
 
-  // 通过验证的第三方URL
+  // 通过验证的URL
   return {
     isValid: true,
     isBlocked: false,
-    reason: 'URL验证通过'
+    reason: EnvConfig.allowNonThirdPartySources ?
+      'URL验证通过（允许所有源站）' :
+      'URL验证通过（仅第三方源站）'
   };
 }
 

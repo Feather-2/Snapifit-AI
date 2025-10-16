@@ -5,15 +5,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { 
-  Shield, 
-  AlertTriangle, 
-  Activity, 
-  Clock, 
+import {
+  Shield,
+  AlertTriangle,
+  Activity,
+  Clock,
   RefreshCw,
   Eye,
   Ban
 } from "lucide-react"
+import { usePageVisibility } from '@/hooks/use-page-visibility'
 
 interface SecurityEvent {
   id: string
@@ -39,6 +40,7 @@ export function SecurityMonitor() {
   const [stats, setStats] = useState<SecurityStats | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { createSmartInterval, clearSmartInterval } = usePageVisibility()
 
   const fetchSecurityStats = async () => {
     try {
@@ -62,11 +64,11 @@ export function SecurityMonitor() {
 
   useEffect(() => {
     fetchSecurityStats()
-    
-    // 每30秒刷新一次
-    const interval = setInterval(fetchSecurityStats, 30000)
-    return () => clearInterval(interval)
-  }, [])
+
+    // 每30秒刷新一次 - 使用智能定时器，在后台标签页中暂停
+    const interval = createSmartInterval(fetchSecurityStats, 30000)
+    return () => clearSmartInterval(interval)
+  }, [createSmartInterval, clearSmartInterval])
 
   const getSeverityColor = (severity: number) => {
     switch (severity) {
@@ -117,9 +119,9 @@ export function SecurityMonitor() {
         <AlertTriangle className="h-4 w-4" />
         <AlertDescription>
           无法加载安全监控数据: {error}
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             className="ml-2"
             onClick={fetchSecurityStats}
           >
@@ -191,9 +193,9 @@ export function SecurityMonitor() {
           <CardTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5" />
             最近安全事件
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               className="ml-auto"
               onClick={fetchSecurityStats}
               disabled={loading}
@@ -216,7 +218,7 @@ export function SecurityMonitor() {
           ) : (
             <div className="space-y-3">
               {stats.recentEvents.map((event) => (
-                <div 
+                <div
                   key={event.id}
                   className="flex items-start gap-3 p-3 border rounded-lg"
                 >
@@ -229,27 +231,27 @@ export function SecurityMonitor() {
                       <Activity className="h-5 w-5 text-blue-500" />
                     )}
                   </div>
-                  
+
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium text-sm">
                         {formatEventType(event.eventType)}
                       </span>
-                      <Badge 
-                        variant="outline" 
+                      <Badge
+                        variant="outline"
                         className={`text-xs ${getSeverityColor(event.severity)}`}
                       >
                         {getSeverityText(event.severity)}
                       </Badge>
                     </div>
-                    
+
                     <div className="text-xs text-muted-foreground space-y-1">
                       <p>时间: {new Date(event.createdAt).toLocaleString()}</p>
-                      
+
                       {event.details.trustLevel !== undefined && (
                         <p>信任等级: LV{event.details.trustLevel}</p>
                       )}
-                      
+
                       {event.details.attemptedUsage !== undefined && event.details.dailyLimit !== undefined && (
                         <p>
                           尝试使用: {event.details.attemptedUsage}/{event.details.dailyLimit}

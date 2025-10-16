@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { logSecurityEvent } from '@/lib/security-monitor';
 import { getClientIP } from '@/lib/ip-utils';
-import { supabaseAdmin } from '@/lib/supabase';
+import { getSupabaseAdmin } from '@/lib/supabase';
+
+export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 // 检查管理员权限
 async function checkAdminPermission(userId: string): Promise<boolean> {
@@ -43,6 +45,9 @@ export async function GET(request: NextRequest) {
     const includeHistory = searchParams.get('includeHistory') === 'true';
 
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    // 获取数据库客户端
+    const supabaseAdmin = await getSupabaseAdmin()
 
     // 获取基本统计信息
     const { data: stats, error: statsError } = await supabaseAdmin
@@ -125,7 +130,7 @@ export async function GET(request: NextRequest) {
     // 计算趋势
     const currentPeriodBans = recentBans?.length || 0;
     const previousStartDate = new Date(startDate.getTime() - days * 24 * 60 * 60 * 1000);
-    
+
     const { data: previousBans, error: previousError } = await supabaseAdmin
       .from('user_bans')
       .select('id')
@@ -133,7 +138,7 @@ export async function GET(request: NextRequest) {
       .lt('banned_at', startDate.toISOString());
 
     const previousPeriodBans = previousBans?.length || 0;
-    const trend = previousPeriodBans > 0 
+    const trend = previousPeriodBans > 0
       ? Math.round(((currentPeriodBans - previousPeriodBans) / previousPeriodBans) * 100)
       : currentPeriodBans > 0 ? 100 : 0;
 

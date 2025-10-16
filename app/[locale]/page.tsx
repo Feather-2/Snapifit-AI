@@ -20,6 +20,7 @@ import { useUsageLimit } from "@/hooks/use-usage-limit"
 import type { FoodEntry, ExerciseEntry, DailyLog, AIConfig, DailyStatus } from "@/lib/types"
 import { FoodEntryCard } from "@/components/food-entry-card"
 import { ExerciseEntryCard } from "@/components/exercise-entry-card"
+import { GroupedEntriesDisplay } from "@/components/grouped-entries-display"
 import { DailySummary } from "@/components/daily-summary"
 import { ManagementCharts } from "@/components/management-charts"
 import { SmartSuggestions } from "@/components/smart-suggestions"
@@ -29,6 +30,7 @@ import { useIndexedDB } from "@/hooks/use-indexed-db"
 import { useExportReminder } from "@/hooks/use-export-reminder"
 import { useDateRecords } from "@/hooks/use-date-records"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { usePageVisibility } from "@/hooks/use-page-visibility"
 import { compressImage } from "@/lib/image-utils"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -41,6 +43,7 @@ import { useTranslation } from "@/hooks/use-i18n"
 import { useSync } from '@/hooks/use-sync';
 import { v4 as uuidv4 } from 'uuid';
 import { WelcomeGuide, useWelcomeGuide } from "@/components/onboarding/welcome-guide"
+import { SystemMessageBanner } from "@/components/system-message-banner"
 // @ts-ignore -- 第三方库缺少类型声明
 import autoAnimate from "@formkit/auto-animate"
 
@@ -111,6 +114,7 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
     activityLevel: "moderate",
     goal: "maintain",
     bmrFormula: "mifflin-st-jeor" as "mifflin-st-jeor",
+    targetCalories: undefined as number | undefined,
   })
 
   // 智能建议专家选择
@@ -131,7 +135,7 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
       source: "shared", // 默认使用共享模型
     },
     visionModel: {
-      name: "gpt-4o",
+      name: "gemini-2.5-flash-preview-05-20",
       baseUrl: "https://api.openai.com",
       apiKey: "",
       source: "shared", // 默认使用共享模型
@@ -152,6 +156,9 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
 
   // 使用移动端检测Hook
   const isMobile = useIsMobile()
+
+  // 使用页面可见性检测Hook
+  const { isVisible, createSmartTimeout, clearSmartTimeout } = usePageVisibility()
 
   // 集成云同步钩子
   const { pushData, removeEntry, pullData, syncAll, isSyncing } = useSync();
@@ -271,8 +278,8 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
 
       if (eventDate === currentDate) {
         console.log(`[Page] Queuing refresh for ${currentDate} (source: ${source || 'unknown'})`);
-        // 给 IndexedDB 写入留出时间，避免读到旧快照
-        setTimeout(() => {
+        // 给 IndexedDB 写入留出时间，避免读到旧快照 - 使用智能定时器
+        createSmartTimeout(() => {
           loadDailyLog(selectedDate);
         }, 300);
       }
@@ -280,7 +287,7 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
       // 🔄 如果是云同步事件，同时刷新日历记录点
       if (source === 'cloudSync') {
         console.log(`[Page] Refreshing calendar records due to cloud sync`);
-        setTimeout(() => {
+        createSmartTimeout(() => {
           refreshRecords();
         }, 500); // 给数据写入更多时间
       }
@@ -336,7 +343,7 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
           console.warn("TEF analysis failed: Daily limit exceeded");
           toast({
             title: "TEF分析失败",
-            description: `今日AI使用次数已达上限 (${currentUsage}/${dailyLimit})，请明天再试或提升信任等级`,
+            description: `今日AI使用次数已达上限，请明天再试或提升信任等级`,
             variant: "destructive",
           });
         } else if (response.status === 401) {
@@ -479,7 +486,7 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
           const details = errorData.details || {};
           toast({
             title: "智能建议生成失败",
-            description: `今日AI使用次数已达上限 (${details.currentUsage || '未知'}/${details.dailyLimit || '未知'})，请明天再试或提升信任等级`,
+            description: `今日AI使用次数已达上限，请明天再试或提升信任等级`,
             variant: "destructive",
           });
         } else if (response.status === 401 && errorData.code === 'UNAUTHORIZED') {
@@ -827,6 +834,22 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
   // 手动生成 TEF 分析的加载状态
   const [isGeneratingTEF, setIsGeneratingTEF] = useState(false);
 
+  // AI预测状态管理 - 使用localStorage持久化
+  const [showPrediction, setShowPrediction] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('snapfit-show-prediction')
+      return saved ? JSON.parse(saved) : false
+    }
+    return false
+  });
+
+  // 监听showPrediction变化，保存到localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('snapfit-show-prediction', JSON.stringify(showPrediction))
+    }
+  }, [showPrediction]);
+
   // 用于跟踪食物条目的实际内容变化
   const previousFoodEntriesHashRef = useRef<string>('');
 
@@ -852,6 +875,10 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
           saveDailyLog(updatedLog.date, updatedLog);
           return updatedLog;
         });
+
+        // 🔄 触发图表刷新，确保缓存的TEF分析结果立即显示在图表中
+        setChartRefreshTrigger(prev => prev + 1);
+        console.log('[TEF] Triggering chart refresh after applying cached TEF analysis');
       }
       previousFoodEntriesHashRef.current = currentHash;
       return;
@@ -929,6 +956,10 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
               saveDailyLog(updatedLog.date, updatedLog);
               return updatedLog;
             });
+
+            // 🔄 触发图表刷新，确保自动TEF分析结果立即显示在图表中
+            setChartRefreshTrigger(prev => prev + 1);
+            console.log('[TEF] Triggering chart refresh after automatic TEF analysis completion');
           }
         }).catch(error => {
           console.warn('TEF analysis failed:', error);
@@ -1029,6 +1060,10 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
       patch.calculatedTDEE = rates.tdee;
     }
     updateLogAndPush(patch);
+
+    // 🔄 触发图表刷新，确保活动水平变化立即显示在图表中
+    setChartRefreshTrigger(prev => prev + 1);
+    console.log('[Activity] Triggering chart refresh after activity level change');
 
     toast({
       title: t('handleDailyActivityLevelChange.success.title'),
@@ -1179,6 +1214,10 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
       let body: string | FormData;
       const headers: HeadersInit = {};
 
+      // 获取当前时间 HH:MM 格式
+      const now = new Date();
+      const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
       if (uploadedImages.length > 0) {
         const formData = new FormData();
         formData.append("text", inputText);
@@ -1186,6 +1225,7 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
         formData.append("type", activeTab);
         formData.append("userWeight", userProfile.weight.toString());
         formData.append("aiConfig", JSON.stringify(aiConfig));
+        formData.append("currentTime", currentTime); // 添加当前时间
 
         uploadedImages.forEach((img, index) => {
           formData.append(`image${index}`, img.compressedFile || img.file);
@@ -1199,6 +1239,7 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
           type: activeTab,
           userWeight: userProfile.weight,
           aiConfig: aiConfig, // 添加AI配置
+          currentTime: currentTime, // 添加当前时间
         });
         headers["Content-Type"] = "application/json; charset=utf-8";
       }
@@ -1215,7 +1256,7 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
         if (response.status === 429 && errorData.code === 'LIMIT_EXCEEDED') {
           // 🚫 限额超过
           const details = errorData.details || {};
-          throw new Error(`今日AI使用次数已达上限 (${details.currentUsage}/${details.dailyLimit})，请明天再试或提升信任等级`);
+          throw new Error(`今日AI使用次数已达上限，请明天再试或提升信任等级`);
         } else if (response.status === 401 && errorData.code === 'UNAUTHORIZED') {
           throw new Error('请先登录后再使用AI功能');
         } else if (response.status === 503 && errorData.code === 'SHARED_KEYS_EXHAUSTED') {
@@ -1313,8 +1354,8 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
       // forceDataRefresh 事件监听器会自动调用 loadDailyLog()
       // 来重新加载数据并重新计算汇总，无需手动操作
 
-      // 🔄 删除成功后，延迟触发一次数据拉取，确保其他设备能同步
-      setTimeout(() => {
+      // 🔄 删除成功后，延迟触发一次数据拉取，确保其他设备能同步 - 使用智能定时器
+      createSmartTimeout(() => {
         console.log('[Delete] Triggering data pull to ensure sync across devices');
         pullData(false).catch(error => {
           console.warn('[Delete] Post-delete sync failed:', error);
@@ -1335,6 +1376,39 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
       });
     }
   }
+
+  // 批量删除函数
+  const handleBatchDeleteEntries = async (logIds: string[], type: "food" | "exercise") => {
+    try {
+      const dateString = format(selectedDate, "yyyy-MM-dd");
+
+      // 并行删除所有条目
+      await Promise.all(
+        logIds.map(id => removeEntry(dateString, type, id))
+      );
+
+      // 🔄 删除成功后，延迟触发一次数据拉取，确保其他设备能同步
+      createSmartTimeout(() => {
+        console.log('[BatchDelete] Triggering data pull to ensure sync across devices');
+        pullData(false).catch(error => {
+          console.warn('[BatchDelete] Post-delete sync failed:', error);
+        });
+      }, 500);
+
+      toast({
+        title: "批量删除成功",
+        description: `已删除 ${logIds.length} 项${type === 'food' ? '食物' : '运动'}记录`,
+        variant: "default",
+      });
+    } catch (error) {
+      console.error('[BatchDelete] Error:', error);
+      toast({
+        title: "批量删除失败",
+        description: "删除过程中出现错误，请稍后重试",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleUpdateEntry = (updatedEntry: FoodEntry | ExerciseEntry, type: "food" | "exercise") => {
     let patch: Partial<DailyLog> = {};
@@ -1424,6 +1498,10 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
 
     updateLogAndPush(patch);
 
+    // 🔄 触发图表刷新，确保体重变化立即显示在图表中
+    setChartRefreshTrigger(prev => prev + 1);
+    console.log('[Weight] Triggering chart refresh after weight update');
+
     toast({
       title: t('handleSaveDailyWeight.success.title'),
       description: t('handleSaveDailyWeight.success.description', { weight: newWeight }),
@@ -1477,6 +1555,10 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
           saveDailyLog(updatedLog.date, updatedLog);
           return updatedLog;
         });
+
+        // 🔄 触发图表刷新，确保TEF分析结果立即显示在图表中
+        setChartRefreshTrigger(prev => prev + 1);
+        console.log('[TEF] Triggering chart refresh after TEF analysis completion');
 
         toast({
           title: t('tef.generateSuccessTitle') || '分析完成',
@@ -1579,6 +1661,11 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
         }
       `}</style>
       <div className="relative z-10 container mx-auto py-6 md:py-12 px-4 md:px-6 lg:px-12 max-w-6xl">
+        {/* 系统消息横幅 */}
+        <div className="mb-6 md:mb-8">
+          <SystemMessageBanner />
+        </div>
+
         <header className="mb-8 md:mb-16 fade-in">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 md:gap-8">
             <div className="flex items-center space-x-4 md:space-x-6">
@@ -1630,7 +1717,7 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
                         syncAll(true).then(() => {
                           // 🔄 手动同步完成后刷新日历记录点
                           console.log('[Manual Sync] Refreshing calendar records after manual sync');
-                          setTimeout(() => {
+                          createSmartTimeout(() => {
                             refreshRecords();
                           }, 1000); // 给数据同步充足时间
 
@@ -1702,7 +1789,13 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
           <div className="mt-8 md:mt-12 hidden lg:grid lg:grid-cols-3 gap-8">
             {/* 左侧：管理图表 (占2列) */}
             <div className="lg:col-span-2">
-              <ManagementCharts selectedDate={selectedDate} refreshTrigger={chartRefreshTrigger} />
+              <ManagementCharts
+                selectedDate={selectedDate}
+                refreshTrigger={chartRefreshTrigger}
+                userProfile={userProfile}
+                showPrediction={showPrediction}
+                onShowPredictionChange={setShowPrediction}
+              />
             </div>
 
             {/* 右侧：体重和活动水平 (占1列) */}
@@ -1745,6 +1838,26 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
                     {t('ui.saveWeight')}
                   </Button>
                 </div>
+
+                {/* 体重测量建议 - 仅在AI预测开启时显示 */}
+                {showPrediction && process.env.NODE_ENV === 'development' && (
+                  <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-800">
+                    <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                      专业体重测量建议
+                    </h4>
+                    <div className="space-y-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        固定测量时间：建议每天早晨起床后、排便后、空腹状态下测量
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        使用同一台秤：确保测量的一致性和准确性
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-500">
+                        关注趋势：体重会因水分、食物等因素波动，重点关注长期趋势
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="health-card p-8 space-y-6">
@@ -1761,8 +1874,8 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
                   value={currentDayActivityLevelForSelect}
                   onValueChange={(value) => {
                     handleDailyActivityLevelChange(value)
-                    // 选择完活动水平后，聚焦到输入区域
-                    setTimeout(() => {
+                    // 选择完活动水平后，聚焦到输入区域 - 使用智能定时器
+                    createSmartTimeout(() => {
                       const textarea = document.querySelector('textarea')
                       if (textarea) {
                         textarea.focus()
@@ -1781,6 +1894,55 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
                     <SelectItem value="very_active">{t('activityLevels.very_active')}</SelectItem>
                   </SelectContent>
                 </Select>
+
+                {/* 活动水平说明 - 仅在AI预测开启且选择了活动水平时显示 */}
+                {showPrediction && process.env.NODE_ENV === 'development' && currentDayActivityLevelForSelect && (
+                  <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-900/50 rounded border border-gray-200 dark:border-gray-800">
+                    <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                      活动水平详细说明
+                    </h4>
+                    <p className="text-xs text-gray-500 dark:text-gray-500 mb-2">
+                      活动水平用于计算非运动热效应(NEAT)，影响您的总日消耗量(TDEE)计算
+                    </p>
+                    <div className="space-y-1">
+                      {currentDayActivityLevelForSelect === 'sedentary' && (
+                        <>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">久坐不动</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500">主要从事办公室工作，很少体力活动</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 font-mono">NEAT系数: 1.2</p>
+                        </>
+                      )}
+                      {currentDayActivityLevelForSelect === 'light' && (
+                        <>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">轻度活跃</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500">偶尔进行轻度体力活动或运动</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 font-mono">NEAT系数: 1.375</p>
+                        </>
+                      )}
+                      {currentDayActivityLevelForSelect === 'moderate' && (
+                        <>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">中度活跃</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500">规律进行中等强度运动</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 font-mono">NEAT系数: 1.55</p>
+                        </>
+                      )}
+                      {currentDayActivityLevelForSelect === 'active' && (
+                        <>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">高度活跃</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500">每天都进行体力活动或运动</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 font-mono">NEAT系数: 1.725</p>
+                        </>
+                      )}
+                      {currentDayActivityLevelForSelect === 'very_active' && (
+                        <>
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400">非常活跃</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500">高强度训练或体力劳动</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-500 font-mono">NEAT系数: 1.9</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1857,8 +2019,8 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
                       value={currentDayActivityLevelForSelect}
                       onValueChange={(value) => {
                         handleDailyActivityLevelChange(value)
-                        // 选择完活动水平后，聚焦到输入区域
-                        setTimeout(() => {
+                        // 选择完活动水平后，聚焦到输入区域 - 使用智能定时器
+                        createSmartTimeout(() => {
                           const textarea = document.querySelector('textarea')
                           if (textarea) {
                             textarea.focus()
@@ -1881,7 +2043,13 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
                 </TabsContent>
 
                 <TabsContent value="charts">
-                  <ManagementCharts selectedDate={selectedDate} refreshTrigger={chartRefreshTrigger} />
+                  <ManagementCharts
+                    selectedDate={selectedDate}
+                    refreshTrigger={chartRefreshTrigger}
+                    userProfile={userProfile}
+                    showPrediction={showPrediction}
+                    onShowPredictionChange={setShowPrediction}
+                  />
                 </TabsContent>
               </div>
             </Tabs>
@@ -2099,26 +2267,16 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
                 </div>
               </div>
 
-              {(dailyLog.foodEntries?.length || 0) === 0 ? (
-                <div className="text-center py-12 md:py-16 text-muted-foreground">
-                  <div className="flex items-center justify-center w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 rounded-2xl bg-muted/50">
-                    <Utensils className="h-8 w-8 md:h-10 md:w-10" />
-                  </div>
-                  <p className="text-lg md:text-xl font-medium mb-2 md:mb-3">{t('ui.noFoodRecords')}</p>
-                  <p className="text-sm md:text-lg opacity-75">{t('ui.addFoodAbove')}</p>
-                </div>
-              ) : (
-                <div className="space-y-3 md:space-y-4 max-h-[400px] md:max-h-[500px] overflow-y-auto custom-scrollbar pr-1 md:pr-2">
-                  {(dailyLog.foodEntries || []).map((entry) => (
-                    <FoodEntryCard
-                      key={entry.log_id}
-                      entry={entry}
-                      onDelete={() => handleDeleteEntry(entry.log_id, "food")}
-                      onUpdate={(updated) => handleUpdateEntry(updated, "food")}
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="max-h-[400px] md:max-h-[500px] overflow-y-auto custom-scrollbar pr-1 md:pr-2">
+                <GroupedEntriesDisplay
+                  type="food"
+                  foodEntries={dailyLog.foodEntries || []}
+                  onDeleteFood={(logId) => handleDeleteEntry(logId, "food")}
+                  onUpdateFood={(updated) => handleUpdateEntry(updated, "food")}
+                  onBatchDeleteFood={(logIds) => handleBatchDeleteEntries(logIds, "food")}
+                  targetCalories={userProfile.targetCalories || dailyLog.calculatedTDEE || 2000}
+                />
+              </div>
             </div>
           </div>
 
@@ -2134,26 +2292,15 @@ export default function Dashboard({ params }: { params: Promise<{ locale: string
                 </div>
               </div>
 
-              {(dailyLog.exerciseEntries?.length || 0) === 0 ? (
-                <div className="text-center py-12 md:py-16 text-muted-foreground">
-                  <div className="flex items-center justify-center w-16 h-16 md:w-20 md:h-20 mx-auto mb-4 md:mb-6 rounded-2xl bg-muted/50">
-                    <Dumbbell className="h-8 w-8 md:h-10 md:w-10" />
-                  </div>
-                  <p className="text-lg md:text-xl font-medium mb-2 md:mb-3">{t('ui.noExerciseRecords')}</p>
-                  <p className="text-sm md:text-lg opacity-75">{t('ui.addExerciseAbove')}</p>
-                </div>
-              ) : (
-                <div className="space-y-3 md:space-y-4 max-h-[400px] md:max-h-[500px] overflow-y-auto custom-scrollbar pr-1 md:pr-2">
-                  {(dailyLog.exerciseEntries || []).map((entry) => (
-                    <ExerciseEntryCard
-                      key={entry.log_id}
-                      entry={entry}
-                      onDelete={() => handleDeleteEntry(entry.log_id, "exercise")}
-                      onUpdate={(updated) => handleUpdateEntry(updated, "exercise")}
-                    />
-                  ))}
-                </div>
-              )}
+              <div className="max-h-[400px] md:max-h-[500px] overflow-y-auto custom-scrollbar pr-1 md:pr-2">
+                <GroupedEntriesDisplay
+                  type="exercise"
+                  exerciseEntries={dailyLog.exerciseEntries || []}
+                  onDeleteExercise={(logId) => handleDeleteEntry(logId, "exercise")}
+                  onUpdateExercise={(updated) => handleUpdateEntry(updated, "exercise")}
+                  onBatchDeleteExercise={(logIds) => handleBatchDeleteEntries(logIds, "exercise")}
+                />
+              </div>
             </div>
           </div>
         </div>

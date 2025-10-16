@@ -94,6 +94,36 @@ export function UsageIndicator({
     return null
   }
 
+  // 处理信任等级不足的情况
+  if (usageInfo.dailyLimit === 0) {
+    const tNav = useTranslation('navigation')
+
+    if (variant === 'compact') {
+      return (
+        <div className={`flex items-center gap-2 ${className}`}>
+          <AlertTriangle className="h-4 w-4 text-orange-500" />
+          <span className="text-sm font-medium text-orange-700">
+            {tNav('insufficientPermission')}
+          </span>
+        </div>
+      )
+    }
+
+    // 卡片模式显示权限不足
+    return (
+      <Card className={className}>
+        <CardContent className="p-4">
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            <AlertDescription className="text-orange-700">
+              {tNav('insufficientPermission')} - 需要信任等级 LV1 或以上才能使用 AI 对话功能
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    )
+  }
+
   // 紧凑模式
   if (variant === 'compact') {
     return (
@@ -230,9 +260,11 @@ export function UsageBadge({
 }) {
   const { usageInfo, usagePercentage, loading, refreshUsageInfo, isInitialized } = useUsageLimit()
   const t = useTranslation('navigation.usage')
+  const tNav = useTranslation('navigation')
 
   const getVariant = () => {
     if (!usageInfo) return 'outline'
+    if (usageInfo.dailyLimit === 0) return 'secondary' // 权限不足
     if (usagePercentage >= 90) return 'destructive'
     if (usagePercentage >= 70) return 'secondary'
     return 'outline'
@@ -252,6 +284,16 @@ export function UsageBadge({
       <Badge variant="outline" className={className}>
         <MessageSquare className="h-3 w-3 mr-1" />
         --/--
+      </Badge>
+    )
+  }
+
+  // 处理信任等级不足的情况
+  if (usageInfo.dailyLimit === 0) {
+    return (
+      <Badge variant="secondary" className={`${className} text-orange-700 bg-orange-50 border-orange-200`}>
+        <MessageSquare className="h-3 w-3 mr-1" />
+        {tNav('insufficientPermission')}
       </Badge>
     )
   }
@@ -288,6 +330,7 @@ export function UsageProgress({
 }) {
   const { usageInfo, usagePercentage, loading, refreshUsageInfo, isInitialized, lastFetched } = useUsageLimit()
   const t = useTranslation('navigation.usage')
+  const tNav = useTranslation('navigation')
 
   if (!isInitialized && loading) {
     return (
@@ -312,6 +355,19 @@ export function UsageProgress({
           <span className="font-mono text-muted-foreground">--/--</span>
         </div>
         <Progress value={0} className="h-1.5" />
+      </div>
+    )
+  }
+
+  // 处理信任等级不足的情况（dailyLimit为0）
+  if (usageInfo.dailyLimit === 0) {
+    return (
+      <div className={`space-y-1 ${className}`}>
+        <div className="flex items-center justify-between text-xs">
+          <span>{t('dailyQuota')}</span>
+          <span className="text-orange-600 text-xs">{tNav('insufficientPermission')}</span>
+        </div>
+        <Progress value={0} className="h-1.5 bg-orange-100" />
       </div>
     )
   }

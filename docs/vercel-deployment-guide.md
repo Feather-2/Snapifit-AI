@@ -21,9 +21,10 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 NEXTAUTH_URL=https://your-app.vercel.app
 NEXTAUTH_SECRET=your-nextauth-secret
 KEY_ENCRYPTION_SECRET=your-encryption-secret
-LINUX_DO_CLIENT_ID=your-client-id
-LINUX_DO_CLIENT_SECRET=your-client-secret
-LINUX_DO_REDIRECT_URI=https://your-app.vercel.app/api/auth/callback/linux-do
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+GOOGLE_CLIENT_ID=your-google-client-id
+GOOGLE_CLIENT_SECRET=your-google-client-secret
 ```
 
 #### 可选环境变量

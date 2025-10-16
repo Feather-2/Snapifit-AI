@@ -1,0 +1,22 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "lib/mcp/**/*",
+    "lib/logging.ts",
+    "hooks/use-mcp-tools.ts",
+    "components/mcp/ToolSelector.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/__tests__/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "scripts/**",
+    ".next/**"
+  ]
+}
+
+

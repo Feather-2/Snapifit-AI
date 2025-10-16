@@ -3,9 +3,9 @@
  * 检测和记录可疑活动
  */
 
-import { supabaseAdmin } from './supabase';
-import { ipBanManager } from './ip-ban-manager';
-import { userBanManager } from './user-ban-manager';
+import { getSupabaseAdmin } from './supabase';
+import { getIPBanManager } from './ip-ban-manager';
+import { getUserBanManager } from './user-ban-manager';
 
 export interface SecurityEvent {
   id?: string;
@@ -36,12 +36,52 @@ export class SecurityMonitor {
   private suspiciousIPs = new Map<string, { count: number; lastSeen: number }>();
   private readonly SUSPICIOUS_THRESHOLD = 10; // 10次可疑活动后标记为可疑IP
   private readonly CLEANUP_INTERVAL = 60 * 60 * 1000; // 1小时清理一次
+  private cleanupInterval: NodeJS.Timeout | null = null;
 
   constructor() {
-    // 定期清理过期的可疑IP记录
-    setInterval(() => {
+    // 只在服务器端或可见页面中启动定期清理
+    if (typeof window === 'undefined') {
+      // 服务器端始终运行
+      this.startCleanupInterval();
+    } else {
+      // 客户端根据页面可见性决定
+      this.setupVisibilityListener();
+    }
+  }
+
+  private startCleanupInterval() {
+    if (this.cleanupInterval) return;
+    this.cleanupInterval = setInterval(() => {
       this.cleanupSuspiciousIPs();
     }, this.CLEANUP_INTERVAL);
+  }
+
+  private stopCleanupInterval() {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+      this.cleanupInterval = null;
+    }
+  }
+
+  private setupVisibilityListener() {
+    if (typeof document === 'undefined') return;
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('[SecurityMonitor] Page hidden, stopping cleanup interval');
+        this.stopCleanupInterval();
+      } else {
+        console.log('[SecurityMonitor] Page visible, starting cleanup interval');
+        this.startCleanupInterval();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // 初始状态检查
+    if (!document.hidden) {
+      this.startCleanupInterval();
+    }
   }
 
   static getInstance(): SecurityMonitor {
@@ -78,10 +118,12 @@ export class SecurityMonitor {
         setTimeout(async () => {
           try {
             // 检查IP封禁
+            const ipBanManager = getIPBanManager();
             await ipBanManager.checkAndAutoBan(event.ipAddress);
 
             // 检查用户封禁（如果有用户ID）
             if (event.userId) {
+              const userBanManager = getUserBanManager();
               await userBanManager.checkAndAutoBan(event.userId);
             }
           } catch (error) {
@@ -123,6 +165,9 @@ export class SecurityMonitor {
   async detectSuspiciousPattern(userId: string, ipAddress: string): Promise<boolean> {
     try {
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+      // 获取数据库客户端
+      const supabaseAdmin = await getSupabaseAdmin()
 
       // 查询最近1小时的安全事件
       const { data: recentEvents, error } = await supabaseAdmin
@@ -224,6 +269,9 @@ export class SecurityMonitor {
    */
   private async saveToDatabase(event: SecurityEvent): Promise<void> {
     try {
+      // 获取数据库客户端
+      const supabaseAdmin = await getSupabaseAdmin()
+
       const { error } = await supabaseAdmin
         .from('security_events')
         .insert({
@@ -251,6 +299,9 @@ export class SecurityMonitor {
   async getSecurityStats(days: number = 7): Promise<any> {
     try {
       const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+      // 获取数据库客户端
+      const supabaseAdmin = await getSupabaseAdmin()
 
       const { data: events, error } = await supabaseAdmin
         .from('security_events')

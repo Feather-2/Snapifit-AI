@@ -7,7 +7,7 @@ export async function POST(req: Request) {
   let session: any = null
   let usageManager: any = null
   try {
-    const { text, type, userWeight, aiConfig } = await req.json()
+    const { text, type, userWeight, aiConfig, currentTime } = await req.json()
 
     if (!text) {
       return Response.json({ error: "No text provided" }, { status: 400 })
@@ -67,45 +67,40 @@ export async function POST(req: Request) {
 
     // 根据类型选择不同的提示词和解析逻辑
     if (type === "food") {
-      // 食物解析提示词
+      // 食物解析提示词 - 简化版本，只要求AI输出基本信息和每100g营养素
       const prompt = `
         请分析以下文本中描述的食物，并将其转换为结构化的 JSON 格式。
         文本: "${text}"
+        ${currentTime ? `当前时间: ${currentTime}` : ""}
 
         请直接输出 JSON，不要有额外文本。如果无法确定数值，请给出合理估算，并在相应字段标记 is_estimated: true。
 
         每个食物项应包含以下字段:
-        - log_id: 唯一标识符
         - food_name: 食物名称
-        - consumed_grams: 消耗的克数
+        - consumed_grams: 估计消耗的克数
         - meal_type: 餐次类型 (breakfast, lunch, dinner, snack)
         - time_period: 时间段 (morning, noon, afternoon, evening)，根据文本内容推断
-        - nutritional_info_per_100g: 每100克的营养成分，包括 calories, carbohydrates, protein, fat 等
-        - total_nutritional_info_consumed: 基于消耗克数计算的总营养成分
+        - timestamp: 具体时间，格式为 HH:MM (24小时制)。如果用户提到具体时间如"8点"、"下午3点"等，请转换为24小时制；如果提到"刚刚"、"刚才"或没有时间信息，使用当前时间
+        - nutritional_info_per_100g: 每100克的营养成分，包括 calories, carbohydrates, protein, fat, fiber 等
         - is_estimated: 是否为估算值
+
+        注意：只需要提供每100g的营养成分和估计克数，不需要计算总营养成分。
 
         示例输出格式:
         {
           "food": [
             {
-              "log_id": "uuid",
               "food_name": "全麦面包",
               "consumed_grams": 80,
               "meal_type": "breakfast",
               "time_period": "morning",
+              "timestamp": "08:30",
               "nutritional_info_per_100g": {
                 "calories": 265,
                 "carbohydrates": 48.5,
                 "protein": 9.0,
                 "fat": 3.2,
                 "fiber": 7.4
-              },
-              "total_nutritional_info_consumed": {
-                "calories": 212,
-                "carbohydrates": 38.8,
-                "protein": 7.2,
-                "fat": 2.56,
-                "fiber": 5.92
               },
               "is_estimated": true
             }
@@ -128,10 +123,22 @@ export async function POST(req: Request) {
       const result = safeJSONParse(cleanedResultText)
       console.log('🔍 解析后的结果(食物):', JSON.stringify(result, null, 2).substring(0, 300) + '...')
 
-      // 为每个食物项添加唯一 ID
+      // 为每个食物项添加唯一 ID 并自动计算总营养成分
       if (result.food && Array.isArray(result.food)) {
         result.food.forEach((item: any) => {
           item.log_id = uuidv4()
+
+          // 自动计算总营养成分
+          if (item.nutritional_info_per_100g && item.consumed_grams) {
+            const ratio = item.consumed_grams / 100
+            item.total_nutritional_info_consumed = {}
+
+            Object.entries(item.nutritional_info_per_100g).forEach(([key, value]) => {
+              if (typeof value === 'number') {
+                item.total_nutritional_info_consumed[key] = value * ratio
+              }
+            })
+          }
         })
       }
 
@@ -153,7 +160,6 @@ export async function POST(req: Request) {
         请直接输出 JSON，不要有额外文本。如果无法确定数值，请给出合理估算，并在相应字段标记 is_estimated: true。
 
         每个运动项应包含以下字段:
-        - log_id: 唯一标识符
         - exercise_name: 运动名称
         - exercise_type: 运动类型 (cardio, strength, flexibility, other)
         - duration_minutes: 持续时间(分钟)
@@ -172,7 +178,6 @@ export async function POST(req: Request) {
         {
           "exercise": [
             {
-              "log_id": "uuid",
               "exercise_name": "跑步",
               "exercise_type": "cardio",
               "duration_minutes": 30,

@@ -3,6 +3,8 @@
  * 根据用户的信任等级设置不同的使用限额
  */
 
+import { EnvConfig } from '@/lib/env-config'
+
 export interface TrustLevelLimits {
   // 每日对话次数限额
   dailyConversations: number
@@ -29,10 +31,23 @@ export interface TrustLevelConfig {
 }
 
 /**
- * 信任等级配置表
+ * 获取动态权限配置
+ * 根据环境变量动态调整权限
+ */
+function getDynamicPermissions(basePermissions: TrustLevelConfig['permissions']): TrustLevelConfig['permissions'] {
+  return {
+    ...basePermissions,
+    // 分享密钥权限受环境变量控制
+    canShareKeys: basePermissions.canShareKeys && EnvConfig.allowNonSuperAdminShareKeys,
+    canManageKeys: basePermissions.canManageKeys && EnvConfig.allowNonSuperAdminShareKeys,
+  }
+}
+
+/**
+ * 信任等级基础配置表
  * 可以根据需要调整各等级的限额和权限
  */
-export const TRUST_LEVEL_CONFIGS: Record<number, TrustLevelConfig> = {
+const BASE_TRUST_LEVEL_CONFIGS: Record<number, TrustLevelConfig> = {
   0: {
     level: 0,
     name: "新用户",
@@ -121,6 +136,24 @@ export const TRUST_LEVEL_CONFIGS: Record<number, TrustLevelConfig> = {
 }
 
 /**
+ * 动态获取信任等级配置（考虑环境变量）
+ */
+export const TRUST_LEVEL_CONFIGS: Record<number, TrustLevelConfig> = new Proxy({} as Record<number, TrustLevelConfig>, {
+  get(_target, prop) {
+    const level = Number(prop)
+    if (isNaN(level) || !BASE_TRUST_LEVEL_CONFIGS[level]) {
+      return BASE_TRUST_LEVEL_CONFIGS[0]
+    }
+
+    const baseConfig = BASE_TRUST_LEVEL_CONFIGS[level]
+    return {
+      ...baseConfig,
+      permissions: getDynamicPermissions(baseConfig.permissions)
+    }
+  }
+})
+
+/**
  * 获取指定信任等级的配置
  */
 export function getTrustLevelConfig(trustLevel: number): TrustLevelConfig {
@@ -155,14 +188,16 @@ export function getUserLimits(trustLevel: number): TrustLevelLimits {
  * 获取所有信任等级的配置（用于管理界面）
  */
 export function getAllTrustLevelConfigs(): TrustLevelConfig[] {
-  return Object.values(TRUST_LEVEL_CONFIGS).sort((a, b) => a.level - b.level)
+  return Object.keys(BASE_TRUST_LEVEL_CONFIGS)
+    .map(level => getTrustLevelConfig(Number(level)))
+    .sort((a, b) => a.level - b.level)
 }
 
 /**
  * 验证信任等级是否有效
  */
 export function isValidTrustLevel(trustLevel: number): boolean {
-  return trustLevel >= 0 && trustLevel <= 4 && TRUST_LEVEL_CONFIGS[trustLevel] !== undefined
+  return trustLevel >= 0 && trustLevel <= 4 && BASE_TRUST_LEVEL_CONFIGS[trustLevel] !== undefined
 }
 
 /**
@@ -170,7 +205,7 @@ export function isValidTrustLevel(trustLevel: number): boolean {
  */
 export function getNextLevelInfo(currentLevel: number): TrustLevelConfig | null {
   const nextLevel = currentLevel + 1
-  return TRUST_LEVEL_CONFIGS[nextLevel] || null
+  return BASE_TRUST_LEVEL_CONFIGS[nextLevel] ? getTrustLevelConfig(nextLevel) : null
 }
 
 /**
@@ -182,19 +217,19 @@ export function getLevelUpBenefits(currentLevel: number): {
 } | null {
   const current = getTrustLevelConfig(currentLevel)
   const next = getNextLevelInfo(currentLevel)
-  
+
   if (!next) return null
-  
+
   const conversationIncrease = next.limits.dailyConversations - current.limits.dailyConversations
   const newPermissions: string[] = []
-  
+
   // 检查新增的权限
   Object.entries(next.permissions).forEach(([key, value]) => {
     if (value && !current.permissions[key as keyof typeof current.permissions]) {
       newPermissions.push(key)
     }
   })
-  
+
   return {
     conversationIncrease,
     newPermissions
