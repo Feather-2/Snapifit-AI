@@ -178,8 +178,8 @@ export const authConfig = {
         return user ? true : false
       }
 
-      // 处理 OAuth 登录 (GitHub, Google)
-      if ((account?.provider === "github" || account?.provider === "google") && profile) {
+      // 处理 OAuth 登录 (GitHub, Google, Linux.do)
+      if ((account?.provider === "github" || account?.provider === "google" || account?.provider === "linuxdo") && profile) {
         // 处理OAuth登录
 
         if (!profile.id && !profile.sub) {
