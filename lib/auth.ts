@@ -6,6 +6,8 @@ import GitHub from "next-auth/providers/github"
 import Google from "next-auth/providers/google"
 import { UserManager } from "./auth/user-manager"
 import { getSupabase, getSupabaseAdmin } from "./supabase"
+import { buildOAuthProviders } from "./auth/dynamic-providers"
+import { hasFeature } from "../config/features"
 
 // GitHub Provider 配置
 const GitHubProvider = GitHub({
@@ -81,7 +83,10 @@ const CredentialsProvider = Credentials({
 })
 
 export const authConfig = {
-  providers: [GitHubProvider, CredentialsProvider], // 暂时移除 GoogleProvider
+  providers: [
+    ...buildOAuthProviders(),
+    ...(hasFeature('auth.credentials') ? [CredentialsProvider] : []),
+  ],
   pages: {
     signIn: "/signin", // 自定义登录页面
   },

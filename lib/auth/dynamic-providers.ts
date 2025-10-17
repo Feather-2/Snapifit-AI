@@ -1,6 +1,6 @@
 import { hasFeature, getFeatureValue } from '../../config/features'
 
-// 懒加载导入，避免未启用时引入不必要依赖
+// GitHub
 function buildGitHubProvider() {
   const { default: GitHub } = require('next-auth/providers/github')
   const clientId = process.env.GITHUB_CLIENT_ID
@@ -12,11 +12,11 @@ function buildGitHubProvider() {
   return GitHub({
     clientId,
     clientSecret,
-    httpOptions: { timeout: 30000 },
     checks: ['pkce', 'state'],
   })
 }
 
+// Google
 function buildGoogleProvider() {
   const { default: Google } = require('next-auth/providers/google')
   const clientId = process.env.GOOGLE_CLIENT_ID
@@ -28,16 +28,98 @@ function buildGoogleProvider() {
   return Google({ clientId, clientSecret })
 }
 
-// 预留占位：Linux.do OAuth（当前版本未内置，保留接口以便后续接入）
+// Linux.do（优先 OIDC，其次通用 OAuth2）
 function buildLinuxDoProvider() {
-  const clientId = process.env.LINUXDO_CLIENT_ID
-  const clientSecret = process.env.LINUXDO_CLIENT_SECRET
+  // 兼容两套环境变量命名
+  const clientId = process.env.LINUXDO_CLIENT_ID || process.env.OAUTH_CLIENT_ID
+  const clientSecret = process.env.LINUXDO_CLIENT_SECRET || process.env.OAUTH_CLIENT_SECRET
+  const issuer = process.env.LINUXDO_ISSUER
+  const wellKnown = process.env.LINUXDO_WELL_KNOWN_URL
+
+  const authUrl = process.env.LINUXDO_AUTH_URL || process.env.OAUTH_AUTH_URL
+  const tokenUrl = process.env.LINUXDO_TOKEN_URL || process.env.OAUTH_TOKEN_URL
+  const userInfoUrl = process.env.LINUXDO_USER_INFO_URL || process.env.OAUTH_USER_INFO_URL || process.env.OAUTH_USERINFO_URL
+  const scopes = process.env.LINUXDO_SCOPES || process.env.OAUTH_SCOPES || 'openid profile email'
+
   if (!clientId || !clientSecret) {
-    console.warn('[auth] Linux.do OAuth 未配置或未启用，已跳过 (LINUXDO_CLIENT_ID/SECRET)')
+    console.warn('[auth] Linux.do OAuth 跳过：缺少 CLIENT_ID/CLIENT_SECRET')
     return null
   }
-  console.warn('[auth] Linux.do OAuth Provider 暂未实现，已跳过（仅保留占位以便未来接入）')
-  return null
+
+  // OIDC 模式
+  if (issuer || wellKnown) {
+    const { default: OIDC } = require('next-auth/providers/oidc')
+    return OIDC({
+      id: 'linuxdo',
+      name: 'Linux.do',
+      clientId,
+      clientSecret,
+      issuer,
+      wellKnown,
+      checks: ['pkce', 'state'],
+      profile(profile: any) {
+        const p: any = profile || {}
+        const raw = p.user || p
+        const users = Array.isArray(p.users) ? p.users : undefined
+        const u = raw || (users ? users[0] : {})
+        const id = u.id || u.sub || p.sub
+        const username = u.username || u.login || u.name
+        const name = u.name || username
+        const email = u.email || null
+        let image = u.avatar_url || u.picture || null
+        const avatarTemplate = u.avatar_template || p.avatar_template
+        if (!image && avatarTemplate) {
+          image = (avatarTemplate as string).includes('{size}')
+            ? `https://connect.linux.do${avatarTemplate.replace('{size}', '120')}`
+            : `https://connect.linux.do${avatarTemplate}`
+        }
+        return { id: String(id), name, email, image }
+      },
+    })
+  }
+
+  // 通用 OAuth2 模式
+  if (!authUrl || !tokenUrl || !userInfoUrl) {
+    console.warn('[auth] Linux.do OAuth 跳过：未提供 OIDC，也未提供完整 OAuth2 端点 (AUTH/TOKEN/USERINFO)')
+    return null
+  }
+
+  const { default: OAuth } = require('next-auth/providers/oauth')
+  return OAuth({
+    id: 'linuxdo',
+    name: 'Linux.do',
+    type: 'oauth',
+    authorization: { url: authUrl, params: { scope: scopes } },
+    token: tokenUrl,
+    userinfo: {
+      async request({ tokens }: any) {
+        const res = await fetch(userInfoUrl, {
+          headers: { Authorization: `Bearer ${tokens.access_token}` },
+        })
+        const data = await res.json().catch(() => ({}))
+        if (Array.isArray(data?.users) && data.users.length > 0) {
+          return data.users[0]
+        }
+        return data
+      },
+    },
+    profile(profile: any) {
+      const p: any = profile || {}
+      const id = p.id || p.sub || p.user_id
+      const username = p.username || p.login || p.name
+      const name = p.name || username
+      const email = p.email || null
+      let image = p.avatar_url || p.picture || null
+      const avatarTemplate = p.avatar_template
+      if (!image && avatarTemplate) {
+        image = (avatarTemplate as string).includes('{size}')
+          ? `https://connect.linux.do${avatarTemplate.replace('{size}', '120')}`
+          : `https://connect.linux.do${avatarTemplate}`
+      }
+      return { id: String(id), name, email, image }
+    },
+    checks: ['pkce', 'state'],
+  })
 }
 
 export function buildOAuthProviders() {

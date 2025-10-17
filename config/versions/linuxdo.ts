@@ -32,7 +32,7 @@ export const linuxdoConfig: VersionConfig = {
     },
 
     auth: {
-      credentials: true,
+      credentials: false,
       oauth: {
         enabled: true,
         providers: ['linuxdo']
@@ -100,11 +100,27 @@ export const linuxdoConfig: VersionConfig = {
       'NEXT_PUBLIC_SUPABASE_URL',
       'NEXT_PUBLIC_SUPABASE_ANON_KEY',
       'SUPABASE_SERVICE_ROLE_KEY',
+      // Linux.do OAuth：支持两套命名（LINUXDO_* 或 OAUTH_*）
+      // 至少需要其中一套的 CLIENT_ID/CLIENT_SECRET
+      // 端点可通过 OIDC issuer/well-known 或 OAuth2 三元组提供
       'LINUXDO_CLIENT_ID',
       'LINUXDO_CLIENT_SECRET'
     ],
     optional: [
-      'OPENAI_API_KEY'
+      'OPENAI_API_KEY',
+      'LINUXDO_ISSUER',
+      'LINUXDO_WELL_KNOWN_URL',
+      'LINUXDO_AUTH_URL',
+      'LINUXDO_TOKEN_URL',
+      'LINUXDO_USER_INFO_URL',
+      'LINUXDO_SCOPES',
+      // 同义变量（支持外部提供的 OAUTH_*）
+      'OAUTH_CLIENT_ID',
+      'OAUTH_CLIENT_SECRET',
+      'OAUTH_AUTH_URL',
+      'OAUTH_TOKEN_URL',
+      'OAUTH_USER_INFO_URL',
+      'OAUTH_SCOPES'
     ],
     defaults: {
       DB_PROVIDER: 'supabase',
