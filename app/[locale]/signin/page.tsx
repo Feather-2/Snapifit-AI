@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { signIn, useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -14,9 +14,16 @@ import { FaGithub, FaGoogle, FaEye, FaEyeSlash } from 'react-icons/fa'
 import { Mail, Lock, AlertCircle, User } from 'lucide-react'
 import { useTranslation } from "@/hooks/use-i18n"
 import { useParams } from "next/navigation"
+import { useAuthFeatures } from "@/hooks/use-feature"
 
 export default function SignInPage() {
-  const [activeTab, setActiveTab] = useState("oauth")
+  const { credentials, oauthEnabled, oauthProviders } = useAuthFeatures()
+  const defaultTab = useMemo(() => {
+    if (oauthEnabled && oauthProviders.length > 0) return "oauth"
+    if (credentials) return "credentials"
+    return "oauth"
+  }, [oauthEnabled, oauthProviders, credentials])
+  const [activeTab, setActiveTab] = useState(defaultTab)
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
@@ -30,6 +37,7 @@ export default function SignInPage() {
   const locale = params.locale as string
   const t = useTranslation('auth')
   const { data: session, status } = useSession()
+  const linuxdoOnly = oauthEnabled && oauthProviders.length === 1 && oauthProviders[0] === 'linuxdo' && !credentials
 
   // 如果用户已经登录，重定向到主页
   useEffect(() => {
@@ -79,6 +87,39 @@ export default function SignInPage() {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     if (error) setError("")
+  }
+
+  if (linuxdoOnly) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">{t('signin.title') || "欢迎回来"}</CardTitle>
+            <CardDescription>
+              {t('signin.description') || "选择您的登录方式"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <div className="space-y-3">
+              <Button
+                className="w-full"
+                variant="outline"
+                onClick={() => handleOAuthSignIn("linuxdo")}
+                disabled={isLoading}
+              >
+                {isLoading ? (t('signin.signingIn') || "登录中...") : ("使用 Linux.do 登录")}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (
