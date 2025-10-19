@@ -197,3 +197,71 @@ Snapifit-ai/
   <p>用 ❤️ 构建，为了更健康的生活</p>
   <p>Snapifit AI 社区版 © 2025</p>
 </div>
+## 🧭 版本矩阵与切换
+
+应用支持三种形态，通过环境变量切换：
+
+- 个人体验版（本地浏览器 IndexedDB）
+  - 用途：纯本地体验，无需服务端数据库与登录
+  - 配置：
+    - `NEXT_PUBLIC_VERSION=personal`
+    - `PERSONAL_DB_MODE=indexeddb`
+  - 行为：中间件会统一拦截所有 `/api/*` 请求并返回 405；数据仅存储在浏览器 IndexedDB。
+  - 登录页会提示“此版本无需登录，可直接在本地使用”。
+
+- 个人版（单机 SQLite）
+  - 用途：本机运行，单用户数据持久化到 SQLite 文件
+  - 配置：
+    - `NEXT_PUBLIC_VERSION=personal`
+    - `PERSONAL_DB_MODE=sqlite`
+    - 可选：`SQLITE_FILE=./data/personal.sqlite3`
+  - 依赖：`npm i better-sqlite3`
+  - 脚本：
+    - 初始化：`node scripts/sqlite-init.js`
+    - 导出：`node scripts/sqlite-export.js [输出文件]`
+    - 导入：`node scripts/sqlite-import.js <输入文件> [--clear]`
+
+- 社区/L站版（Supabase/特化 PostgreSQL）
+  - 社区版（默认）：
+    - `NEXT_PUBLIC_VERSION=community`
+    - `DB_PROVIDER=postgresql | supabase`
+    - 当使用 supabase：
+      - `NEXT_PUBLIC_SUPABASE_URL`
+      - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+      - `SUPABASE_SERVICE_ROLE_KEY`
+  - L站版（只允许 L站 OAuth）：
+    - `NEXT_PUBLIC_VERSION=linuxdo`
+    - 必填（OAuth2 二选一任意一套变量名）：
+      - `OAUTH_CLIENT_ID`、`OAUTH_CLIENT_SECRET`
+      - 端点：`OAUTH_AUTH_URL`、`OAUTH_TOKEN_URL`、`OAUTH_USER_INFO_URL`
+      - 范围：`OAUTH_SCOPES=user:profile`
+      - 也支持同义的 `LINUXDO_*` 变量名（如 `LINUXDO_AUTH_URL` 等）
+    - 若有 OIDC 配置，可改用：`LINUXDO_ISSUER` 或 `LINUXDO_WELL_KNOWN_URL`
+
+> 提示：默认版本为社区版（见 `.env.example`）。
+
+## 📦 数据导入/导出
+
+### IndexedDB（个人体验版，本地）
+- 入口：设置 → 数据（Data）页签
+- 导出：将 `userProfile + aiConfig + healthLogs + aiMemories` 打包为 JSON 下载
+- 导入：选择 JSON 文件写入本地 IndexedDB（登录状态下会尽力同步到云端）
+
+### SQLite（个人版，本机）
+- 初始化：`node scripts/sqlite-init.js`
+- 导出：`node scripts/sqlite-export.js [输出文件]`
+- 导入：`node scripts/sqlite-import.js <输入文件> [--clear]`
+- 数据文件：`SQLITE_FILE` 环境变量（默认 `data/personal.sqlite3`）
+
+### 服务端导出（社区/L站/个人 SQLite）
+- API：`GET /api/health/export?format=json|csv|xml`（需 API Token：scope=`export`，permission=`read`）
+- 输出：健康日志与用户档案数据
+
+## 🔐 认证与登录
+
+- 登录方式由版本开关动态控制：
+  - 个人体验版：默认关闭所有登录（无需登录即可使用）
+  - 个人版：建议仅启用凭据登录（邮箱/密码）
+  - 社区版：支持 GitHub/Google + 凭据登录
+  - L站版：仅允许 Linux.do OAuth（强约束）
+- 登录页会根据功能开关动态展示对应按钮（Linux.do/GitHub/Google/凭据）
