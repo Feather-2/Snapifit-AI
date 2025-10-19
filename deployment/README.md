@@ -238,4 +238,96 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 4. **测试功能**：验证所有功能正常工作
 5. **生产优化**：根据需要配置 HTTPS、域名等
 
+---
+
+## 🌍 版本选择与环境变量矩阵（重要）
+
+本项目支持三种形态，通过环境变量切换：
+
+### A. 个人体验版（浏览器 IndexedDB）
+- 用途：纯前端本地使用，无需服务端数据库与登录
+- 变量（.env/.env.local）：
+  - `NEXT_PUBLIC_VERSION=personal`
+  - `PERSONAL_DB_MODE=indexeddb`
+- 行为：中间件会统一拦截所有 `/api/*` 请求并返回 405，页面将提示“此版本无需登录，可直接在本地使用”。
+- 部署建议：本形态更适合本地开发/静态体验；如需服务器部署，建议改用社区版或 L站版。
+
+### B. 个人版（SQLite）
+- 用途：单机运行，数据落地到 SQLite 文件
+- 变量：
+  - `NEXT_PUBLIC_VERSION=personal`
+  - `PERSONAL_DB_MODE=sqlite`
+  - `SQLITE_FILE=./data/personal.sqlite3`（可选，默认该路径）
+- 依赖：
+  - 安装 `better-sqlite3`：`npm i better-sqlite3`
+- 初始化与数据迁移：
+  - 初始化：`node scripts/sqlite-init.js`
+  - 导出：`node scripts/sqlite-export.js [输出文件]`
+  - 导入：`node scripts/sqlite-import.js <输入文件> [--clear]`
+
+### C. 社区版（PostgreSQL/Supabase）
+- 用途：多用户、全量功能
+- 变量：
+  - `NEXT_PUBLIC_VERSION=community`
+  - `DB_PROVIDER=postgresql | supabase`
+  - 当 `DB_PROVIDER=supabase` 时必须：
+    - `NEXT_PUBLIC_SUPABASE_URL`
+    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+    - `SUPABASE_SERVICE_ROLE_KEY`
+
+### D. L站社区版（Supabase/特化 PG，仅限 L站 OAuth）
+- 用途：在 L站社区环境使用，仅允许 L站 OAuth 登录
+- 变量：
+  - `NEXT_PUBLIC_VERSION=linuxdo`
+  - OAuth2 二选一（任选一套命名）：
+    - `OAUTH_CLIENT_ID` / `OAUTH_CLIENT_SECRET`
+    - `OAUTH_AUTH_URL` / `OAUTH_TOKEN_URL` / `OAUTH_USER_INFO_URL`
+    - `OAUTH_SCOPES=user:profile`
+    - 或同义命名：`LINUXDO_CLIENT_ID` / `LINUXDO_CLIENT_SECRET` / `LINUXDO_AUTH_URL` / `LINUXDO_TOKEN_URL` / `LINUXDO_USER_INFO_URL` / `LINUXDO_SCOPES`
+  - 若有 OIDC：
+    - `LINUXDO_ISSUER` 或 `LINUXDO_WELL_KNOWN_URL`
+
+> 提示：根目录 `.env.example` 已包含核心变量模板，可复制为 `.env.local` 后按版本进行增删。
+
+### Docker 环境变量示例（docker-single）
+
+Supabase 形态：
+```
+NEXT_PUBLIC_VERSION=community
+DB_PROVIDER=supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=xxxx
+SUPABASE_SERVICE_ROLE_KEY=xxxx
+NEXTAUTH_SECRET=xxxx
+KEY_ENCRYPTION_SECRET=xxxx
+```
+
+L站形态（仅 L站 OAuth）：
+```
+NEXT_PUBLIC_VERSION=linuxdo
+DB_PROVIDER=supabase
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=xxxx
+SUPABASE_SERVICE_ROLE_KEY=xxxx
+
+OAUTH_CLIENT_ID=your_client_id
+OAUTH_CLIENT_SECRET=your_client_secret
+OAUTH_AUTH_URL=https://connect.linux.do/oauth2/authorize
+OAUTH_TOKEN_URL=https://connect.linux.do/oauth2/token
+OAUTH_USER_INFO_URL=https://connect.linux.do/api/user
+OAUTH_SCOPES=user:profile
+
+NEXTAUTH_SECRET=xxxx
+KEY_ENCRYPTION_SECRET=xxxx
+```
+
+个人版（SQLite，本机或容器内）示例：
+```
+NEXT_PUBLIC_VERSION=personal
+PERSONAL_DB_MODE=sqlite
+SQLITE_FILE=/data/personal.sqlite3
+NEXTAUTH_SECRET=xxxx
+KEY_ENCRYPTION_SECRET=xxxx
+```
+
 开始您的 SnapFit AI 部署之旅！🚀
