@@ -5,6 +5,7 @@ import { getClientIP } from './lib/ip-utils';
 import { checkRequestSize } from './lib/request-size-limiter';
 import { addSecurityHeaders, addCorsHeaders } from './middleware-security-headers';
 import { EnvConfig } from './lib/env-config';
+import { getVersion } from './config/features';
 
 // 注意：数据库相关检查已移到各自的 API 路由中处理
 
@@ -303,6 +304,19 @@ export default async function middleware(req: NextRequest) {
   // 🚫 API路由不需要国际化处理，但需要添加安全头
   // 注意：数据库相关的检查（IP封禁、用户封禁、维护模式）已移到各自的 API 路由中处理
   if (path.startsWith('/api/')) {
+    // 个人体验版（IndexedDB）不提供服务端数据库/API
+    const version = (getVersion && typeof getVersion === 'function') ? getVersion() : 'community'
+    const personalMode = process.env.PERSONAL_DB_MODE || 'indexeddb'
+    if (version === 'personal' && personalMode === 'indexeddb') {
+      return NextResponse.json(
+        {
+          error: 'SERVER_DB_DISABLED',
+          message: '个人体验版（IndexedDB）不提供服务端接口，请使用前端本地存储或导入/导出功能',
+        },
+        { status: 405 }
+      )
+    }
+
     const response = NextResponse.next();
     const origin = req.headers.get('origin') || undefined;
     return addCorsHeaders(addSecurityHeaders(response), origin);
