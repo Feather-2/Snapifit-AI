@@ -12,7 +12,23 @@ export function getVersionConfig(): VersionConfig {
  * 获取功能配置
  */
 export function getFeatures(): VersionFeatures {
-  return getCurrentVersionConfig().features
+  const cfg = getCurrentVersionConfig()
+  const base = cfg.features
+
+  // 生成拷贝，避免污染原始配置对象
+  const features: VersionFeatures = JSON.parse(JSON.stringify(base))
+
+  // 个人体验版（IndexedDB）下，关闭所有鉴权与多用户相关功能
+  const version = getCurrentVersion()
+  const personalMode = process.env.PERSONAL_DB_MODE || 'indexeddb'
+  if (version === 'personal' && personalMode === 'indexeddb') {
+    features.auth.credentials = false
+    features.auth.oauth.enabled = false
+    features.userSystem.multiUser = false
+    features.admin.adminPanel = false
+  }
+
+  return features
 }
 
 /**

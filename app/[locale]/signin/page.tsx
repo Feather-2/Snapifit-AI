@@ -133,6 +133,11 @@ export default function SignInPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {!oauthEnabled && !credentials && (
+            <div className="mb-6 text-sm text-muted-foreground text-center">
+              {t('signin.noAuthNeeded') || '此版本无需登录，可直接在本地使用（数据保存在本地浏览器）。'}
+            </div>
+          )}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               {oauthEnabled && oauthProviders.length > 0 && (
@@ -276,4 +281,3 @@ export default function SignInPage() {
     </div>
   )
 }
-
