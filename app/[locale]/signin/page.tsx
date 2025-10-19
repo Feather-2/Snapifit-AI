@@ -89,6 +89,7 @@ export default function SignInPage() {
     if (error) setError("")
   }
 
+  // L站版仅显示 Linux.do 登录
   if (linuxdoOnly) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900 p-4">
@@ -134,8 +135,12 @@ export default function SignInPage() {
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="oauth">{t('signin.oauthTab') || "第三方登录"}</TabsTrigger>
-              <TabsTrigger value="credentials">{t('signin.credentialsTab') || "账号密码"}</TabsTrigger>
+              {oauthEnabled && oauthProviders.length > 0 && (
+                <TabsTrigger value="oauth">{t('signin.oauthTab') || "第三方登录"}</TabsTrigger>
+              )}
+              {credentials && (
+                <TabsTrigger value="credentials">{t('signin.credentialsTab') || "账号密码"}</TabsTrigger>
+              )}
             </TabsList>
 
             {error && (
@@ -145,95 +150,112 @@ export default function SignInPage() {
               </Alert>
             )}
 
-            <TabsContent value="oauth" className="space-y-4 mt-6">
-              <div className="text-center text-sm text-muted-foreground mb-4">
-                {t('signin.oauthDescription') || "使用第三方账号快速登录"}
-              </div>
-              <div className="space-y-3">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => handleOAuthSignIn("github")}
-                  disabled={isLoading}
-                >
-                  <FaGithub className="mr-2 h-5 w-5" />
-                  {isLoading ? (t('signin.signingIn') || "登录中...") : (t('signin.githubButton') || "使用 GitHub 登录")}
-                </Button>
-                {/* Google OAuth 暂时禁用 - 需要 HTTPS 和公共域名 */}
-                {/* <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => handleOAuthSignIn("google")}
-                  disabled={isLoading}
-                >
-                  <FaGoogle className="mr-2 h-5 w-5" />
-                  {isLoading ? (t('signin.signingIn') || "登录中...") : (t('signin.googleButton') || "使用 Google 登录")}
-                </Button> */}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="credentials" className="space-y-4 mt-6">
-              <form onSubmit={handleCredentialsSignIn} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="identifier">{t('signin.identifier') || "邮箱或用户名"}</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="identifier"
-                      type="text"
-                      placeholder={t('signin.identifierPlaceholder') || "your@email.com 或 username"}
-                      value={formData.identifier}
-                      onChange={(e) => handleInputChange("identifier", e.target.value)}
-                      className="pl-10"
-                      required
-                    />
-                  </div>
+            {oauthEnabled && oauthProviders.length > 0 && (
+              <TabsContent value="oauth" className="space-y-4 mt-6">
+                <div className="text-center text-sm text-muted-foreground mb-4">
+                  {t('signin.oauthDescription') || "使用第三方账号快速登录"}
                 </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="password">{t('signin.password') || "密码"}</Label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder={t('signin.passwordPlaceholder') || "输入您的密码"}
-                      value={formData.password}
-                      onChange={(e) => handleInputChange("password", e.target.value)}
-                      className="pl-10 pr-10"
-                      required
-                    />
+                <div className="space-y-3">
+                  {oauthProviders.includes('linuxdo') && (
                     <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                      onClick={() => setShowPassword(!showPassword)}
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => handleOAuthSignIn("linuxdo")}
+                      disabled={isLoading}
                     >
-                      {showPassword ? (
-                        <FaEyeSlash className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <FaEye className="h-4 w-4 text-muted-foreground" />
-                      )}
+                      {isLoading ? (t('signin.signingIn') || "登录中...") : ("使用 Linux.do 登录")}
                     </Button>
-                  </div>
+                  )}
+                  {oauthProviders.includes('github') && (
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => handleOAuthSignIn("github")}
+                      disabled={isLoading}
+                    >
+                      <FaGithub className="mr-2 h-5 w-5" />
+                      {isLoading ? (t('signin.signingIn') || "登录中...") : (t('signin.githubButton') || "使用 GitHub 登录")}
+                    </Button>
+                  )}
+                  {oauthProviders.includes('google') && (
+                    <Button
+                      className="w-full"
+                      variant="outline"
+                      onClick={() => handleOAuthSignIn("google")}
+                      disabled={isLoading}
+                    >
+                      <FaGoogle className="mr-2 h-5 w-5" />
+                      {isLoading ? (t('signin.signingIn') || "登录中...") : (t('signin.googleButton') || "使用 Google 登录")}
+                    </Button>
+                  )}
                 </div>
+              </TabsContent>
+            )}
 
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (t('signin.signingIn') || "登录中...") : (t('signin.signInButton') || "登录")}
-                </Button>
-              </form>
+            {credentials && (
+              <TabsContent value="credentials" className="space-y-4 mt-6">
+                <form onSubmit={handleCredentialsSignIn} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="identifier">{t('signin.identifier') || "邮箱或用户名"}</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="identifier"
+                        type="text"
+                        placeholder={t('signin.identifierPlaceholder') || "your@email.com 或 username"}
+                        value={formData.identifier}
+                        onChange={(e) => handleInputChange("identifier", e.target.value)}
+                        className="pl-10"
+                        required
+                      />
+                    </div>
+                  </div>
 
-              <div className="text-center space-y-2">
-                <Button
-                  variant="link"
-                  className="text-sm"
-                  onClick={() => router.push(`/${locale}/forgot-password`)}
-                >
-                  {t('signin.forgotPassword') || "忘记密码？"}
-                </Button>
-              </div>
-            </TabsContent>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">{t('signin.password') || "密码"}</Label>
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder={t('signin.passwordPlaceholder') || "输入您的密码"}
+                        value={formData.password}
+                        onChange={(e) => handleInputChange("password", e.target.value)}
+                        className="pl-10 pr-10"
+                        required
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? (
+                          <FaEyeSlash className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <FaEye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading ? (t('signin.signingIn') || "登录中...") : (t('signin.signInButton') || "登录")}
+                  </Button>
+                </form>
+
+                <div className="text-center space-y-2">
+                  <Button
+                    variant="link"
+                    className="text-sm"
+                    onClick={() => router.push(`/${locale}/forgot-password`)}
+                  >
+                    {t('signin.forgotPassword') || "忘记密码？"}
+                  </Button>
+                </div>
+              </TabsContent>
+            )}
           </Tabs>
 
           <div className="mt-6">
@@ -254,3 +276,4 @@ export default function SignInPage() {
     </div>
   )
 }
+
