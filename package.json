@@ -37,7 +37,10 @@
                     "test-security":  "npx ts-node scripts/test-security.ts",
                     "ws-server":  "npx tsx scripts/websocket-server.ts",
                     "ws-client":  "npx tsx scripts/local-mcp-client.ts",
-                    "ws-client-test":  "npx tsx scripts/local-mcp-client.ts test"
+                    "ws-client-test":  "npx tsx scripts/local-mcp-client.ts test",
+                    "sqlite:init":  "node scripts/sqlite-init.js",
+                    "sqlite:export":  "node scripts/sqlite-export.js",
+                    "sqlite:import":  "node scripts/sqlite-import.js"
                 },
     "dependencies":  {
                          "@ai-sdk/openai":  "latest",
@@ -124,7 +127,8 @@
                          "uuid":  "^10.0.0",
                          "vaul":  "^0.9.6",
                          "ws":  "^8.18.0",
-                         "zod":  "^3.24.1"
+                         "zod":  "^3.24.1",
+                         "better-sqlite3":  "^9.5.0"
                      },
     "devDependencies":  {
                             "@types/crypto-js":  "^4.2.2",
