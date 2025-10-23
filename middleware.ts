@@ -7,47 +7,47 @@ import { addSecurityHeaders, addCorsHeaders } from './middleware-security-header
 import { EnvConfig } from './lib/env-config';
 import { getVersion } from './config/features';
 
-// 娉ㄦ剰锛氭暟鎹簱鐩稿叧妫€鏌ュ凡绉诲埌鍚勮嚜鐨?API 璺敱涓鐞?
+// 注意：数据库相关检查已迁移到各自的 API 路由处理
 
-// 瀹夊叏閰嶇疆
+// 安全配置
 const SECURITY_CONFIG = {
-  // 鏈€澶ц姹傚ぇ灏忥紙瀛楄妭锛?
+  // 最大请求体大小（字节）
   maxRequestSize: 10 * 1024 * 1024, // 10MB
-  // 鏈€澶?User-Agent 闀垮害
+  // 最大 User-Agent 长度
   maxUserAgentLength: 512,
-  // 鏈€澶?IP 鍦板潃闀垮害
-  maxIpLength: 45, // IPv6 鏈€澶ч暱搴?
-  // 鏁忔劅淇℃伅杩囨护
+  // 最大 IP 地址长度
+  maxIpLength: 45, // IPv6 最大长度
+  // 敏感头字段过滤
   sensitiveHeaders: ['authorization', 'cookie', 'x-api-key'],
 };
 
-// 杈撳叆楠岃瘉鍜屾竻鐞嗗嚱鏁?
+// 输入校验与清理函数
 function sanitizeInput(input: string, maxLength: number): string {
   if (!input || typeof input !== 'string') return '';
 
-  // 绉婚櫎娼滃湪鐨勫嵄闄╁瓧绗?
+  // 移除常见危险字符
   const cleaned = input
-    .replace(/[<>'"&]/g, '') // 绉婚櫎 HTML/JS 娉ㄥ叆瀛楃
-    .replace(/[\x00-\x1f\x7f-\x9f]/g, '') // 绉婚櫎鎺у埗瀛楃
+    .replace(/[<>'"&]/g, '') // 移除 HTML/JS 输入字符
+    .replace(/[\x00-\x1f\x7f-\x9f]/g, '') // 移除控制字符
     .trim();
 
-  // 闄愬埗闀垮害
+  // 限制长度
   return cleaned.length > maxLength ? cleaned.substring(0, maxLength) : cleaned;
 }
 
-// 楠岃瘉 IP 鍦板潃鏍煎紡
+// 验证 IP 地址格式
 function isValidIP(ip: string): boolean {
   if (!ip || ip.length > SECURITY_CONFIG.maxIpLength) return false;
 
   // IPv4 姝ｅ垯
   const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-  // IPv6 姝ｅ垯锛堢畝鍖栫増锛?
+  // IPv6 正则（简化版）
   const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
 
   return ipv4Regex.test(ip) || ipv6Regex.test(ip) || ip === '::1' || ip === '127.0.0.1';
 }
 
-// 瀹夊叏鐨勯敊璇搷搴旓紙涓嶆硠闇茬郴缁熶俊鎭級
+// 安全的错误响应（不暴露系统细节）
 function createSecureErrorResponse(message: string, status: number = 400) {
   return NextResponse.json(
     {
@@ -60,7 +60,7 @@ function createSecureErrorResponse(message: string, status: number = 400) {
 }
 
 /**
- * 寮傛璁板綍瀹夊叏浜嬩欢鍒版暟鎹簱锛堥潪闃诲锛?
+ * 异步记录安全事件到数据库（非阻塞）
  */
 async function logSecurityEventAsync(event: {
   ipAddress: string;
@@ -72,7 +72,7 @@ async function logSecurityEventAsync(event: {
   userId?: string;
 }) {
   try {
-    // 杈撳叆楠岃瘉鍜屾竻鐞?
+    // 输入校验与清理
     const cleanEvent = {
       ipAddress: sanitizeInput(event.ipAddress, SECURITY_CONFIG.maxIpLength),
       userAgent: event.userAgent ? sanitizeInput(event.userAgent, SECURITY_CONFIG.maxUserAgentLength) : 'unknown',
@@ -82,13 +82,13 @@ async function logSecurityEventAsync(event: {
       userId: event.userId ? sanitizeInput(event.userId, 100) : undefined,
     };
 
-    // 楠岃瘉 IP 鍦板潃
+    // 验证 IP 地址
     if (!isValidIP(cleanEvent.ipAddress)) {
       console.warn('Invalid IP address in security event:', event.ipAddress);
       return;
     }
 
-    // 璁板綍鍒版帶鍒跺彴
+    // 记录到控制台
     console.log('Security Event:', {
       ip: cleanEvent.ipAddress,
       type: cleanEvent.eventType,
@@ -97,7 +97,7 @@ async function logSecurityEventAsync(event: {
       timestamp: new Date().toISOString()
     });
 
-    // 寮傛璁板綍鍒版暟鎹簱锛堥潪闃诲锛?
+    // 异步记录到数据库（非阻塞）
     fetch('/api/security/log-event', {
       method: 'POST',
       headers: {
@@ -113,7 +113,7 @@ async function logSecurityEventAsync(event: {
   }
 }
 
-// 浠庤姹備腑鎻愬彇鍩烘湰淇℃伅锛堜笉娑夊強鏁版嵁搴撴搷浣滐級
+// 从请求中提取基本信息（不涉及数据库操作）
 function extractRequestInfo(req: NextRequest) {
   const authHeader = req.headers.get('authorization');
   const userAgent = req.headers.get('user-agent') || 'unknown';
@@ -126,34 +126,34 @@ function extractRequestInfo(req: NextRequest) {
   };
 }
 
-// 鍔ㄦ€侀€熺巼闄愬埗閰嶇疆锛堟敮鎸佺幆澧冨彉閲忔帶鍒讹級
+// 动态速率限制配置（支持环境变量控制）
 function getRateLimitConfig() {
   const rateLimits = EnvConfig.rateLimits;
   return {
-    // 鍚屾API闄愬埗锛氭瘡鍒嗛挓璇锋眰鏁帮紙鍦ㄤ笓鐢ㄩ檺鍒跺櫒涓繕鏈夋洿缁嗙矑搴︾殑鎺у埗锛?
+    // 同步 API 限制：每分钟请求数（在专用限流器中还有更细级别控制）
     sync: { requests: rateLimits.sync, window: 60 * 1000 },
-    // AI API闄愬埗锛氭瘡鍒嗛挓璇锋眰鏁?
+    // AI API 限制：每分钟请求数
     ai: { requests: rateLimits.ai, window: 60 * 1000 },
-    // 涓婁紶璺敱闄愬埗锛氭瘡鍒嗛挓璇锋眰鏁?
+    // 上传路由限制：每分钟请求数
     upload: { requests: rateLimits.upload, window: 60 * 1000 },
-    // 绠＄悊API闄愬埗锛氭瘡鍒嗛挓璇锋眰鏁?
+    // 管理 API 限制：每分钟请求数
     admin: { requests: rateLimits.admin, window: 60 * 1000 },
-    // 璁よ瘉API闄愬埗锛氭瘡鍒嗛挓璇锋眰鏁帮紙session鏌ヨ棰戠箒锛?
+    // 认证 API 限制：每分钟请求数（如 session 查询）
     auth: { requests: rateLimits.auth, window: 60 * 1000 },
-    // 涓€鑸珹PI闄愬埗锛氭瘡鍒嗛挓璇锋眰鏁?
+    // 一般 API 限制：每分钟请求数
     api: { requests: rateLimits.api, window: 60 * 1000 },
-    // 鍏ㄥ眬闄愬埗锛氭瘡鍒嗛挓璇锋眰鏁?
+    // 全局限制：每分钟请求数
     global: { requests: rateLimits.global, window: 60 * 1000 }
   };
 }
 
-// 鍐呭瓨涓殑閫熺巼闄愬埗瀛樺偍锛堢敓浜х幆澧冨缓璁娇鐢≧edis锛?
+// 内存中的速率限制存储（生产环境建议使用 Redis）
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-// 鐢ㄦ埛绾у埆鐨勯€熺巼闄愬埗瀛樺偍
+// 用户级别的速率限制存储
 const userRateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
-// 娓呯悊杩囨湡鐨勯€熺巼闄愬埗璁板綍
+// 清理过期的速率限制记录
 setInterval(() => {
   const now = Date.now();
   for (const [key, value] of rateLimitStore.entries()) {
@@ -166,12 +166,12 @@ setInterval(() => {
       userRateLimitStore.delete(key);
     }
   }
-}, 60 * 1000); // 姣忓垎閽熸竻鐞嗕竴娆?
+}, 60 * 1000); // 每分钟清理一次
 
 
 
-// 娉ㄦ剰锛氱淮鎶ゆā寮忓拰 IP 灏佺妫€鏌ュ凡绉诲埌 API 璺敱涓鐞?
-// 涓棿浠剁幇鍦ㄥ彧澶勭悊鍩烘湰鐨勯€熺巼闄愬埗鍜岃姹傞獙璇?
+// 注意：身份伪装模式与 IP 白名单检查已迁移到 API 路由处理
+// 这里仅处理基础的速率限制与请求校验
 
 function getApiCategory(path: string): keyof typeof RATE_LIMIT_CONFIG {
   if (path.startsWith('/api/sync/')) return 'sync';
@@ -183,12 +183,12 @@ function getApiCategory(path: string): keyof typeof RATE_LIMIT_CONFIG {
   return 'global';
 }
 
-// getClientIP 鍑芥暟宸茬Щ鍔ㄥ埌 lib/ip-utils.ts
+// getClientIP 函数已移动到 lib/ip-utils.ts
 
 async function checkRateLimit(req: NextRequest): Promise<NextResponse | null> {
-  // 馃敡 妫€鏌ユ槸鍚﹀惎鐢ㄩ€熺巼闄愬埗
+  // 检查是否启用速率限制
   if (!EnvConfig.enableRateLimit) {
-    return null; // 閫熺巼闄愬埗琚鐢紝鐩存帴閫氳繃
+    return null; // 限速被关闭，直接放行
   }
 
   const ip = getClientIP(req);
@@ -198,7 +198,7 @@ async function checkRateLimit(req: NextRequest): Promise<NextResponse | null> {
     return null;
   }
 
-  // 楠岃瘉 IP 鍦板潃
+  // 验证 IP 地址
   if (!isValidIP(ip)) {
     logSecurityEventAsync({
       ipAddress: ip,
@@ -210,30 +210,30 @@ async function checkRateLimit(req: NextRequest): Promise<NextResponse | null> {
     return createSecureErrorResponse('Invalid request', 400);
   }
 
-  // 馃敀 杩涜閫熺巼闄愬埗妫€鏌?
+  // 执行速率限制检查
   const category = getApiCategory(path);
   const rateLimitConfig = getRateLimitConfig();
   const config = rateLimitConfig[category];
 
-  // 鍒涘缓鏇寸簿纭殑闄愬埗閿細IP + 鍏蜂綋璺緞
+  // 创建更精确的限制键：IP + 具体路径
   const limitKey = `${ip}:${path}`;
   const now = Date.now();
 
-  // 妫€鏌P绾у埆闄愬埗
+  // 检查 IP 级别限制
   const ipRecord = rateLimitStore.get(limitKey);
 
   if (!ipRecord || now > ipRecord.resetTime) {
-    // 鍒涘缓鏂拌褰曟垨閲嶇疆杩囨湡璁板綍
+    // 创建新记录或重置过期记录
     rateLimitStore.set(limitKey, {
       count: 1,
       resetTime: now + config.window
     });
   } else {
     if (ipRecord.count >= config.requests) {
-      // 鑾峰彇璇锋眰淇℃伅
+      // 获取请求信息
       const requestInfo = extractRequestInfo(req);
 
-      // 璁板綍閫熺巼闄愬埗杩濊
+      // 记录速率限制违规
       logSecurityEventAsync({
         ipAddress: ip,
         userAgent: requestInfo.userAgent,
@@ -271,7 +271,7 @@ async function checkRateLimit(req: NextRequest): Promise<NextResponse | null> {
       );
     }
 
-    // 澧炲姞璁℃暟
+    // 增加计数
     ipRecord.count++;
     rateLimitStore.set(limitKey, ipRecord);
   }
@@ -280,13 +280,13 @@ async function checkRateLimit(req: NextRequest): Promise<NextResponse | null> {
 }
 
 const intlMiddleware = createMiddleware({
-  // 鏀寔鐨勮瑷€鍒楄〃
+  // 支持的语言列表
   locales,
-  // 榛樿璇█
+  // 默认语言
   defaultLocale,
-  // 濮嬬粓鏄剧ず璇█鍓嶇紑锛岀‘淇濊瑷€鐘舵€佺ǔ瀹?
+  // 始终显示语言前缀，确保路由稳定
   localePrefix: 'always',
-  // 璇█妫€娴嬬瓥鐣?
+  // 语言检测策略
   localeDetection: true
 });
 
@@ -298,28 +298,29 @@ export default async function middleware(req: NextRequest) {
     return null;
   }
 
-  // 馃敀 绗竴灞傦細璇锋眰澶у皬妫€鏌ワ紙闃叉瓒呭ぇ璇锋眰鏀诲嚮锛?
+  // 第一步：请求体大小检查（防止大请求冲击）
   const sizeCheckResponse = await checkRequestSize(req);
   if (sizeCheckResponse) {
     return sizeCheckResponse;
   }
 
-  // 馃敀 绗簩灞傦細IP绾у埆鐨勯€熺巼闄愬埗锛堜繚鎶よ璇佺鐐癸級
+  // 第二步：IP 级别速率限制（保护认证等端点）
   const securityResponse = await checkRateLimit(req);
   if (securityResponse) {
     return securityResponse;
   }
 
-  // 馃毇 API璺敱涓嶉渶瑕佸浗闄呭寲澶勭悊锛屼絾闇€瑕佹坊鍔犲畨鍏ㄥご
-  // 娉ㄦ剰锛氭暟鎹簱鐩稿叧鐨勬鏌ワ紙IP灏佺銆佺敤鎴峰皝绂併€佺淮鎶ゆā寮忥級宸茬Щ鍒板悇鑷殑 API 璺敱涓鐞?  if (path.startsWith('/api/')) {
-    // 涓汉浣撻獙鐗堬紙IndexedDB锛変笉鎻愪緵鏈嶅姟绔暟鎹簱/API
+  // API 路由无需国际化处理，但需要添加安全头
+  // 注意：数据库相关的检查（IP 白名单、用户隔离、沙箱等）已迁移至各自 API 路由
+  if (path.startsWith('/api/')) {
+    // 个人体验版（IndexedDB）不提供服务端数据库/API
     const version = (getVersion && typeof getVersion === 'function') ? getVersion() : 'community'
     const personalMode = process.env.PERSONAL_DB_MODE || 'indexeddb'
     if (version === 'personal' && personalMode === 'indexeddb') {
       return NextResponse.json(
         {
           error: 'SERVER_DB_DISABLED',
-          message: '涓汉浣撻獙鐗堬紙IndexedDB锛変笉鎻愪緵鏈嶅姟绔帴鍙ｏ紝璇蜂娇鐢ㄥ墠绔湰鍦板瓨鍌ㄦ垨瀵煎叆/瀵煎嚭鍔熻兘',
+          message: '个人体验版（IndexedDB）不提供服务端接口，请使用前端本地存储或导入/导出功能',
         },
         { status: 405 }
       )
@@ -330,18 +331,18 @@ export default async function middleware(req: NextRequest) {
     return addCorsHeaders(addSecurityHeaders(response), origin);
   }
 
-  // 馃寪 瀵归潪API璺敱杩涜鍥介檯鍖栧鐞嗗苟娣诲姞瀹夊叏澶?
+  // 对非 API 路由进行国际化处理并添加安全头
   const response = intlMiddleware(req);
   return addSecurityHeaders(response);
 }
 
-// 娉ㄦ剰锛氬叕鍏盇PI璺緞鐨勫垽鏂凡绉诲埌鍚勮嚜鐨?API 璺敱涓鐞?
+// 注意：公共 API 路由的判定已迁移到各自的 API 路由处理中
 
 export const config = {
-  // 鍖归厤鎵€鏈夎矾寰勶紝闄や簡浠ヤ笅璺緞锛?
-  // - _next 闈欐€佹枃浠?
-  // - _vercel 閮ㄧ讲鏂囦欢
-  // - 闈欐€佽祫婧愭枃浠?
+  // 匹配所有路径，除以下路径：
+  // - _next 非页面文件
+  // - _vercel 内部文件
+  // - 非页面静态资源文件
   matcher: ['/((?!_next|_vercel|.*\\..*).*)', '/api/(.*)']
 };
 
