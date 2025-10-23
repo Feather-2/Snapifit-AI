@@ -50,11 +50,16 @@
                     "test-security":  "npx ts-node scripts/test-security.ts",
                     "ws-server":  "npx tsx scripts/websocket-server.ts",
                     "ws-client":  "npx tsx scripts/local-mcp-client.ts",
-                    "ws-client-test":  "npx tsx scripts/local-mcp-client.ts test",
-                    "sqlite:init":  "node scripts/sqlite-init.js",
-                    "sqlite:export":  "node scripts/sqlite-export.js",
-                    "sqlite:import":  "node scripts/sqlite-import.js"
-                },
+                "ws-client-test":  "npx tsx scripts/local-mcp-client.ts test",
+                "sqlite:init":  "node scripts/sqlite-init.js",
+                "sqlite:export":  "node scripts/sqlite-export.js",
+                "sqlite:import":  "node scripts/sqlite-import.js",
+                "smoke:version":  "npx tsx scripts/test-versions-smoke.ts",
+                "smoke:personal":  "NEXT_PUBLIC_VERSION=personal PERSONAL_DB_MODE=indexeddb npx tsx scripts/smoke-api.ts",
+                "smoke:personal:sqlite":  "NEXT_PUBLIC_VERSION=personal PERSONAL_DB_MODE=sqlite npx tsx scripts/smoke-api.ts",
+                "smoke:linuxdo":  "NEXT_PUBLIC_VERSION=linuxdo DB_PROVIDER=supabase npx tsx scripts/smoke-api.ts",
+                "smoke:community":  "NEXT_PUBLIC_VERSION=community DB_PROVIDER=postgresql npx tsx scripts/smoke-api.ts"
+            },
     "dependencies":  {
                          "@ai-sdk/openai":  "latest",
                          "@formkit/auto-animate":  "^0.8.2",
