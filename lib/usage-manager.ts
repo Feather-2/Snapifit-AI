@@ -1,4 +1,6 @@
 import { getSupabaseAdmin } from './supabase'
+import { getDb } from './database'
+import { getVersion } from '@/config/features'
 import { getDailyConversationLimit, getTrustLevelConfig } from '@/config/trust-level-limits'
 
 // 缓存系统配置，避免频繁查询数据库
@@ -150,14 +152,10 @@ export class UsageManager {
         p_daily_limit: limit
       })
 
+      // 当底层数据库不支持 RPC（如 personal + sqlite）时，走回退实现
       if (error) {
-        console.error('Database error in usage check:', error)
-        return {
-          allowed: false,
-          newCount: 0,
-          limit,
-          error: 'Database error occurred'
-        }
+        console.warn('[UsageManager] RPC not available, falling back to manual update:', error?.message || error)
+        return await this.fallbackCheckAndRecordUsage(userId, trustLevel, usageType, limit)
       }
 
       // 🔍 调试数据库返回值
@@ -229,8 +227,9 @@ export class UsageManager {
       })
 
       if (error) {
-        console.error('Error rolling back usage:', error)
-        return { success: false, error: error.message }
+        console.warn('[UsageManager] RPC rollback unavailable, using fallback:', error?.message || error)
+        const fb = await this.fallbackDecrementUsage(userId, usageType)
+        return fb
       }
 
       return { success: true, newCount: data }
@@ -614,5 +613,109 @@ export class UsageManager {
         error: error instanceof Error ? error.message : 'Unknown error'
       }
     }
+  }
+
+  /**
+   * 回退路径（无 RPC 的数据库，如 personal + sqlite）
+   */
+  private async fallbackCheckAndRecordUsage(
+    userId: string,
+    trustLevel: number,
+    usageType: string,
+    limit: number
+  ): Promise<{ allowed: boolean; newCount: number; limit: number; error?: string }> {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      // 读取当日使用量（复用已有方法，兼容 supabase-compat）
+      const current = await this.getTodayUsage(userId, today, usageType === 'conversation_count' ? 'conversation' : 'api_call')
+      const remaining = Math.max(0, limit - current)
+      if (remaining <= 0) {
+        await this.logLimitViolation(userId, trustLevel, current + 1, limit)
+        return { allowed: false, newCount: current, limit, error: 'Daily limit exceeded' }
+      }
+
+      const db = await getDb()
+      // 查找当日记录
+      const { data: existing } = await db.selectOne<any>('daily_logs', {
+        where: { user_id: userId, date: today }
+      })
+
+      const nowIso = new Date().toISOString()
+      const nextCount = current + 1
+
+      // 组装新的 log_data
+      const logDataObj = existing?.log_data && typeof existing.log_data === 'string'
+        ? safeParseJSON(existing.log_data)
+        : (existing?.log_data || {})
+
+      const newLogData = {
+        ...logDataObj,
+        conversation_count: usageType === 'conversation_count' ? nextCount : (logDataObj?.conversation_count || 0),
+        api_call_count: usageType === 'api_call_count' ? nextCount : (logDataObj?.api_call_count || 0),
+        upload_count: logDataObj?.upload_count || 0,
+        last_conversation_at: usageType === 'conversation_count' ? nowIso : (logDataObj?.last_conversation_at || nowIso)
+      }
+
+      const isSQLite = getVersion() === 'personal' && (process.env.PERSONAL_DB_MODE || 'indexeddb') === 'sqlite'
+      const payload = {
+        user_id: userId,
+        date: today,
+        log_data: isSQLite ? JSON.stringify(newLogData) : newLogData,
+        last_modified: nowIso
+      }
+
+      if (existing?.id) {
+        await db.update('daily_logs', payload, { where: { id: existing.id } })
+      } else {
+        await db.insert('daily_logs', payload, { returning: '*' })
+      }
+
+      return { allowed: true, newCount: nextCount, limit }
+    } catch (e) {
+      return { allowed: false, newCount: 0, limit, error: (e as Error).message }
+    }
+  }
+
+  private async fallbackDecrementUsage(
+    userId: string,
+    usageType: string
+  ): Promise<{ success: boolean; newCount?: number; error?: string }> {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const db = await getDb()
+      const { data: existing, error } = await db.selectOne<any>('daily_logs', {
+        where: { user_id: userId, date: today }
+      })
+      if (error) return { success: false, error: error.message }
+      if (!existing) return { success: true, newCount: 0 }
+
+      const logDataObj = existing.log_data && typeof existing.log_data === 'string'
+        ? safeParseJSON(existing.log_data)
+        : (existing.log_data || {})
+
+      const field = usageType === 'conversation_count' ? 'conversation_count' : usageType === 'api_call_count' ? 'api_call_count' : 'upload_count'
+      const current = Number(logDataObj?.[field]) || 0
+      const next = Math.max(0, current - 1)
+      logDataObj[field] = next
+
+      const isSQLite = getVersion() === 'personal' && (process.env.PERSONAL_DB_MODE || 'indexeddb') === 'sqlite'
+      const payload = {
+        log_data: isSQLite ? JSON.stringify(logDataObj) : logDataObj,
+        last_modified: new Date().toISOString()
+      }
+
+      await db.update('daily_logs', payload, { where: { id: existing.id } })
+      return { success: true, newCount: next }
+    } catch (e) {
+      return { success: false, error: (e as Error).message }
+    }
+  }
+}
+
+function safeParseJSON(text: any): any {
+  try {
+    return typeof text === 'string' ? JSON.parse(text) : text || {}
+  } catch {
+    return {}
   }
 }
