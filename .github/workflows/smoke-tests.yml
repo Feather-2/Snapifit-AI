@@ -49,6 +49,18 @@ jobs:
         with:
           node-version: 20
 
+      - name: Configure linuxdo secrets (if provided)
+        if: matrix.version == 'linuxdo'
+        run: |
+          if [ -n "${{ secrets.NEXTAUTH_SECRET }}" ]; then echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> $GITHUB_ENV; fi
+          if [ -n "${{ secrets.SUPABASE_URL }}" ]; then echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> $GITHUB_ENV; fi
+          if [ -n "${{ secrets.SUPABASE_ANON_KEY }}" ]; then echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> $GITHUB_ENV; fi
+          if [ -n "${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" ]; then echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> $GITHUB_ENV; fi
+          if [ -n "${{ secrets.LINUXDO_CLIENT_ID }}" ]; then echo "LINUXDO_CLIENT_ID=${{ secrets.LINUXDO_CLIENT_ID }}" >> $GITHUB_ENV; fi
+          if [ -n "${{ secrets.LINUXDO_CLIENT_SECRET }}" ]; then echo "LINUXDO_CLIENT_SECRET=${{ secrets.LINUXDO_CLIENT_SECRET }}" >> $GITHUB_ENV; fi
+          if [ -n "${{ secrets.LINUXDO_ISSUER }}" ]; then echo "LINUXDO_ISSUER=${{ secrets.LINUXDO_ISSUER }}" >> $GITHUB_ENV; fi
+          if [ -n "${{ secrets.LINUXDO_WELL_KNOWN_URL }}" ]; then echo "LINUXDO_WELL_KNOWN_URL=${{ secrets.LINUXDO_WELL_KNOWN_URL }}" >> $GITHUB_ENV; fi
+
       - name: Install dependencies
         run: |
           npm install
