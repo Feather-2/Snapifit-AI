@@ -221,6 +221,16 @@ Snapifit-ai/
   - 矩阵：personal-indexeddb / linuxdo-supabase / community-postgresql
   - 步骤：check-env:versioned → build → start → smoke（通用 + usage + tokens）
 
+### Linux.do 真实 OAuth E2E（模板）
+
+- 目标：在公网环境（如 Vercel）对 Linux.do 版执行真实 OAuth 登录端到端测试。
+- 工作流模板：`.github/workflows/linuxdo-e2e.yml`
+- 需要配置的 Secrets：
+  - `PUBLIC_BASE_URL`：已部署的 Linux.do 版本完整 URL（如 https://your-domain）
+  - `LINUXDO_TEST_USER` / `LINUXDO_TEST_PASS`：Linux.do 测试账号凭据
+- 测试脚本：`scripts/e2e-linuxdo-oauth.spec.ts`（使用 Playwright 驱动浏览器完成 OAuth）
+- 注意：不同 IdP 登录页的输入框/按钮选择器可能不同。如遇不到元素，按注释调整选择器。
+
 ### 最小化初始化（社区版 PostgreSQL）
 
 - 设置 `DATABASE_URL`

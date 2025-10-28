@@ -1,0 +1,35 @@
+name: Linuxdo OAuth E2E (Template)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  linuxdo-e2e:
+    runs-on: ubuntu-latest
+    env:
+      PUBLIC_BASE_URL: ${{ secrets.PUBLIC_BASE_URL }}
+      LINUXDO_TEST_USER: ${{ secrets.LINUXDO_TEST_USER }}
+      LINUXDO_TEST_PASS: ${{ secrets.LINUXDO_TEST_PASS }}
+    steps:
+      - name: Preconditions
+        run: |
+          if [ -z "$PUBLIC_BASE_URL" ]; then echo "PUBLIC_BASE_URL is required"; exit 1; fi
+          if [ -z "$LINUXDO_TEST_USER" ] || [ -z "$LINUXDO_TEST_PASS" ]; then echo "LINUXDO_TEST_USER/PASS required"; exit 1; fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install deps
+        run: npm ci || npm i
+
+      - name: Install Playwright (with deps)
+        run: npx playwright install --with-deps
+
+      - name: Run Playwright E2E (linuxdo oauth)
+        run: npx playwright test scripts/e2e-linuxdo-oauth.spec.ts --reporter=line
+
