@@ -54,6 +54,8 @@
                 "sqlite:init":  "node scripts/sqlite-init.js",
                 "sqlite:export":  "node scripts/sqlite-export.js",
                 "sqlite:import":  "node scripts/sqlite-import.js",
+                "sqlite:create-user":  "node scripts/sqlite-create-user.js",
+                "pg:minimal-init":  "node scripts/pg-minimal-init.js",
                 "smoke:version":  "npx tsx scripts/test-versions-smoke.ts",
                 "smoke:personal":  "NEXT_PUBLIC_VERSION=personal PERSONAL_DB_MODE=indexeddb npx tsx scripts/smoke-api.ts",
                 "smoke:personal:sqlite":  "NEXT_PUBLIC_VERSION=personal PERSONAL_DB_MODE=sqlite npx tsx scripts/smoke-api.ts",

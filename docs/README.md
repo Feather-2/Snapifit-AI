@@ -221,6 +221,19 @@ Snapifit-ai/
   - 矩阵：personal-indexeddb / linuxdo-supabase / community-postgresql
   - 步骤：check-env:versioned → build → start → smoke（通用 + usage + tokens）
 
+### 最小化初始化（社区版 PostgreSQL）
+
+- 设置 `DATABASE_URL`
+- 执行最小化 schema 初始化（开发验证）：
+  - `npm run pg:minimal-init`
+- 之后即可 `npm run dev:community`，基础 API 可工作；高级功能可按需逐步补充函数与存储过程
+
+### 个人版（SQLite）用户创建（可选）
+
+- 初始化数据库：`npm run sqlite:init`
+- 创建测试用户（凭证登录）：
+  - `npm run sqlite:create-user` 或 `node scripts/sqlite-create-user.js <username> <email> <password>`
+
 应用支持三种形态，通过环境变量切换：
 
 - 个人体验版（本地浏览器 IndexedDB）
