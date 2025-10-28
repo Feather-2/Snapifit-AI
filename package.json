@@ -62,7 +62,8 @@
                 "smoke:linuxdo":  "NEXT_PUBLIC_VERSION=linuxdo DB_PROVIDER=supabase npx tsx scripts/smoke-api.ts",
                 "smoke:community":  "NEXT_PUBLIC_VERSION=community DB_PROVIDER=postgresql npx tsx scripts/smoke-api.ts",
                 "smoke:usage":  "npx tsx scripts/smoke-usage.ts",
-                "smoke:tokens":  "npx tsx scripts/smoke-tokens.ts"
+                "smoke:tokens":  "npx tsx scripts/smoke-tokens.ts",
+                "e2e:login-usage":  "npx tsx scripts/e2e-login-usage.ts"
             },
     "dependencies":  {
                          "@ai-sdk/openai":  "latest",

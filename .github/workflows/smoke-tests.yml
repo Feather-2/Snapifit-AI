@@ -17,6 +17,9 @@ jobs:
           - name: personal-indexeddb
             version: personal
             personal_mode: indexeddb
+          - name: personal-sqlite
+            version: personal
+            personal_mode: sqlite
           - name: linuxdo-supabase
             version: linuxdo
             db_provider: supabase
@@ -70,6 +73,10 @@ jobs:
 
       - name: Start server
         run: |
+          if [ "${{ matrix.version }}" = "personal" ] && [ "${{ matrix.personal_mode }}" = "sqlite" ]; then \
+            node scripts/sqlite-init.js; \
+            node scripts/sqlite-create-user.js testuser test@example.com TestPass123!; \
+          fi
           nohup npm run start &
         env:
           PORT: 3000
@@ -95,3 +102,8 @@ jobs:
         run: |
           npm run smoke:usage
           npm run smoke:tokens
+
+      - name: E2E (login + usage) [personal-sqlite only]
+        if: matrix.version == 'personal' && matrix.personal_mode == 'sqlite'
+        run: |
+          E2E_USER=testuser E2E_PASS=TestPass123! npm run e2e:login-usage
