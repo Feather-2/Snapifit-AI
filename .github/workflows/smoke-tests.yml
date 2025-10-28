@@ -91,3 +91,7 @@ jobs:
             npm run smoke:community; \
           fi
 
+      - name: Run smoke (usage, tokens)
+        run: |
+          npm run smoke:usage
+          npm run smoke:tokens
