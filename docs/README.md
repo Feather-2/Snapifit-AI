@@ -199,6 +199,28 @@ Snapifit-ai/
 </div>
 ## 🧭 版本矩阵与切换
 
+### 多版本本地验证与 CI
+
+- 本地快速检查
+  - 版本化环境检查：`npm run check-env:versioned`
+  - 启动（三版示例）：
+    - 个人体验版（IndexedDB）：`npm run dev:personal`
+    - 个人版（SQLite）：`npm run dev:personal:sqlite`
+    - L站版（Supabase）：`npm run dev:linuxdo`
+    - 社区版（PostgreSQL）：`npm run dev:community`
+
+- 冒烟测试（需先启动服务）
+  - 版本特性摘要：`npm run smoke:version -- <personal|linuxdo|community> [indexeddb|sqlite] [postgresql|supabase]`
+  - API 基础冒烟：
+    - 通用：`npm run smoke:personal | smoke:linuxdo | smoke:community`
+    - 用量 API：`npm run smoke:usage`
+    - 令牌 API：`npm run smoke:tokens`
+
+- CI 集成
+  - 工作流：`.github/workflows/smoke-tests.yml`
+  - 矩阵：personal-indexeddb / linuxdo-supabase / community-postgresql
+  - 步骤：check-env:versioned → build → start → smoke（通用 + usage + tokens）
+
 应用支持三种形态，通过环境变量切换：
 
 - 个人体验版（本地浏览器 IndexedDB）
