@@ -1,0 +1,93 @@
+name: Smoke Tests (Versions)
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ "**" ]
+
+jobs:
+  smoke:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: personal-indexeddb
+            version: personal
+            personal_mode: indexeddb
+          - name: linuxdo-supabase
+            version: linuxdo
+            db_provider: supabase
+          - name: community-postgresql
+            version: community
+            db_provider: postgresql
+
+    env:
+      NEXTAUTH_SECRET: test_nextauth_secret_1234567890_1234567890
+      KEY_ENCRYPTION_SECRET: test_encryption_secret_1234567890_1234567890
+      NEXTAUTH_URL: http://localhost:3000
+      # Linux.do placeholders (only used in linuxdo job)
+      LINUXDO_CLIENT_ID: dummy
+      LINUXDO_CLIENT_SECRET: dummy
+      LINUXDO_SCOPES: openid profile email
+      # Supabase placeholders (only used in linuxdo job)
+      NEXT_PUBLIC_SUPABASE_URL: https://project.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: anon_key
+      SUPABASE_SERVICE_ROLE_KEY: service_role_key
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: |
+          npm install
+
+      - name: Configure version env
+        run: |
+          if [ "${{ matrix.version }}" = "personal" ]; then \
+            echo "NEXT_PUBLIC_VERSION=personal" >> $GITHUB_ENV; \
+            echo "PERSONAL_DB_MODE=${{ matrix.personal_mode }}" >> $GITHUB_ENV; \
+          else \
+            echo "NEXT_PUBLIC_VERSION=${{ matrix.version }}" >> $GITHUB_ENV; \
+            echo "DB_PROVIDER=${{ matrix.db_provider }}" >> $GITHUB_ENV; \
+          fi
+
+      - name: Check env (versioned)
+        run: |
+          npm run check-env:versioned
+
+      - name: Build
+        run: |
+          npm run build
+
+      - name: Start server
+        run: |
+          nohup npm run start &
+        env:
+          PORT: 3000
+
+      - name: Wait for server
+        run: |
+          for i in {1..30}; do \
+            curl -sSf http://localhost:3000 >/dev/null 2>&1 && break; \
+            sleep 2; \
+          done
+
+      - name: Run smoke
+        run: |
+          if [ "${{ matrix.version }}" = "personal" ] && [ "${{ matrix.personal_mode }}" = "indexeddb" ]; then \
+            npm run smoke:personal; \
+          elif [ "${{ matrix.version }}" = "linuxdo" ]; then \
+            npm run smoke:linuxdo; \
+          else \
+            npm run smoke:community; \
+          fi
+
