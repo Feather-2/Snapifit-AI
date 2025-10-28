@@ -76,6 +76,9 @@ jobs:
           if [ "${{ matrix.version }}" = "personal" ] && [ "${{ matrix.personal_mode }}" = "sqlite" ]; then \
             node scripts/sqlite-init.js; \
             node scripts/sqlite-create-user.js testuser test@example.com TestPass123!; \
+          elif [ "${{ matrix.version }}" = "community" ]; then \
+            npm run pg:minimal-init; \
+            node scripts/pg-create-user.js testuser test@example.com TestPass123!; \
           fi
           nohup npm run start &
         env:
@@ -107,3 +110,18 @@ jobs:
         if: matrix.version == 'personal' && matrix.personal_mode == 'sqlite'
         run: |
           E2E_USER=testuser E2E_PASS=TestPass123! npm run e2e:login-usage
+
+      - name: E2E (login + usage) [community]
+        if: matrix.version == 'community'
+        run: |
+          E2E_USER=testuser E2E_PASS=TestPass123! npm run e2e:login-usage
+
+      - name: E2E (tokens CRUD) [personal-sqlite]
+        if: matrix.version == 'personal' && matrix.personal_mode == 'sqlite'
+        run: |
+          E2E_USER=testuser E2E_PASS=TestPass123! npm run e2e:tokens
+
+      - name: E2E (tokens CRUD) [community]
+        if: matrix.version == 'community'
+        run: |
+          E2E_USER=testuser E2E_PASS=TestPass123! npm run e2e:tokens
