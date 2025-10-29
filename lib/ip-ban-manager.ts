@@ -4,7 +4,7 @@
  */
 
 import { getSupabaseAdmin } from './supabase';
-import { logSecurityEvent } from './security-monitor';
+import { logSecurityEvent } from './security-logger';
 
 export interface IPBanRecord {
   id?: string;

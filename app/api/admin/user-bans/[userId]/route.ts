@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getUserBanManager } from '@/lib/user-ban-manager';
 import { InputValidator, ValidationRules } from '@/lib/input-validator';
-import { logSecurityEvent } from '@/lib/security-monitor';
+import { logSecurityEvent } from '@/lib/security-logger';
 import { getClientIP } from '@/lib/ip-utils';
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime

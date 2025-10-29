@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { ApiTokenManager } from '@/lib/api-token-manager'
-import { logSecurityEvent } from '@/lib/security-monitor'
+import { logSecurityEvent } from '@/lib/security-logger'
 import { getClientIP } from '@/lib/ip-utils'
 
 /**

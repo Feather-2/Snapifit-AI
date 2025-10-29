@@ -2,6 +2,7 @@
     "name":  "snapifit-ai-community-edition",
     "version":  "0.1.1",
     "private":  true,
+    "license": "Apache-2.0 OR LicenseRef-Snapifit-Commercial",
     "scripts":  {
                     "dev":  "next dev",
                     "dev:personal":  "NEXT_PUBLIC_VERSION=personal PERSONAL_DB_MODE=indexeddb next dev",

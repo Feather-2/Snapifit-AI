@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { logSecurityEvent } from '@/lib/security-monitor';
+import { logSecurityEvent } from '@/lib/security-logger';
 import { getClientIP } from '@/lib/ip-utils';
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime

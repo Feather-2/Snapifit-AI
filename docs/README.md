@@ -4,7 +4,7 @@
 
 > 🏃‍♂️ 智能健康管理应用 - 让健康管理更简单、更智能
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20Commercial-blue.svg)](../LICENSING.md)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
@@ -177,7 +177,13 @@ Snapifit-ai/
 
 ## 📄 许可证
 
-本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+本项目采用双重许可：
+
+- Apache License 2.0（见根目录 `LICENSE`）；
+- 商业许可（见根目录 `LICENSE-COMMERCIAL.md`），单部署四种选择：
+  1）个人试用版；2）个人版 + SQLite；3）Linux.do 特供版（全功能且 L 站登录不可取消，仅服务 L 站用户）；4）企业版（任何商用需预先授权）。
+
+使用时需在上述两种许可中二选一并遵守对应条款。详见 `LICENSING.md`。
 
 ## 📞 支持
 

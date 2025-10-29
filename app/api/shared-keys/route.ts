@@ -3,7 +3,7 @@ import { KeyManager } from '@/lib/key-manager'
 import { UserManager } from '@/lib/user-manager'
 import { auth } from '@/lib/auth' // 引入 next-auth 的 auth 方法
 import { validateBaseURL } from '@/lib/url-validator'
-import { logSecurityEvent } from '@/lib/security-monitor'
+import { logSecurityEvent } from '@/lib/security-logger'
 import { getClientIP } from '@/lib/ip-utils'
 import { secureCache } from '@/lib/cache/secure-cache'
 import { PermissionHelper } from '@/lib/env-config'

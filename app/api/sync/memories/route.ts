@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { syncRateLimiter } from '@/lib/sync-rate-limiter';
-import { logSecurityEvent } from '@/lib/security-monitor';
+import { withRateLimitPreset } from '@/lib/api-helpers';
 import { getClientIP } from '@/lib/ip-utils';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
@@ -64,35 +63,9 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = await getSupabaseAdmin();
 
     // 🔒 检查同步速率限制
-    const limitCheck = syncRateLimiter.checkSyncLimit(userId, ip);
-    if (!limitCheck.allowed) {
-      await logSecurityEvent({
-        userId,
-        ipAddress: ip,
-        userAgent: request.headers.get('user-agent') || 'unknown',
-        eventType: 'rate_limit_exceeded',
-        severity: 'medium',
-        description: `Memories sync rate limit exceeded: ${limitCheck.reason}`,
-        metadata: {
-          api: 'sync/memories',
-          retryAfter: limitCheck.retryAfter
-        }
-      });
-
-      return NextResponse.json(
-        {
-          error: limitCheck.reason,
-          code: 'SYNC_RATE_LIMIT_EXCEEDED',
-          retryAfter: limitCheck.retryAfter
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': limitCheck.retryAfter?.toString() || '10',
-            'X-RateLimit-Type': 'sync'
-          }
-        }
-      );
+    const rateLimitResult = await withRateLimitPreset(request, 'sync');
+    if (!rateLimitResult.allowed) {
+      return rateLimitResult.response;
     }
 
     const memoriesToSync = await request.json();

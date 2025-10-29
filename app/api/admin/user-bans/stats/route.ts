@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { logSecurityEvent } from '@/lib/security-monitor';
+import { logSecurityEvent } from '@/lib/security-logger';
 import { getClientIP } from '@/lib/ip-utils';
 import { getSupabaseAdmin } from '@/lib/supabase';
 

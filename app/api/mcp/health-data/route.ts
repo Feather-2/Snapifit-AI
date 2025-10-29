@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { recordToolCall } from '@/lib/mcp/metrics'
 import { auth } from '@/lib/auth'
 import { authenticateByApiKeyHeader } from '@/lib/auth/api-keys'
-import { checkRateLimit, recordFailure, recordSuccess } from '@/lib/rate-limit'
+import { withRateLimit } from '@/lib/api-helpers'
 import { createHealthMCPServer } from '@/lib/mcp/server'
 import { HEALTH_TOOLS, type HealthToolName, type MCPCallContext } from '@/lib/mcp/types'
 
@@ -43,12 +43,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: '未授权访问' }, withRequestIdHeaders(requestId, { status: 401 }))
   }
 
-  // 频次限制（每分钟2次）
-  if (identifier) {
-    const rl = checkRateLimit(identifier, { requestsPerMinute: 2 })
-    if (!rl.allowed) {
-      return NextResponse.json({ success: false, error: rl.reason, retryAfter: rl.retryAfter }, withRequestIdHeaders(requestId, { status: 429 }))
-    }
+  // 频次限制（使用新的速率限制器）
+  const rateLimitResult = await withRateLimit(req, {
+    category: 'mcp',
+    limit: 50,
+    window: 60,
+    identifier: identifier || `ip:${req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'}`
+  })
+  if (!rateLimitResult.allowed) {
+    return rateLimitResult.response
   }
 
   const body = await req.json().catch(() => null)
@@ -84,11 +87,9 @@ export async function POST(req: NextRequest) {
     const resultBytes = result != null ? JSON.stringify(result).length : 0
     logInfo('mcp.health_tool.call', { requestId, userId, tool: toolName, resultBytes })
     recordToolCall({ providerId: 'health-data', providerName: 'Health Data', tool: toolName, success: true, resultBytes })
-    if (identifier) recordSuccess(identifier)
     return NextResponse.json({ success: true, result, timestamp: new Date().toISOString() }, withRequestIdHeaders(requestId))
   } catch (e) {
     logError('mcp.health_tool.error', { requestId, userId, tool: toolName, error: e instanceof Error ? e.message : String(e) })
-    if (identifier) recordFailure(identifier)
     return NextResponse.json({ success: false, error: e instanceof Error ? e.message : String(e) }, withRequestIdHeaders(requestId, { status: 400 }))
   }
 }

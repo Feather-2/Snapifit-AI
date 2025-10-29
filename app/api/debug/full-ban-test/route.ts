@@ -3,7 +3,7 @@ import { checkDebugAccess } from '@/lib/debug-guard';
 import { auth } from '@/lib/auth';
 import { getIPBanManager } from '@/lib/ip-ban-manager';
 import { getUserBanManager } from '@/lib/user-ban-manager';
-import { logSecurityEvent } from '@/lib/security-monitor';
+import { logSecurityEvent } from '@/lib/security-logger';
 import { getClientIP } from '@/lib/ip-utils';
 import { getSupabaseAdmin } from '@/lib/supabase';
 

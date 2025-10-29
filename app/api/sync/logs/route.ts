@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { syncRateLimiter } from '@/lib/sync-rate-limiter';
-import { logSecurityEvent } from '@/lib/security-monitor';
+import { withRateLimitPreset } from '@/lib/api-helpers';
+import { logSecurityEvent } from '@/lib/security-logger';
 import { getClientIP } from '@/lib/ip-utils';
-import { securityEventEnhancer } from '@/lib/security-event-enhancer';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
@@ -47,62 +46,13 @@ export async function POST(request: NextRequest) {
     const ip = getClientIP(request);
     const supabaseAdmin = await getSupabaseAdmin();
 
-    // 🔒 检查同步速率限制
-    const limitCheck = syncRateLimiter.checkSyncLimit(userId, ip);
-    if (!limitCheck.allowed) {
-      // 记录速率限制违规
-      await logSecurityEvent({
-        userId,
-        ipAddress: ip,
-        userAgent: request.headers.get('user-agent') || 'unknown',
-        eventType: 'rate_limit_exceeded',
-        severity: 'medium',
-        description: `Sync rate limit exceeded: ${limitCheck.reason}`,
-        metadata: {
-          api: 'sync/logs',
-          retryAfter: limitCheck.retryAfter
-        }
-      });
-
-      return NextResponse.json(
-        {
-          error: limitCheck.reason,
-          code: 'SYNC_RATE_LIMIT_EXCEEDED',
-          retryAfter: limitCheck.retryAfter,
-          limitType: limitCheck.limitType,
-          details: {
-            message: 'Sync rate limit exceeded',
-            limitType: limitCheck.limitType,
-            retryAfter: limitCheck.retryAfter,
-            limits: {
-              perSecond: 3,
-              perMinute: 30,
-              perHour: 300
-            }
-          }
-        },
-        {
-          status: 429,
-          headers: {
-            'Retry-After': limitCheck.retryAfter?.toString() || '10',
-            'X-RateLimit-Type': 'sync',
-            'X-RateLimit-Limit-Type': limitCheck.limitType || 'unknown'
-          }
-        }
-      );
+    // 🔒 检查同步速率限制（使用新的速率限制器）
+    const rateLimitResult = await withRateLimitPreset(request, 'sync');
+    if (!rateLimitResult.allowed) {
+      return rateLimitResult.response;
     }
 
     const logsToSync = await request.json();
-
-    // 🔗 增强最近的安全事件，关联用户ID
-    // 这样可以将之前缺少用户ID的安全事件与当前用户关联
-    setImmediate(async () => {
-      try {
-        await securityEventEnhancer.enhanceRecentEvents(userId, ip, 5);
-      } catch (error) {
-        console.error('Error enhancing security events:', error);
-      }
-    });
 
     if (!Array.isArray(logsToSync) || logsToSync.length === 0) {
       return NextResponse.json({ error: 'Invalid or empty data provided.' }, { status: 400 });

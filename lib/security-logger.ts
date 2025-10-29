@@ -77,11 +77,13 @@ export async function logSecurityEvent(event: SecurityEvent): Promise<void> {
         const db = await createDatabaseClient();
 
         // 检查是否支持数据库操作
+        // @ts-ignore - DatabaseClient类型可能因版本不同而异
         if (!db || typeof db.query !== 'function') {
           console.warn('[SecurityLogger] Database not available, skipping DB log');
           return;
         }
 
+        // @ts-ignore - 数据库查询方法的类型定义
         await db.query(
           `INSERT INTO security_events
            (event_type, severity, message, ip_address, user_agent, user_id, path, method, metadata, created_at)
@@ -143,6 +145,7 @@ export async function logSecurityEventsBatch(events: SecurityEvent[]): Promise<v
       try {
         const db = await createDatabaseClient();
 
+        // @ts-ignore - DatabaseClient类型可能因版本不同而异
         if (!db || typeof db.query !== 'function') {
           console.warn('[SecurityLogger] Database not available, skipping batch log');
           return;
@@ -166,6 +169,7 @@ export async function logSecurityEventsBatch(events: SecurityEvent[]): Promise<v
           return `($${start}, $${start + 1}, $${start + 2}, $${start + 3}, $${start + 4}, $${start + 5}, $${start + 6}, $${start + 7}, $${start + 8}, NOW())`;
         }).join(', ');
 
+        // @ts-ignore - 数据库查询方法的类型定义
         await db.query(
           `INSERT INTO security_events
            (event_type, severity, message, ip_address, user_agent, user_id, path, method, metadata, created_at)

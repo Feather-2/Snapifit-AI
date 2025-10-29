@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/api-auth-helper'
 import { SharedOpenAIClient } from '@/lib/shared-openai-client'
 import { InputValidator } from '@/lib/input-validator'
-import { logSecurityEvent } from '@/lib/security-monitor'
+import { logSecurityEvent } from '@/lib/security-logger'
 
 export async function POST(req: NextRequest) {
   const ip = req.ip || req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown';
