@@ -1,0 +1,20 @@
+{
+  "linuxdo": {
+    "username": [
+      "input[name=\"username\"]",
+      "input[name=\"login\"]",
+      "input[type=\"email\"]",
+      "input[name=\"email\"]"
+    ],
+    "password": [
+      "input[name=\"password\"]",
+      "input[type=\"password\"]"
+    ],
+    "submit": [
+      "button[type=\"submit\"]",
+      "button:has-text(\"登录\")",
+      "button:has-text(\"Sign in\")"
+    ]
+  }
+}
+

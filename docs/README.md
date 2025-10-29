@@ -231,6 +231,24 @@ Snapifit-ai/
 - 测试脚本：`scripts/e2e-linuxdo-oauth.spec.ts`（使用 Playwright 驱动浏览器完成 OAuth）
 - 注意：不同 IdP 登录页的输入框/按钮选择器可能不同。如遇不到元素，按注释调整选择器。
 
+#### 选择器定制（无需改代码）
+
+- 配置文件：`scripts/e2e-selectors.json`
+  - 默认包含 `linuxdo` 的候选选择器（用户名/密码/提交按钮）
+  - 结构示例：
+    ```json
+    {
+      "linuxdo": {
+        "username": ["input[name=\"username\"]", "input[name=\"login\"]"],
+        "password": ["input[name=\"password\"]"],
+        "submit":   ["button[type=\"submit\"]", "button:has-text(\"登录\")"]
+      }
+    }
+    ```
+- 环境变量：
+  - `E2E_SELECTORS_FILE` 指定选择器文件路径（可用你自己的 JSON 文件替换）
+  - `E2E_IDP_KEY` 指定使用的 IdP 键（默认 `linuxdo`）
+
 ### 最小化初始化（社区版 PostgreSQL）
 
 - 设置 `DATABASE_URL`

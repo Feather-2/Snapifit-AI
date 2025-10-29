@@ -1,4 +1,6 @@
 import { test, expect } from '@playwright/test'
+import fs from 'fs'
+import path from 'path'
 
 // 运行前在 GitHub Secrets 或本地环境设置：
 // - PUBLIC_BASE_URL: 线上可访问的 Linux.do 版部署地址（如 https://your-domain）
@@ -7,6 +9,44 @@ import { test, expect } from '@playwright/test'
 const BASE = process.env.PUBLIC_BASE_URL || process.env.BASE_URL || 'http://localhost:3000'
 const TEST_USER = process.env.LINUXDO_TEST_USER || ''
 const TEST_PASS = process.env.LINUXDO_TEST_PASS || ''
+const SELECTORS_FILE = process.env.E2E_SELECTORS_FILE || path.join(process.cwd(), 'scripts', 'e2e-selectors.json')
+const IDP_KEY = process.env.E2E_IDP_KEY || 'linuxdo'
+
+type SelectorMap = { username: string[]; password: string[]; submit: string[] }
+
+function loadSelectors(): SelectorMap {
+  // 默认候选
+  const defaults: SelectorMap = {
+    username: [
+      'input[name="username"]',
+      'input[name="login"]',
+      'input[type="email"]',
+      'input[name="email"]'
+    ],
+    password: [
+      'input[name="password"]',
+      'input[type="password"]'
+    ],
+    submit: [
+      'button[type="submit"]',
+      'button:has-text("登录")',
+      'button:has-text("Sign in")'
+    ]
+  }
+
+  try {
+    if (fs.existsSync(SELECTORS_FILE)) {
+      const json = JSON.parse(fs.readFileSync(SELECTORS_FILE, 'utf8')) || {}
+      const picked = json[IDP_KEY] || {}
+      return {
+        username: picked.username || defaults.username,
+        password: picked.password || defaults.password,
+        submit: picked.submit || defaults.submit
+      }
+    }
+  } catch {}
+  return defaults
+}
 
 test.describe('Linux.do OAuth E2E (template)', () => {
   test('login via linuxdo and verify session', async ({ page }) => {
@@ -25,22 +65,11 @@ test.describe('Linux.do OAuth E2E (template)', () => {
     // 若是 OIDC 提供的登录页，选择器可能不同；请结合浏览器开发者工具确认
     await page.waitForLoadState('networkidle', { timeout: 30000 })
 
-    // 尝试一组常见选择器，未命中则抛错提示用户调整
-    const userSelectorCandidates = [
-      'input[name="username"]',
-      'input[name="login"]',
-      'input[type="email"]',
-      'input[name="email"]'
-    ]
-    const passSelectorCandidates = [
-      'input[name="password"]',
-      'input[type="password"]'
-    ]
-    const submitSelectorCandidates = [
-      'button[type="submit"]',
-      'button:has-text("登录")',
-      'button:has-text("Sign in")'
-    ]
+    // 尝试配置化选择器，未命中则抛错提示用户调整配置文件
+    const conf = loadSelectors()
+    const userSelectorCandidates = conf.username
+    const passSelectorCandidates = conf.password
+    const submitSelectorCandidates = conf.submit
 
     const userSel = await firstVisible(page, userSelectorCandidates)
     const passSel = await firstVisible(page, passSelectorCandidates)
@@ -77,4 +106,3 @@ async function firstVisible(page: any, selectors: string[]): Promise<string | nu
 function escapeRegExp(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
-
