@@ -99,6 +99,45 @@ const nextConfig = {
         },
         // verify-email 是正常功能，不应该被禁用
         // 只禁用纯测试页面
+
+        // 显式访问 /404 的路径统一改写到 API not-found，避免触发 pages runtime 回退
+        {
+          source: '/404',
+          destination: '/api/not-found',
+        },
+        {
+          source: '/404/:path*',
+          destination: '/api/not-found',
+        },
+        {
+          source: '/:locale/404',
+          destination: '/api/not-found',
+        },
+        {
+          source: '/:locale/404/:path*',
+          destination: '/api/not-found',
+        },
+      ];
+    }
+    return [];
+  },
+
+  // 为 not-found API 设置不缓存，防止 CDN/浏览器缓存 404 响应
+  async headers() {
+    if (process.env.NODE_ENV === 'production') {
+      return [
+        {
+          source: '/api/not-found',
+          headers: [
+            { key: 'Cache-Control', value: 'no-store' },
+          ],
+        },
+        {
+          source: '/api/not-found/:path*',
+          headers: [
+            { key: 'Cache-Control', value: 'no-store' },
+          ],
+        },
       ];
     }
     return [];
