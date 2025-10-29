@@ -64,7 +64,8 @@
                 "smoke:usage":  "npx tsx scripts/smoke-usage.ts",
                 "smoke:tokens":  "npx tsx scripts/smoke-tokens.ts",
                 "e2e:login-usage":  "npx tsx scripts/e2e-login-usage.ts",
-                "e2e:tokens":  "npx tsx scripts/e2e-tokens.ts"
+                "e2e:tokens":  "npx tsx scripts/e2e-tokens.ts",
+                "verify:ui-adaptation":  "node scripts/verify-ui-version-adaptation.js"
             },
     "dependencies":  {
                          "@ai-sdk/openai":  "latest",

@@ -44,6 +44,7 @@ import { MultiSelect } from "@/components/ui/multi-select"
 import { NetworkDiagnostic } from "@/components/network-diagnostic"
 import { useWelcomeGuide } from "@/components/onboarding/welcome-guide"
 import { DB_NAME, DB_VERSION } from "@/lib/db-config"
+import { useFeature } from "@/hooks/use-feature"
 
 // 定义共享Key的类型
 interface PublicSharedKey {
@@ -329,14 +330,26 @@ function SettingsContent() {
   const searchParams = useSearchParams()
   const { data: session } = useSession()
 
+  // 版本特性检查
+  const hasInviteSystem = useFeature('invite.inviteCodeSystem')
+  const hasSharedKeys = useFeature('ai.sharedKeys')
+
   const [userProfile, setUserProfile] = useLocalStorage("userProfile", defaultUserProfile)
   const [aiConfig, setAIConfig] = useLocalStorage<AIConfig>("aiConfig", defaultAIConfig)
 
-  // 获取URL参数中的tab值，默认为profile
+  // 根据版本特性动态生成可用标签列表
+  const validTabs = useMemo(() => {
+    const baseTabs = ['account', 'profile', 'goals', 'ai', 'data']
+    if (hasInviteSystem) {
+      baseTabs.push('inviteCodes')
+    }
+    return baseTabs
+  }, [hasInviteSystem])
+
+  // 获取URL参数中的tab值，默认为account
   const [activeTab, setActiveTab] = useState(() => {
     const tabParam = searchParams.get('tab')
     // 更健壮的检查，确保 activeTab 始终是字符串
-    const validTabs = ['account', 'profile', 'goals', 'ai', 'data', 'inviteCodes']
     return (tabParam && validTabs.includes(tabParam)) ? tabParam : 'account'
   })
 
@@ -1136,23 +1149,27 @@ function SettingsContent() {
             >
               <span className="text-[10px] leading-tight text-center">{t('tabs.data')}</span>
             </TabsTrigger>
-            <TabsTrigger
-              value="inviteCodes"
-              className="text-xs px-2 py-2 h-auto flex flex-col items-center gap-1"
-            >
-              <span className="text-[10px] leading-tight text-center">{t('tabs.inviteCodes')}</span>
-            </TabsTrigger>
+            {hasInviteSystem && (
+              <TabsTrigger
+                value="inviteCodes"
+                className="text-xs px-2 py-2 h-auto flex flex-col items-center gap-1"
+              >
+                <span className="text-[10px] leading-tight text-center">{t('tabs.inviteCodes')}</span>
+              </TabsTrigger>
+            )}
           </div>
         </TabsList>
 
         {/* 桌面端：网格布局 */}
-        <TabsList className="hidden md:grid w-full grid-cols-6">
+        <TabsList className={cn("hidden md:grid w-full", hasInviteSystem ? "grid-cols-6" : "grid-cols-5")}>
           <TabsTrigger value="account" className="text-base px-4">{t('tabs.account')}</TabsTrigger>
           <TabsTrigger value="profile" className="text-base px-4">{t('tabs.profile')}</TabsTrigger>
           <TabsTrigger value="goals" className="text-base px-4">{t('tabs.goals')}</TabsTrigger>
           <TabsTrigger value="ai" className="text-base px-4">{t('tabs.ai')}</TabsTrigger>
           <TabsTrigger value="data" className="text-base px-4">{t('tabs.data')}</TabsTrigger>
-          <TabsTrigger value="inviteCodes" className="text-base px-4">{t('tabs.inviteCodes')}</TabsTrigger>
+          {hasInviteSystem && (
+            <TabsTrigger value="inviteCodes" className="text-base px-4">{t('tabs.inviteCodes')}</TabsTrigger>
+          )}
         </TabsList>
 
         {/* 账户信息 */}
@@ -1692,7 +1709,7 @@ function SettingsContent() {
                   <RadioGroup
                     value={aiFormData.agentModel.source}
                     onValueChange={(value) => handleAIConfigUpdate("agentModel", { source: value as any })}
-                    className="grid grid-cols-2 gap-4"
+                    className={cn("grid gap-4", hasSharedKeys ? "grid-cols-2" : "grid-cols-1")}
                   >
                     <div>
                       <RadioGroupItem value="private" id="agent-private" className="peer sr-only" />
@@ -1700,12 +1717,14 @@ function SettingsContent() {
                         {t('ai.privateConfig')}
                       </Label>
                     </div>
-                    <div>
-                      <RadioGroupItem value="shared" id="agent-shared" className="peer sr-only" />
-                      <Label htmlFor="agent-shared" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                        {t('ai.sharedPool')}
-                      </Label>
-                    </div>
+                    {hasSharedKeys && (
+                      <div>
+                        <RadioGroupItem value="shared" id="agent-shared" className="peer sr-only" />
+                        <Label htmlFor="agent-shared" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                          {t('ai.sharedPool')}
+                        </Label>
+                      </div>
+                    )}
                   </RadioGroup>
 
                   {/* 私有配置UI */}
@@ -1781,7 +1800,7 @@ function SettingsContent() {
                    <RadioGroup
                     value={aiFormData.chatModel.source}
                     onValueChange={(value) => handleAIConfigUpdate("chatModel", { source: value as any })}
-                    className="grid grid-cols-2 gap-4"
+                    className={cn("grid gap-4", hasSharedKeys ? "grid-cols-2" : "grid-cols-1")}
                   >
                     <div>
                       <RadioGroupItem value="private" id="chat-private" className="peer sr-only" />
@@ -1789,12 +1808,14 @@ function SettingsContent() {
                         {t('ai.privateConfig')}
                       </Label>
                     </div>
-                    <div>
-                      <RadioGroupItem value="shared" id="chat-shared" className="peer sr-only" />
-                      <Label htmlFor="chat-shared" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                        {t('ai.sharedPool')}
-                      </Label>
-                    </div>
+                    {hasSharedKeys && (
+                      <div>
+                        <RadioGroupItem value="shared" id="chat-shared" className="peer sr-only" />
+                        <Label htmlFor="chat-shared" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                          {t('ai.sharedPool')}
+                        </Label>
+                      </div>
+                    )}
                   </RadioGroup>
 
                   {aiFormData.chatModel.source === 'private' && (
@@ -1867,7 +1888,7 @@ function SettingsContent() {
                   <RadioGroup
                     value={aiFormData.visionModel.source}
                     onValueChange={(value) => handleAIConfigUpdate("visionModel", { source: value as any })}
-                    className="grid grid-cols-2 gap-4"
+                    className={cn("grid gap-4", hasSharedKeys ? "grid-cols-2" : "grid-cols-1")}
                   >
                     <div>
                       <RadioGroupItem value="private" id="vision-private" className="peer sr-only" />
@@ -1875,12 +1896,14 @@ function SettingsContent() {
                         {t('ai.privateConfig')}
                       </Label>
                     </div>
-                    <div>
-                      <RadioGroupItem value="shared" id="vision-shared" className="peer sr-only" />
-                      <Label htmlFor="vision-shared" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
-                        {t('ai.sharedPool')}
-                      </Label>
-                    </div>
+                    {hasSharedKeys && (
+                      <div>
+                        <RadioGroupItem value="shared" id="vision-shared" className="peer sr-only" />
+                        <Label htmlFor="vision-shared" className="flex flex-col items-center justify-between rounded-md border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary">
+                          {t('ai.sharedPool')}
+                        </Label>
+                      </div>
+                    )}
                   </RadioGroup>
 
                   {aiFormData.visionModel.source === 'private' && (

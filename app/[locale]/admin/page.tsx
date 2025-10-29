@@ -20,6 +20,7 @@ import {
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
 import { useTranslations } from "next-intl"
+import { useFeature } from "@/hooks/use-feature"
 
 export default function AdminDashboard({ params }: { params: Promise<{ locale: string }> }) {
   const { data: session, status } = useSession()
@@ -30,10 +31,23 @@ export default function AdminDashboard({ params }: { params: Promise<{ locale: s
   const t = useTranslations('admin')
   const tCommon = useTranslations('common')
 
+  // 版本特性检查
+  const hasAdminPanel = useFeature('admin.adminPanel')
 
   // 权限检查
   useEffect(() => {
     if (status === 'loading') return
+
+    // 首先检查版本是否支持管理面板
+    if (!hasAdminPanel) {
+      toast({
+        title: tCommon('error'),
+        description: t('errors.featureNotAvailable') || 'This feature is not available in this version',
+        variant: "destructive"
+      })
+      router.push(`/${locale}`)
+      return
+    }
 
     if (!session?.user) {
       router.push('/auth/signin')
@@ -50,7 +64,7 @@ export default function AdminDashboard({ params }: { params: Promise<{ locale: s
       router.push('/settings')
       return
     }
-  }, [session, status, router, toast])
+  }, [session, status, router, toast, hasAdminPanel, locale])
 
 
 

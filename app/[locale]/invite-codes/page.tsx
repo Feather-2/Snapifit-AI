@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table"
 import { Gift, Plus, Copy, Trash2, AlertCircle, CheckCircle, Clock, User, Settings } from 'lucide-react'
 import { useParams } from "next/navigation"
+import { useFeature } from "@/hooks/use-feature"
 
 interface InviteCode {
   id: string
@@ -63,6 +64,9 @@ export default function InviteCodesPage() {
   const locale = params.locale as string
   const t = useTranslations('inviteCodes')
 
+  // 版本特性检查
+  const hasInviteSystem = useFeature('invite.inviteCodeSystem')
+
   const [codes, setCodes] = useState<InviteCode[]>([])
   const [quota, setQuota] = useState<QuotaInfo | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -77,6 +81,13 @@ export default function InviteCodesPage() {
     expiresInDays: "",
     count: ""
   })
+
+  // 版本特性检查 - 如果不支持邀请码系统，重定向到首页
+  useEffect(() => {
+    if (!hasInviteSystem) {
+      router.push(`/${locale}`)
+    }
+  }, [hasInviteSystem, router, locale])
 
   const [useForm, setUseForm] = useState({
     code: ""
