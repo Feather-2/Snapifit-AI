@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { KeyManager } from '@/lib/key-manager'
-import { UserManager } from '@/lib/user-manager'
-import { PermissionHelper } from '@/lib/env-config'
+import { KeyManager } from '@/lib/auth/key-manager'
+import { UserManager } from '@/lib/user/manager'
+import { PermissionHelper } from '@/lib/config/environment'
 
 // 删除共享Key
 export async function DELETE(

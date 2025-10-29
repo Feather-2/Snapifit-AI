@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { logInfo, logError } from '@/lib/logging'
 import { z } from 'zod'
 import { recordToolCall } from '@/lib/mcp/metrics'
 import { auth } from '@/lib/auth'
 import { authenticateByApiKeyHeader } from '@/lib/auth/api-keys'
-import { withRateLimit } from '@/lib/api-helpers'
+import { withRateLimit } from '@/lib/api/helpers'
 import { createHealthMCPServer } from '@/lib/mcp/server'
 import { HEALTH_TOOLS, type HealthToolName, type MCPCallContext } from '@/lib/mcp/types'
 

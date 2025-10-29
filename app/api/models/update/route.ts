@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { KeyManager } from '@/lib/key-manager';
+﻿import { NextResponse } from 'next/server';
+import { KeyManager } from '@/lib/auth/key-manager';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 // 限制更新频率，避免过于频繁的调用

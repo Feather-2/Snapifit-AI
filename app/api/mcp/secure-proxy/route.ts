@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 安全的MCP代理服务
  * 只执行有限的、经过验证的工具调用
  */
@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { logInfo, logError } from '@/lib/logging'
 import { auth } from '@/lib/auth'
 import { MCPClient } from '@/lib/mcp/client'
-import { InputValidator } from '@/lib/input-validator'
+import { InputValidator } from '@/lib/security/input-validator'
 import { z } from 'zod'
 
 const ProxyRequestSchema = z.object({

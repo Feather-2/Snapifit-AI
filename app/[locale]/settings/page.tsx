@@ -20,7 +20,7 @@ import { useAIMemory } from "@/hooks/use-ai-memory"
 import { useSync } from "@/hooks/use-sync"
 import { useDataImport } from "@/hooks/use-data-import"
 import type { AIConfig, ModelConfig } from "@/lib/types"
-import type { OpenAIModel } from "@/lib/openai-client"
+import type { OpenAIModel } from "@/lib/ai/openai"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,7 +43,7 @@ import { cn } from "@/lib/utils"
 import { MultiSelect } from "@/components/ui/multi-select"
 import { NetworkDiagnostic } from "@/components/network-diagnostic"
 import { useWelcomeGuide } from "@/components/onboarding/welcome-guide"
-import { DB_NAME, DB_VERSION } from "@/lib/db-config"
+import { DB_NAME, DB_VERSION } from "@/lib/config/database"
 import { useFeature } from "@/hooks/use-feature"
 
 // 定义共享Key的类型

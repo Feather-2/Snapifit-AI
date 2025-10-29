@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { ApiTokenManager } from '@/lib/api-token-manager'
+import { ApiTokenManager } from '@/lib/auth/token-manager'
 import { logSecurityEvent } from '@/lib/security-logger'
-import { getClientIP } from '@/lib/ip-utils'
+import { getClientIP } from '@/lib/utils/ip'
 
 /**
  * POST /api/admin/cleanup-tokens - 清理过期的API令牌

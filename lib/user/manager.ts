@@ -1,4 +1,4 @@
-import { getSupabaseAdmin } from './supabase'
+import { getSupabaseAdmin } from '@/lib/supabase'
 import { hasPermission as trustLevelHasPermission } from '@/config/trust-level-limits'
 
 export interface LinuxDoProfile {

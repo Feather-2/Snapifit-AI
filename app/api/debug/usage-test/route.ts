@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { checkDebugAccess } from '@/lib/debug-guard';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/middleware/debug-guard';
 import { auth } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {

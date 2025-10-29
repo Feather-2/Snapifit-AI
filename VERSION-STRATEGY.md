@@ -6,7 +6,7 @@
 
 | 特性 | 个人版 | L站专属版 | 社区版 |
 |------|--------|-----------|--------|
-| **授权** | Apache 2.0 | Apache 2.0 | 社区友好 |
+| **授权** | AGPL-3.0（默认）/ 商业许可 | AGPL-3.0（默认）/ 商业许可 | AGPL-3.0（默认）/ 商业许可 |
 | **数据库** | SQLite/无DB | Supabase | PostgreSQL/Supabase |
 | **部署** | Vercel/本地 | Vercel | Docker/Vercel/本地 |
 | **OAuth** | 无 | Linux.do | GitHub/Google |
@@ -23,14 +23,14 @@ snapfit-ai-personal/      # 个人版 (基础功能)
 ├── 基础健康记录功能
 ├── SQLite 数据存储
 ├── Vercel 部署配置
-└── Apache 2.0 授权
+└── AGPL-3.0（默认）/ 商业许可
 
 snapfit-ai-linuxdo/       # L站专属版 (个人版 + 社区功能)
 ├── 继承个人版功能
 ├── Linux.do OAuth 集成
 ├── Supabase 数据库
 ├── 社区定制 UI
-└── Apache 2.0 授权
+└── AGPL-3.0（默认）/ 商业许可
 
 snapfit-ai-community/     # 社区版 (L站版 + 企业功能)
 ├── 继承 L站版功能
@@ -38,7 +38,7 @@ snapfit-ai-community/     # 社区版 (L站版 + 企业功能)
 ├── 管理面板
 ├── 多租户支持
 ├── Docker 部署
-└── 社区友好授权
+└── AGPL-3.0（默认）/ 商业许可
 ```
 
 ## 🔄 接力式开发流程

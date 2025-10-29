@@ -1,5 +1,5 @@
-import { getSupabaseAdmin } from './supabase'
-import { getDb } from './database'
+import { getSupabaseAdmin } from '@/lib/supabase'
+import { getDb } from '@/lib/database'
 import { getVersion } from '@/config/features'
 import { getDailyConversationLimit, getTrustLevelConfig } from '@/config/trust-level-limits'
 

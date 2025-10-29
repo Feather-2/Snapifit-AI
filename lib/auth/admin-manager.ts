@@ -1,6 +1,6 @@
-import { getSupabaseAdmin } from '@/lib/supabase'
+﻿import { getSupabaseAdmin } from '@/lib/supabase'
 import { InviteCodeManager } from './invite-codes'
-import { PermissionHelper } from '@/lib/env-config'
+import { PermissionHelper } from '@/lib/config/environment'
 
 /**
  * 用户角色枚举

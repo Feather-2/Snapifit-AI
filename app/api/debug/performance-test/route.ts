@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { checkDebugAccess } from '@/lib/debug-utils';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/utils/debug';
 
 export const runtime = 'nodejs';
 

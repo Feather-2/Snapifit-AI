@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { checkDebugAccess } from '@/lib/debug-guard'
-import { EnvConfig } from '@/lib/env-config'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { checkDebugAccess } from '@/lib/middleware/debug-guard'
+import { EnvConfig } from '@/lib/config/environment'
 
 export const runtime = 'nodejs'
 

@@ -4,7 +4,7 @@
 
 > 🏃‍♂️ 智能健康管理应用 - 让健康管理更简单、更智能
 
-[![License](https://img.shields.io/badge/license-Apache--2.0%20OR%20Commercial-blue.svg)](../LICENSING.md)
+[![License](https://img.shields.io/badge/license-AGPL--3.0%20OR%20Commercial-blue.svg)](../LICENSING.md)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20-green.svg)](https://nodejs.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
@@ -177,13 +177,13 @@ Snapifit-ai/
 
 ## 📄 许可证
 
-本项目采用双重许可：
+本项目采用“使用场景双重许可”：
 
-- Apache License 2.0（见根目录 `LICENSE`）；
+- AGPLv3（见根目录 `LICENSE`，并附 `AGPL-ADDITIONAL-TERMS.md`）；
 - 商业许可（见根目录 `LICENSE-COMMERCIAL.md`），单部署四种选择：
-  1）个人试用版；2）个人版 + SQLite；3）Linux.do 特供版（全功能且 L 站登录不可取消，仅服务 L 站用户）；4）企业版（任何商用需预先授权）。
+  1）个人试用版；2）个人版 + SQLite；3）Linux.do 特供版（全功能且 L 站登录不可取消，仅服务 L 站用户）；4）企业版（闭源/去品牌/OEM/再分发/企业合规/SLA）。
 
-使用时需在上述两种许可中二选一并遵守对应条款。详见 `LICENSING.md`。
+如按 AGPLv3 使用，允许商用，但需在网络提供服务时开源完整源代码，并保留署名与法律声明；需要闭源/去品牌或企业支持时，请选择商业许可。详见 `LICENSING.md`。
 
 ## 📞 支持
 

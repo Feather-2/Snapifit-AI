@@ -1,6 +1,6 @@
-import { RAGQuery, RAGResult, HealthDataContext, DailyLog, UserProfile } from '@/lib/types'
+﻿import { RAGQuery, RAGResult, HealthDataContext, DailyLog, UserProfile } from '@/lib/types'
 import { createClient } from '@supabase/supabase-js'
-import { SharedOpenAIClient } from '@/lib/shared-openai-client'
+import { SharedOpenAIClient } from '@/lib/ai/shared'
 
 // 获取 Supabase 客户端
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!

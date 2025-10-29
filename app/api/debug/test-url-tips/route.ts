@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { EnvConfig } from '@/lib/env-config'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { EnvConfig } from '@/lib/config/environment'
 
 /**
  * 测试URL提示信息的显示

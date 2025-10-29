@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getSupabaseAdmin } from '@/lib/supabase'
-import { PermissionHelper, EnvConfig } from '@/lib/env-config'
+import { PermissionHelper, EnvConfig } from '@/lib/config/environment'
 import { AdminManager, Permission } from '@/lib/auth/admin-manager'
 
 /**

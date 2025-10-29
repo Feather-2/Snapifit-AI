@@ -1,5 +1,5 @@
-import { getSupabaseAdmin } from './supabase'
-import { OpenAICompatibleClient } from './openai-client'
+import { getSupabaseAdmin } from '@/lib/supabase'
+import { OpenAICompatibleClient } from '@/lib/ai/openai'
 import * as CryptoJS from 'crypto-js'
 
 // 加密密钥（实际使用时应该从环境变量获取）

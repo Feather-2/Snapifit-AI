@@ -1,11 +1,11 @@
-// 移除不再需要的导入，现在统一使用 SharedOpenAIClient
+﻿// 移除不再需要的导入，现在统一使用 SharedOpenAIClient
 import { formatDailyStatusForAI } from "@/lib/utils"
-import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/api-auth-helper'
+import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
 import type { DailyLog, UserProfile, AIConfig } from "@/lib/types"
 import { z } from 'zod'
 import { streamText, tool } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
-import { KeyManager } from '@/lib/key-manager'
+import { KeyManager } from '@/lib/auth/key-manager'
 
 export async function POST(req: Request) {
   // 提前声明，便于在 catch 中访问并回滚

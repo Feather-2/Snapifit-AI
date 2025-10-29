@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { checkDebugAccess } from '@/lib/debug-guard';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/middleware/debug-guard';
 import { auth } from '@/lib/auth';
-import { getIPBanManager } from '@/lib/ip-ban-manager';
-import { getClientIP } from '@/lib/ip-utils';
+import { getIPBanManager } from '@/lib/security/ban/ip-manager';
+import { getClientIP } from '@/lib/utils/ip';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime

@@ -1,6 +1,6 @@
-import { NextRequest } from 'next/server'
-import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/api-auth-helper'
-import { SharedOpenAIClient } from '@/lib/shared-openai-client'
+﻿import { NextRequest } from 'next/server'
+import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
+import { SharedOpenAIClient } from '@/lib/ai/shared'
 
 export async function POST(req: NextRequest) {
   try {

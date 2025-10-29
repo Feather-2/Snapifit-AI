@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { ApiTokenManager } from '@/lib/api-token-manager'
-import type { TokenScope, TokenPermission } from '@/lib/api-token-manager'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { ApiTokenManager } from '@/lib/auth/token-manager'
+import type { TokenScope, TokenPermission } from '@/lib/auth/token-manager'
 
 export interface ApiTokenAuthOptions {
   requiredScope?: TokenScope[]

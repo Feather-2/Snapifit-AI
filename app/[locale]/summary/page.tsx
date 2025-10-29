@@ -40,7 +40,7 @@ import { ExerciseEntryCard } from "@/components/exercise-entry-card"
 import { GroupedEntriesDisplay } from "@/components/grouped-entries-display"
 import { BMIIndicator } from "@/components/bmi-indicator"
 import { WeightChangePredictor } from "@/components/weight-change-predictor"
-import { formatNumber } from "@/lib/number-utils"
+import { formatNumber } from "@/lib/utils/number"
 
 const defaultUserProfile: UserProfile = {
   weight: 70,

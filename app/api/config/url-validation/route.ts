@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { EnvConfig } from '@/lib/env-config'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { EnvConfig } from '@/lib/config/environment'
 
 /**
  * 获取URL验证配置

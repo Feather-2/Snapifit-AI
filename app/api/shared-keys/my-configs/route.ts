@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { KeyManager } from '@/lib/key-manager'
-import { UserManager } from '@/lib/user-manager'
+import { KeyManager } from '@/lib/auth/key-manager'
+import { UserManager } from '@/lib/user/manager'
 
 // 获取用户自己的所有配置（包括已停用的）
 export async function GET(request: NextRequest) {

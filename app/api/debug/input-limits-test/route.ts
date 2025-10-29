@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { checkDebugAccess } from '@/lib/debug-guard';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/middleware/debug-guard';
 import { auth } from '@/lib/auth';
-import { InputValidator, ValidationRule } from '@/lib/input-validator';
-import { getSizeLimits, formatBytes } from '@/lib/request-size-limiter';
+import { InputValidator, ValidationRule } from '@/lib/security/input-validator';
+import { getSizeLimits, formatBytes } from '@/lib/security/request-size-limiter';
 
 export async function GET(request: NextRequest) {
   // 检查调试访问权限

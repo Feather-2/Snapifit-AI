@@ -1,5 +1,5 @@
-import { formatDailyStatusForAI } from "@/lib/utils"
-import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/api-auth-helper'
+﻿import { formatDailyStatusForAI } from "@/lib/utils"
+import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
 import type { DailyLog, UserProfile, AIConfig } from "@/lib/types"
 import { getHealthToolExecutor } from '@/lib/function-calling/health-tools'
 import { getHealthDataRAG } from '@/lib/rag/health-data-rag'

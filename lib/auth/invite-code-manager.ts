@@ -1,6 +1,6 @@
-import { getSupabaseAdmin } from '@/lib/supabase'
+﻿import { getSupabaseAdmin } from '@/lib/supabase'
 import { InviteConfigManager } from './invite-config-manager'
-import { PermissionHelper } from '@/lib/env-config'
+import { PermissionHelper } from '@/lib/config/environment'
 
 export interface InviteCode {
   id: string

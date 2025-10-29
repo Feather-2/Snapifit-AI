@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getUserBanManager } from '@/lib/user-ban-manager';
-import { InputValidator, ValidationRules } from '@/lib/input-validator';
+import { getUserBanManager } from '@/lib/security/ban/user-manager';
+import { InputValidator, ValidationRules } from '@/lib/security/input-validator';
 import { logSecurityEvent } from '@/lib/security-logger';
-import { getClientIP } from '@/lib/ip-utils';
+import { getClientIP } from '@/lib/utils/ip';
 
 // 检查管理员权限
 async function checkAdminPermission(userId: string): Promise<boolean> {

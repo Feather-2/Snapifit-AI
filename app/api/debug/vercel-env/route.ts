@@ -1,6 +1,6 @@
-import { NextRequest } from 'next/server'
+﻿import { NextRequest } from 'next/server'
 import { VERCEL_CONFIG } from '@/lib/vercel-config'
-import { checkDebugAccess } from '@/lib/debug-utils'
+import { checkDebugAccess } from '@/lib/utils/debug'
 
 export async function GET(request: NextRequest) {
   // 检查 debug 访问权限

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { withRateLimitPreset } from '@/lib/api-helpers';
+import { withRateLimitPreset } from '@/lib/api/helpers';
 import { logSecurityEvent } from '@/lib/security-logger';
-import { getClientIP } from '@/lib/ip-utils';
-import { InputValidator, ValidationRule } from '@/lib/input-validator';
+import { getClientIP } from '@/lib/utils/ip';
+import { InputValidator, ValidationRule } from '@/lib/security/input-validator';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime

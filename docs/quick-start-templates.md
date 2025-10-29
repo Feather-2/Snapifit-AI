@@ -495,7 +495,7 @@ pause
     "vitepress"
   ],
   "author": "SnapFit AI Team",
-  "license": "Apache-2.0 OR LicenseRef-Snapifit-Commercial"
+  "license": "AGPL-3.0-only OR LicenseRef-Snapifit-Commercial"
 }
 ```
 

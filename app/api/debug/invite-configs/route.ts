@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { checkDebugAccess } from '@/lib/debug-guard';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/middleware/debug-guard';
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { auth } from '@/lib/auth'
 

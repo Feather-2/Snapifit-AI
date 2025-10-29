@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { userBanManager } from './user-ban-manager';
-import { auth } from './auth';
+import { userBanManager } from '@/lib/security/ban/user-manager';
+import { auth } from '@/lib/auth';
 
 /**
  * 检查用户封禁状态的中间件函数

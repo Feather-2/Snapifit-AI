@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { KeyManager } from '@/lib/key-manager'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { KeyManager } from '@/lib/auth/key-manager'
 
 // 获取使用排行榜
 export async function GET(request: NextRequest) {

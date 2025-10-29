@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { KeyManager } from '@/lib/key-manager'
-import { UserManager } from '@/lib/user-manager'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { KeyManager } from '@/lib/auth/key-manager'
+import { UserManager } from '@/lib/user/manager'
 import { auth } from '@/lib/auth' // 引入 next-auth 的 auth 方法
 import { validateBaseURL } from '@/lib/url-validator'
 import { logSecurityEvent } from '@/lib/security-logger'
-import { getClientIP } from '@/lib/ip-utils'
+import { getClientIP } from '@/lib/utils/ip'
 import { secureCache } from '@/lib/cache/secure-cache'
-import { PermissionHelper } from '@/lib/env-config'
+import { PermissionHelper } from '@/lib/config/environment'
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 

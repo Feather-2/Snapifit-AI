@@ -1,5 +1,5 @@
-import { NextResponse } from 'next/server';
-import { KeyManager } from '@/lib/key-manager';
+﻿import { NextResponse } from 'next/server';
+import { KeyManager } from '@/lib/auth/key-manager';
 import { getSupabaseAdmin } from '@/lib/supabase';
 import { createDatabaseClient } from '@/lib/database';
 

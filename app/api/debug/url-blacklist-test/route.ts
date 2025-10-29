@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { checkDebugAccess } from '@/lib/debug-guard';
+import { checkDebugAccess } from '@/lib/middleware/debug-guard';
 import {
   validateBaseURL,
   getBlockedDomains,

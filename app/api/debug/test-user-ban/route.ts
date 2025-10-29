@@ -1,12 +1,12 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { checkDebugAccess } from '@/lib/debug-guard';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/middleware/debug-guard';
 import { auth } from '@/lib/auth';
-import { getUserBanManager } from '@/lib/user-ban-manager';
+import { getUserBanManager } from '@/lib/security/ban/user-manager';
 import { logSecurityEvent } from '@/lib/security-logger';
 import { getSupabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
-import { getClientIP } from '@/lib/ip-utils';
+import { getClientIP } from '@/lib/utils/ip';
 
 export async function POST(request: NextRequest) {
   // 检查调试访问权限

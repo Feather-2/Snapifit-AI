@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { KeyManager } from '@/lib/key-manager'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { KeyManager } from '@/lib/auth/key-manager'
 import { validateBaseURL } from '@/lib/url-validator'
 
 export async function POST(request: NextRequest) {

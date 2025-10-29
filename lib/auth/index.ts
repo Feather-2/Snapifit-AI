@@ -2,13 +2,13 @@ import NextAuth from "next-auth"
 import type { NextAuthConfig, User, Account, Profile } from "next-auth"
 import type { JWT } from "next-auth/jwt"
 import Credentials from "next-auth/providers/credentials"
-import { UserManager } from "./auth/user-manager"
-import { getSupabase, getSupabaseAdmin } from "./supabase"
-import { buildOAuthProviders } from "./auth/dynamic-providers"
-import { hasFeature } from "../config/features"
+import { UserManager } from "@/lib/auth/user-manager"
+import { getSupabase, getSupabaseAdmin } from "@/lib/supabase"
+import { buildOAuthProviders } from "@/lib/auth/dynamic-providers"
+import { hasFeature } from "@/config/features"
 
 // GitHub Provider 配置
-// OAuth Providers ��̬��������� ./auth/dynamic-providers\r\n// Google Provider 配置 - 暂时禁用（需�?HTTPS 和公共域名）
+// OAuth Providers ��̬��������� ./auth/dynamic-providers\r\n// Google Provider 配置 - 暂时禁用（需�?HTTPS 和公共域名）
 // const GoogleProvider = Google({
 //   clientId: process.env.GOOGLE_CLIENT_ID!,
 //   clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
@@ -54,7 +54,7 @@ const CredentialsProvider = Credentials({
         email: userData.email,
         name: userData.username,
         image: userData.avatarUrl || null,
-        // 添加自定义字�?
+        // 添加自定义字�?
         displayName: userData.displayName,
         trustLevel: userData.trustLevel,
         emailVerified: userData.emailVerified,
@@ -75,13 +75,13 @@ export const authConfig = {
     ...(hasFeature('auth.credentials') ? [CredentialsProvider] : []),
   ],
   pages: {
-    signIn: "/signin", // 自定义登录页�?
+    signIn: "/signin", // 自定义登录页�?
   },
-  // 添加网络和超时配�?
+  // 添加网络和超时配�?
   experimental: {
-    enableWebAuthn: false, // 禁用WebAuthn以减少复杂�?
+    enableWebAuthn: false, // 禁用WebAuthn以减少复杂�?
   },
-  // 🔧 移动端兼容性配�?
+  // 🔧 移动端兼容性配�?
   cookies: {
     sessionToken: {
       name: `next-auth.session-token`,
@@ -90,7 +90,7 @@ export const authConfig = {
         sameSite: 'lax',
         path: '/',
         secure: process.env.FORCE_HTTPS === 'true', // 根据FORCE_HTTPS环境变量决定
-        maxAge: 30 * 24 * 60 * 60, // 30�?
+        maxAge: 30 * 24 * 60 * 60, // 30�?
       },
     },
     callbackUrl: {
@@ -115,18 +115,18 @@ export const authConfig = {
   trustHost: true,
   // 🔧 JWT配置
   jwt: {
-    maxAge: 30 * 24 * 60 * 60, // 30�?
+    maxAge: 30 * 24 * 60 * 60, // 30�?
   },
   // 🔧 Session配置
   session: {
     strategy: 'jwt',
-    maxAge: 30 * 24 * 60 * 60, // 30�?
-    updateAge: 24 * 60 * 60, // 24小时更新一�?
+    maxAge: 30 * 24 * 60 * 60, // 30�?
+    updateAge: 24 * 60 * 60, // 24小时更新一�?
   },
   // 🔧 增强的错误处理和超时配置
   events: {
     async signIn(message) {
-      console.log('�?OAuth signIn event:', message.user?.email)
+      console.log('�?OAuth signIn event:', message.user?.email)
     },
     async signOut(message) {
       console.log('👋 OAuth signOut event:', message.session?.user?.email)
@@ -138,10 +138,10 @@ export const authConfig = {
       console.log('🔗 OAuth linkAccount event:', message.user?.email, message.account?.provider)
     },
     async session(message) {
-      // 静默处理session事件，避免过多日�?
+      // 静默处理session事件，避免过多日�?
     },
   },
-  // 🔧 添加调试和错误处�?
+  // 🔧 添加调试和错误处�?
   debug: process.env.NODE_ENV === 'development',
   logger: {
     error(code, metadata) {
@@ -160,8 +160,8 @@ export const authConfig = {
     async signIn({ user, account, profile }) {
       // 处理 Credentials 登录
       if (account?.provider === "credentials") {
-        // Credentials 登录已在 authorize 函数中验�?
-        // 这里只需要确保用户信息正�?
+        // Credentials 登录已在 authorize 函数中验�?
+        // 这里只需要确保用户信息正�?
         return user ? true : false
       }
 
@@ -178,7 +178,7 @@ export const authConfig = {
           const providerId = (profile.id || profile.sub).toString();
           const providerType = account.provider;
 
-          // 检查用户是否已存在（先通过邮箱查找�?
+          // 检查用户是否已存在（先通过邮箱查找�?
           const supabase = await getSupabaseAdmin()
           console.log('🔍 Checking for existing user with email:', profile.email)
 
@@ -210,7 +210,7 @@ export const authConfig = {
           }
 
           if (findError && findError.code !== 'PGRST116') { // PGRST116: 'No rows found'
-            console.error("�?Error finding user:", findError);
+            console.error("�?Error finding user:", findError);
             return false;
           }
 
@@ -260,14 +260,14 @@ export const authConfig = {
 
             // 用户更新成功
           } else {
-            // 检查是否是第一个用�?
+            // 检查是否是第一个用�?
             const { count: userCount, error: countError } = await supabase
               .from('users')
               .select('*', { count: 'exact', head: true })
 
             const isFirstUser = !countError && (userCount === 0 || userCount === null)
 
-            // 获取系统配置的默认信任等�?
+            // 获取系统配置的默认信任等�?
             let defaultTrustLevel = 0
             if (!isFirstUser) {
               try {
@@ -292,8 +292,8 @@ export const authConfig = {
               avatar_url: profile.avatar_url || profile.picture,
               provider_id: providerId,
               provider_type: providerType,
-              trust_level: isFirstUser ? 4 : defaultTrustLevel, // 第一个用户LV4，其他用户使用系统配�?
-              role: isFirstUser ? 'super_admin' : null, // 第一个用户为超级管理�?
+              trust_level: isFirstUser ? 4 : defaultTrustLevel, // 第一个用户LV4，其他用户使用系统配�?
+              role: isFirstUser ? 'super_admin' : null, // 第一个用户为超级管理�?
               is_active: true,
               is_silenced: false,
               email_verified: profile.email_verified || false,
@@ -303,7 +303,7 @@ export const authConfig = {
               updated_at: now
             };
 
-            // 创建新用�?
+            // 创建新用�?
             console.log('🔧 Attempting to create user with data:', {
               username: insertData.username,
               email: insertData.email,
@@ -326,18 +326,18 @@ export const authConfig = {
             const { data: newUser, error: createError } = insertResult
 
             if (createError) {
-              console.error("�?Error creating user:", createError);
-              console.error("�?Insert data was:", insertData);
+              console.error("�?Error creating user:", createError);
+              console.error("�?Insert data was:", insertData);
               return false;
             }
 
             if (!newUser || !newUser.id) {
-              console.error("�?User creation returned null or missing id:", newUser);
+              console.error("�?User creation returned null or missing id:", newUser);
               return false;
             }
 
-            console.log('�?User created successfully with ID:', newUser.id);
-            // 将新创建的用户在我们数据库中的UUID附加到user对象�?
+            console.log('�?User created successfully with ID:', newUser.id);
+            // 将新创建的用户在我们数据库中的UUID附加到user对象�?
             user.id = newUser.id;
 
             // 如果是第一个用户（超级管理员），为其创建默认的邀请码配置
@@ -346,9 +346,9 @@ export const authConfig = {
                 .from('invite_configs')
                 .insert({
                   user_id: newUser.id,
-                  interval_days: 1, // 超级管理员：1天间�?
-                  codes_per_batch: 10, // 每次10�?
-                  max_total_codes: 1000, // 最�?000�?
+                  interval_days: 1, // 超级管理员：1天间�?
+                  codes_per_batch: 10, // 每次10�?
+                  max_total_codes: 1000, // 最�?000�?
                   is_active: true,
                   created_by: newUser.id,
                   created_at: now,
@@ -395,7 +395,7 @@ export const authConfig = {
         if (user.isActive !== undefined) token.isActive = user.isActive
         if (user.isSilenced !== undefined) token.isSilenced = user.isSilenced
 
-        // Token数据已存�?
+        // Token数据已存�?
       }
       return token
     },
@@ -405,7 +405,7 @@ export const authConfig = {
         session.user.id = token.id as string
         session.user.provider = token.provider
 
-        // 获取用户的最新信�?
+        // 获取用户的最新信�?
         try {
           const supabase = await getSupabaseAdmin()
           const { data: userData, error } = await supabase
@@ -431,7 +431,7 @@ export const authConfig = {
             if (userData.created_at) (session.user as any).createdAt = userData.created_at
           } else {
             // 获取失败，使用token中的信息作为备用
-            // 如果获取失败，使�?token 中的信息作为备用
+            // 如果获取失败，使�?token 中的信息作为备用
             session.user.trustLevel = token.trustLevel || 0
             session.user.displayName = token.displayName
             session.user.isActive = token.isActive !== false
@@ -440,8 +440,8 @@ export const authConfig = {
             session.user.emailVerified = token.emailVerified || false
           }
         } catch (error) {
-          console.error('�?Error fetching user info in session callback:', error)
-          // 如果获取失败，设置默认�?
+          console.error('�?Error fetching user info in session callback:', error)
+          // 如果获取失败，设置默认�?
           session.user.trustLevel = 0
           session.user.role = 'user'
           session.user.isActive = true
@@ -449,7 +449,7 @@ export const authConfig = {
           session.user.emailVerified = false
         }
 
-        // Session数据已准备完�?
+        // Session数据已准备完�?
       }
       return session
     },

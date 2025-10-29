@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { checkDebugAccess } from '@/lib/debug-guard';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/middleware/debug-guard';
 import { auth } from '@/lib/auth'
-import { getClientIP } from '@/lib/ip-utils'
-import { EnvConfig } from '@/lib/env-config'
+import { getClientIP } from '@/lib/utils/ip'
+import { EnvConfig } from '@/lib/config/environment'
 
 export async function GET(request: NextRequest) {
   // 检查调试访问权限

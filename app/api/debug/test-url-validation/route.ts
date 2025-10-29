@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { checkDebugAccess } from '@/lib/debug-guard';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { checkDebugAccess } from '@/lib/middleware/debug-guard';
 import { validateBaseURL } from '@/lib/url-validator';
 
 export async function POST(request: NextRequest) {

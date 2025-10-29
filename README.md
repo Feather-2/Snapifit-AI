@@ -26,6 +26,6 @@
 
 ## 许可证
 
-- 本项目采用双重许可：`Apache-2.0` 或 商业许可（四种单部署选择：个人试用版、个人版+SQLite、Linux.do 特供版、企业版）。
-- 选择其一并完全遵守所选许可条款；商业用途在授权前须选择商业许可并获得授权。
-- 详情见：`LICENSING.md`、`LICENSE`、`LICENSE-COMMERCIAL.md`。
+- 本项目采用“使用场景双重许可”：`AGPL-3.0`（含第7条署名保留）或 商业许可（四种单部署选择：个人试用版、个人版+SQLite、Linux.do 特供版、企业版）。
+- 如按 AGPLv3 使用，允许商用，但需在网络提供服务时开源完整源代码，并保留署名与法律声明；若需闭源/去品牌/企业合规与支持，请选择商业许可并获取授权。
+- 详情见：`LICENSING.md`、`LICENSE`、`AGPL-ADDITIONAL-TERMS.md`、`LICENSE-COMMERCIAL.md`。

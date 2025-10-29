@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { EnvConfig } from '@/lib/env-config'
+import { EnvConfig } from '@/lib/config/environment'
 
 /**
  * 获取环境配置信息

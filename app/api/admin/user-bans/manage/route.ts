@@ -1,6 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getClientIP } from '@/lib/ip-utils';
+import { getClientIP } from '@/lib/utils/ip';
 
 // 简单的用户封禁管理界面API
 export async function GET(request: NextRequest) {

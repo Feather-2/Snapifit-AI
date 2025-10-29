@@ -1,7 +1,7 @@
-import { SharedOpenAIClient } from "@/lib/shared-openai-client"
+﻿import { SharedOpenAIClient } from "@/lib/shared-openai-client"
 import type { DailyLog, UserProfile } from "@/lib/types"
 import { formatDailyStatusForAI } from "@/lib/utils"
-import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/api-auth-helper'
+import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
 import { VERCEL_CONFIG } from '@/lib/vercel-config'
 // @ts-ignore -- 第三方库缺少类型声明，但运行时可用
 import { jsonrepair } from 'jsonrepair'

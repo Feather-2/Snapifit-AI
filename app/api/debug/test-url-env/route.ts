@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { EnvConfig } from '@/lib/env-config'
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { EnvConfig } from '@/lib/config/environment'
 import { validateBaseURL } from '@/lib/url-validator'
 
 /**

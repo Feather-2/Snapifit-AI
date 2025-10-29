@@ -1,4 +1,4 @@
-/**
+﻿/**
  * API 路由辅助函数
  *
  * 提供速率限制、安全检查等通用功能
@@ -6,7 +6,7 @@
  *
  * 使用示例：
  * ```typescript
- * import { withRateLimit } from '@/lib/api-helpers'
+ * import { withRateLimit } from '@/lib/api/helpers'
  *
  * export async function POST(req: Request) {
  *   // 应用速率限制
@@ -26,9 +26,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimit } from './rate-limit-redis';
-import { logSecurityEvent, extractSecurityContext } from './security-logger';
-import { getClientIP } from './ip-utils';
+import { rateLimit } from '@/lib/rate-limit-redis';
+import { logSecurityEvent, extractSecurityContext } from '@/lib/security-logger';
+import { getClientIP } from '@/lib/utils/ip';
 
 // ============================================================================
 // 类型定义

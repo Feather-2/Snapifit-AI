@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth' // 使用 next-auth 的 auth 方法
-import { ApiTokenManager } from '@/lib/api-token-manager'
-import type { CreateTokenRequest } from '@/lib/api-token-manager'
+import { ApiTokenManager } from '@/lib/auth/token-manager'
+import type { CreateTokenRequest } from '@/lib/auth/token-manager'
 
 /**
  * GET /api/tokens - 获取用户的所有令牌

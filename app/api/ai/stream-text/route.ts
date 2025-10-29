@@ -1,7 +1,7 @@
-import { NextRequest } from 'next/server'
-import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/api-auth-helper'
-import { SharedOpenAIClient } from '@/lib/shared-openai-client'
-import { InputValidator } from '@/lib/input-validator'
+﻿import { NextRequest } from 'next/server'
+import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
+import { SharedOpenAIClient } from '@/lib/ai/shared'
+import { InputValidator } from '@/lib/security/input-validator'
 import { logSecurityEvent } from '@/lib/security-logger'
 
 export async function POST(req: NextRequest) {

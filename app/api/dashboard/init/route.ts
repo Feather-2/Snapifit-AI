@@ -1,8 +1,8 @@
-// 安全的聚合 API - 一次请求获取仪表板初始化数据
+﻿// 安全的聚合 API - 一次请求获取仪表板初始化数据
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { secureCache } from '@/lib/cache/secure-cache'
-import { UsageManager } from '@/lib/usage-manager'
+import { UsageManager } from '@/lib/user/usage-manager'
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 

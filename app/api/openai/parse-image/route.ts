@@ -1,7 +1,7 @@
-import { SharedOpenAIClient } from "@/lib/shared-openai-client"
+﻿import { SharedOpenAIClient } from "@/lib/shared-openai-client"
 import { v4 as uuidv4 } from "uuid"
 import type { AIConfig } from "@/lib/types"
-import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/api-auth-helper'
+import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
 import { safeJSONParse } from '@/lib/safe-json'
 
 export async function POST(req: Request) {
