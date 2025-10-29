@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { TrendingUp, TrendingDown, Minus, Info, Target, Flag } from "lucide-react"
 import { useTranslation } from "@/hooks/use-i18n"
-import { formatNumber } from "@/lib/number-utils"
+import { formatNumber } from "@/lib/utils/number"
 
 interface WeightChangePredictorProps {
   calorieDifference: number // 热量缺口/盈余 (kcal)

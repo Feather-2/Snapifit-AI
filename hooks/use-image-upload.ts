@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback } from "react"
 import { useToast } from "@/hooks/use-toast"
-import { compressImage } from "@/lib/image-utils"
+import { compressImage } from "@/lib/utils/image"
 import type { ImagePreview } from "@/types/chat"
 
 export function useImageUpload() {

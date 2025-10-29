@@ -7,7 +7,7 @@ import { Progress } from "@/components/ui/progress"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useTranslation } from "@/hooks/use-i18n"
-import { formatNumber } from "@/lib/number-utils"
+import { formatNumber } from "@/lib/utils/number"
 import type { FoodEntry } from "@/lib/types"
 
 interface NutritionAnalysisDialogProps {

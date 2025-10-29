@@ -20,8 +20,8 @@ import { FoodEntryCard } from "@/components/food-entry-card"
 import { ExerciseEntryCard } from "@/components/exercise-entry-card"
 import { NutritionAnalysisDialog } from "@/components/nutrition-analysis-dialog"
 import { useTranslation } from "@/hooks/use-i18n"
-import { formatNumber } from "@/lib/number-utils"
-import { getTimePeriodOrder } from "@/lib/time-utils"
+import { formatNumber } from "@/lib/utils/number"
+import { getTimePeriodOrder } from "@/lib/utils/time"
 import type { FoodEntry, ExerciseEntry } from "@/lib/types"
 
 interface GroupedEntriesDisplayProps {

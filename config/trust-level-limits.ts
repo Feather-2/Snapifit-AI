@@ -3,7 +3,7 @@
  * 根据用户的信任等级设置不同的使用限额
  */
 
-import { EnvConfig } from '@/lib/env-config'
+import { EnvConfig } from '@/lib/config/environment'
 
 export interface TrustLevelLimits {
   // 每日对话次数限额

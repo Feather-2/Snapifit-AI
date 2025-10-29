@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { format } from "date-fns"
-import { DB_NAME, DB_VERSION } from '@/lib/db-config'
+import { DB_NAME, DB_VERSION } from '@/lib/config/database'
 import { useIndexedDB } from './use-indexed-db'
 
 interface DateRecordsHook {

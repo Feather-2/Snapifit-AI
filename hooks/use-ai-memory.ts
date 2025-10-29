@@ -5,7 +5,7 @@ import { useIndexedDB } from "./use-indexed-db"
 import { useAIMemorySync } from "./use-ai-memory-sync"
 import type { AIMemory, AIMemoryUpdateRequest } from "@/lib/types"
 import { useToast } from "./use-toast"
-import { DB_NAME, DB_VERSION } from '@/lib/db-config'
+import { DB_NAME, DB_VERSION } from '@/lib/config/database'
 
 interface AIMemoryHook {
   memories: Record<string, AIMemory>

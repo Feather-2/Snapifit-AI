@@ -9,7 +9,7 @@ import Link from "next/link"
 import ClientOnly from "@/components/client-only"
 import { BMIIndicator } from "@/components/bmi-indicator"
 import { WeightChangePredictor } from "@/components/weight-change-predictor"
-import { formatNumber } from "@/lib/number-utils"
+import { formatNumber } from "@/lib/utils/number"
 
 interface DailySummaryProps {
   summary: DailySummaryType

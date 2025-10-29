@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils"
 import type { ExerciseEntry } from "@/lib/types"
 import { useTranslation } from "@/hooks/use-i18n"
-import { formatNumber } from "@/lib/number-utils"
+import { formatNumber } from "@/lib/utils/number"
 
 interface ExerciseEntryCardProps {
   entry: ExerciseEntry

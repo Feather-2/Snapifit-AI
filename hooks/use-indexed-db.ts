@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { DB_NAME, DB_VERSION } from '@/lib/db-config';
+import { DB_NAME, DB_VERSION } from '@/lib/config/database';
 
 interface IndexedDBHook {
   getData: (key: string) => Promise<any>

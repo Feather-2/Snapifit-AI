@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react'
 import { useSession } from 'next-auth/react'
 import { useToast } from '@/components/ui/use-toast'
-import { DB_NAME, DB_VERSION } from '@/lib/db-config'
+import { DB_NAME, DB_VERSION } from '@/lib/config/database'
 
 interface ImportProgress {
   stage: 'parsing' | 'local' | 'cloud' | 'complete' | 'error'
