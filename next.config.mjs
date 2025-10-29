@@ -59,7 +59,7 @@ const nextConfig = {
         },
         {
           source: '/admin/fix-:path*',
-          destination: '/404',
+          destination: '/api/not-found',
         },
         // 将 shared-keys test 路由重定向到 404
         {
@@ -69,16 +69,16 @@ const nextConfig = {
         // 将测试页面路由重定向到 404
         {
           source: '/:locale/test-captcha',
-          destination: '/404',
+          destination: '/api/not-found',
         },
         {
           source: '/:locale/test-tab-freeze',
-          destination: '/404',
+          destination: '/api/not-found',
         },
         // 将调试页面路由重定向到 404
         {
           source: '/debug/:path*',
-          destination: '/404',
+          destination: '/api/not-found',
         },
         // 将测试 API 路由重定向到 404
         {
