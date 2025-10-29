@@ -1,6 +1,8 @@
 import Link from "next/link"
 
-export const dynamic = 'error'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const runtime = 'nodejs'
 
 export default function NotFoundPage() {
   return (
