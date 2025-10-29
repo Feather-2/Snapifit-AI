@@ -26,7 +26,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimit } from '@/lib/rate-limit-redis';
+// 优先使用可自适应的自部署/内存限流器，避免缺失依赖导致构建失败
+import { rateLimit } from '@/lib/rate-limit-redis-selfhosted';
 import { logSecurityEvent, extractSecurityContext } from '@/lib/security-logger';
 import { getClientIP } from '@/lib/utils/ip';
 

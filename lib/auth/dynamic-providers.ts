@@ -46,12 +46,12 @@ function buildLinuxDoProvider() {
     return null
   }
 
-  // OIDC 模式
+  // OIDC 模式（自定义 Provider 对象，无需额外模块）
   if (issuer || wellKnown) {
-    const { default: OIDC } = require('next-auth/providers/oidc')
-    return OIDC({
+    return {
       id: 'linuxdo',
       name: 'Linux.do',
+      type: 'oidc',
       clientId,
       clientSecret,
       issuer,
@@ -75,7 +75,7 @@ function buildLinuxDoProvider() {
         }
         return { id: String(id), name, email, image }
       },
-    })
+    } as any
   }
 
   // 通用 OAuth2 模式
@@ -84,11 +84,13 @@ function buildLinuxDoProvider() {
     return null
   }
 
-  const { default: OAuth } = require('next-auth/providers/oauth')
-  return OAuth({
+  // 通用 OAuth2（自定义 Provider 对象）
+  return {
     id: 'linuxdo',
     name: 'Linux.do',
     type: 'oauth',
+    clientId,
+    clientSecret,
     authorization: { url: authUrl, params: { scope: scopes } },
     token: tokenUrl,
     userinfo: {
@@ -119,7 +121,7 @@ function buildLinuxDoProvider() {
       return { id: String(id), name, email, image }
     },
     checks: ['pkce', 'state'],
-  })
+  } as any
 }
 
 export function buildOAuthProviders() {

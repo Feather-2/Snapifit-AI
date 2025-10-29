@@ -555,7 +555,7 @@ export async function POST(req: Request) {
     // 🔗 统一使用 SharedOpenAIClient（支持混合模式）
     //console.log("Using SharedOpenAIClient for chat...")
 
-    const { SharedOpenAIClient } = await import('@/lib/shared-openai-client')
+    const { SharedOpenAIClient } = await import('@/lib/ai/shared')
     const isSharedMode = modelConfig?.source === 'shared'
     const sharedClient = new SharedOpenAIClient({
       userId: session.user.id,

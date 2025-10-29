@@ -1,12 +1,24 @@
 import { Resend } from 'resend'
-import { EnvConfig } from '../env-config'
+// 延迟加载环境配置，避免构建阶段缺少模块时报错
+let _EnvConfig: any = null
+function getEnvConfigLazy() {
+  if (!_EnvConfig) {
+    try {
+      _EnvConfig = require('../config/environment').EnvConfig
+    } catch {
+      // 兜底：提供最小占位，防止构建时引用失败
+      _EnvConfig = { emailConfig: { resend: {}, smtp: {}, appUrl: process.env.NEXT_PUBLIC_BASE_URL || '', appName: 'Snapifit' }, rateLimits: { emailShortTerm: 2, emailMediumTerm: 5, emailLongTerm: 20 } }
+    }
+  }
+  return _EnvConfig
+}
 import { SMTPAdapter } from './smtp-adapter'
 
 // 延迟初始化 Resend 客户端，避免构建时报错
 let resend: Resend | null = null
 
 function getResendClient(): Resend {
-  const config = EnvConfig.emailConfig
+  const config = getEnvConfigLazy().emailConfig
   if (!resend && config.resend.apiKey) {
     resend = new Resend(config.resend.apiKey)
   }
@@ -15,7 +27,7 @@ function getResendClient(): Resend {
 
 // 邮件发送者信息（从环境配置获取）
 function getEmailConfig() {
-  return EnvConfig.emailConfig
+  return getEnvConfigLazy().emailConfig
 }
 
 // 根据配置的提供商发送邮件
@@ -114,8 +126,7 @@ export interface EmailTemplate {
 
 // 动态邮件发送频率限制配置（支持环境变量控制）
 function getEmailRateLimits() {
-  const { EnvConfig } = require('../env-config');
-  const rateLimits = EnvConfig.rateLimits;
+  const rateLimits = getEnvConfigLazy().rateLimits;
 
   return {
     // 邮箱级别限制

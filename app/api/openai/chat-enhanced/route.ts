@@ -3,7 +3,8 @@ import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
 import type { DailyLog, UserProfile, AIConfig } from "@/lib/types"
 import { getHealthToolExecutor } from '@/lib/function-calling/health-tools'
 import { getHealthDataRAG } from '@/lib/rag/health-data-rag'
-import { getMCPServerInstance } from '@/lib/mcp/mcp-server'
+// 本地直接使用健康MCP服务器工厂（如需调用）
+// import { createHealthMCPServer } from '@/lib/mcp/server'
 
 export async function POST(req: Request) {
   let session: any = null
@@ -221,7 +222,7 @@ ${ragContext}
     console.log(`🔧 工具数量: ${toolDefinitions.length}`)
 
     // 使用 SharedOpenAIClient
-    const { SharedOpenAIClient } = await import('@/lib/shared-openai-client')
+    const { SharedOpenAIClient } = await import('@/lib/ai/shared')
     const isSharedMode = modelConfig?.source === 'shared'
     const sharedClient = new SharedOpenAIClient({
       userId: session.user.id,

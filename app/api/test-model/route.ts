@@ -1,4 +1,4 @@
-import { OpenAICompatibleClient } from "@/lib/openai-client"
+import { OpenAICompatibleClient } from "@/lib/ai/openai"
 
 export async function POST(req: Request) {
   try {

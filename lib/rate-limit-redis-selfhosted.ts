@@ -7,7 +7,16 @@
  * 3. 内存存储（降级方案）
  */
 
-import { Redis as UpstashRedis } from '@upstash/redis';
+// 按需引入 Upstash（如果依赖不存在则走其他路径/内存）
+let UpstashRedis: any = null;
+try {
+  // 使用 eval 隐匿对打包器的静态依赖
+  // eslint-disable-next-line @typescript-eslint/no-implied-eval
+  const req = eval('require') as NodeRequire
+  UpstashRedis = req('@upstash/redis').Redis;
+} catch (e) {
+  UpstashRedis = null;
+}
 // 如果使用标准 Redis，取消注释：
 // import Redis from 'ioredis';
 
@@ -27,7 +36,7 @@ function getRedisClient(): any {
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-  if (upstashUrl && upstashToken) {
+  if (upstashUrl && upstashToken && UpstashRedis) {
     try {
       redisClient = new UpstashRedis({
         url: upstashUrl,

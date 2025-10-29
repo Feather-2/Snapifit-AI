@@ -1,4 +1,4 @@
-﻿import { SharedOpenAIClient } from "@/lib/shared-openai-client"
+﻿import { SharedOpenAIClient } from "@/lib/ai/shared"
 import type { FoodEntry } from "@/lib/types"
 import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
 import { safeJSONParse } from '@/lib/safe-json'

@@ -3,7 +3,8 @@
  * 用于验证Base URL，封禁官方API地址，只允许第三方源站
  */
 
-import { EnvConfig } from './env-config'
+// 兼容新位置的环境配置（lib/config/environment）
+import { EnvConfig } from '@/lib/config/environment'
 
 // 被封禁的URL黑名单
 const URL_BLACKLIST = [

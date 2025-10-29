@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getClientIP } from './ip-utils';
+import { getClientIP } from '@/lib/utils/ip';
 
 /**
  * 异步记录安全事件到数据库（非阻塞）

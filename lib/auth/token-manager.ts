@@ -1,6 +1,6 @@
 import { randomBytes, createHash } from 'crypto'
-import { getDb } from './database'
-import type { DatabaseClient } from './database/types'
+import { getDb } from '@/lib/database'
+import type { DatabaseClient } from '@/lib/database/types'
 
 // 令牌类型定义
 export type TokenScope = 'api' | 'mcp' | 'webhook' | 'export'

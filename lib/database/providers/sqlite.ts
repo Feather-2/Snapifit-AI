@@ -11,8 +11,10 @@ export class SQLiteProvider implements DatabaseClient {
   constructor() {
     try {
       // 动态加载，避免未安装时报构建错误
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      this.Database = require('better-sqlite3') as BetterSqlite
+      // 使用 eval 避免打包期静态解析依赖
+      // eslint-disable-next-line @typescript-eslint/no-implied-eval
+      const req = eval('require') as NodeRequire
+      this.Database = req('better-sqlite3') as BetterSqlite
     } catch (e) {
       throw new Error('[SQLiteProvider] 未安装依赖 better-sqlite3，请先安装后再启用个人版 SQLite。')
     }

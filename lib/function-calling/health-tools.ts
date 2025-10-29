@@ -1,5 +1,5 @@
 import { FunctionCallTool, AIToolContext, HealthDataContext, DailyLog, UserProfile } from '@/lib/types'
-import { getMCPServerInstance } from '@/lib/mcp/core/server'
+import { createHealthMCPServer } from '@/lib/mcp/server'
 import { getHealthDataRAG } from '@/lib/rag/health-data-rag'
 import { z } from 'zod'
 
@@ -39,7 +39,7 @@ export const healthDataTools: FunctionCallTool[] = [
     handler: async (params: {}, context: AIToolContext) => {
       ToolPermissionManager.validatePermissions(context.permissions, ['read_profile'])
 
-      const mcpServer = getMCPServerInstance()
+      const mcpServer = createHealthMCPServer()
       return await mcpServer.handleToolCall('get_user_profile', { user_id: context.userId }, {
         userId: context.userId,
         sessionId: context.sessionId
@@ -78,7 +78,7 @@ export const healthDataTools: FunctionCallTool[] = [
       const endDate = new Date()
       const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000)
 
-      const mcpServer = getMCPServerInstance()
+      const mcpServer = createHealthMCPServer()
       return await mcpServer.handleToolCall('get_daily_logs', {
         user_id: context.userId,
         date_range: {
@@ -118,7 +118,7 @@ export const healthDataTools: FunctionCallTool[] = [
 
       const date = params.date || new Date().toISOString().split('T')[0]
 
-      const mcpServer = getMCPServerInstance()
+      const mcpServer = createHealthMCPServer()
       return await mcpServer.handleToolCall('get_nutrition_analysis', {
         user_id: context.userId,
         date,
@@ -150,7 +150,7 @@ export const healthDataTools: FunctionCallTool[] = [
     handler: async (params: { prediction_days?: number }, context: AIToolContext) => {
       ToolPermissionManager.validatePermissions(context.permissions, ['read_health_data'])
 
-      const mcpServer = getMCPServerInstance()
+      const mcpServer = createHealthMCPServer()
       return await mcpServer.handleToolCall('get_weight_predictions', {
         user_id: context.userId,
         prediction_days: params.prediction_days || 7
@@ -199,7 +199,7 @@ export const healthDataTools: FunctionCallTool[] = [
     }, context: AIToolContext) => {
       ToolPermissionManager.validatePermissions(context.permissions, ['read_health_data'])
 
-      const mcpServer = getMCPServerInstance()
+      const mcpServer = createHealthMCPServer()
       return await mcpServer.handleToolCall('search_health_data', {
         user_id: context.userId,
         query: params.query,
@@ -327,7 +327,7 @@ export const healthDataTools: FunctionCallTool[] = [
       const date = params.date || new Date().toISOString().split('T')[0]
 
       // 获取用户资料和健康数据
-      const mcpServer = getMCPServerInstance()
+      const mcpServer = createHealthMCPServer()
 
       const [userProfile, dailyLogs] = await Promise.all([
         mcpServer.handleToolCall('get_user_profile', { user_id: context.userId }, {

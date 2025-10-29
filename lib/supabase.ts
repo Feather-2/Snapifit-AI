@@ -1,14 +1,14 @@
 import { createClient } from '@supabase/supabase-js'
 import { getVersion } from '../config/features'
 
-// 从环境变量获取数据库提供�?
+// 从环境变量获取数据库提供商
 const DB_PROVIDER = (process.env.DB_PROVIDER || 'supabase') as 'supabase' | 'postgresql'
 
-// 缓存客户端实�?
+// 缓存客户端实例
 let _supabase: any = null
 let _supabaseAdmin: any = null
 
-// 获取环境变量的函�?
+// 获取环境变量的函数
 function getSupabaseConfig() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -23,7 +23,7 @@ function getSupabaseConfig() {
     //})
   }
 
-  // 验证必需的环境变�?
+  // 验证必需的环境变量
   if (!supabaseUrl) {
     throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable')
   }
@@ -39,9 +39,9 @@ function getSupabaseConfig() {
   return { supabaseUrl, supabaseAnonKey, supabaseServiceKey }
 }
 
-// 延迟初始化的 Supabase 客户�?
+// 延迟初始化的 Supabase 客户端
 export async function getSupabase() {
-  // 当使�?PostgreSQL 等非 Supabase 提供商时，返回兼容性客户端
+  // 当使用 PostgreSQL 等非 Supabase 提供商时，返回兼容性客户端
   if (DB_PROVIDER !== 'supabase') {
     return await createCompatProxy(false)
   }
@@ -54,9 +54,9 @@ export async function getSupabase() {
   return _supabase
 }
 
-// 延迟初始化的 Supabase Admin 客户�?
+// 延迟初始化的 Supabase Admin 客户端
 export async function getSupabaseAdmin() {
-  // �?Supabase 环境下返回兼容�?ServiceRole 客户�?
+  // 非 Supabase 环境下返回兼容 ServiceRole 客户端
   if (DB_PROVIDER !== 'supabase') {
     return await createCompatProxy(true)
   }
@@ -68,14 +68,14 @@ export async function getSupabaseAdmin() {
   return _supabaseAdmin
 }
 
-// 创建兼容性代理，处理异步初始�?
+// 创建兼容性代理，处理异步初始化
 async function createCompatProxy(useServiceRole: boolean) {
   // 检查运行时环境
   const isEdgeRuntime = (typeof process !== 'undefined' && process.env.NEXT_RUNTIME === 'edge') ||
                        (typeof globalThis !== 'undefined' && 'EdgeRuntime' in globalThis)
 
   if (isEdgeRuntime) {
-    // �?Edge Runtime 中，PostgreSQL 模式不可�?
+    // Edge Runtime 中，PostgreSQL 模式不可用
     throw new Error(
       'PostgreSQL mode detected in Edge Runtime environment. ' +
       'Please use the database abstraction layer in API routes instead of middleware. ' +
@@ -83,19 +83,19 @@ async function createCompatProxy(useServiceRole: boolean) {
     )
   }
 
-  // �?Node.js Runtime 中，使用 Supabase 兼容性适配�?
+  // Node.js Runtime 中，使用 Supabase 兼容性适配器
   console.log(`PostgreSQL mode: Using Supabase compatibility adapter in Node.js Runtime (${useServiceRole ? 'admin' : 'client'})`)
 
-  // 返回 Supabase 兼容性适配�?
+  // 返回 Supabase 兼容性适配器
   const { createSupabaseCompatClient } = await import('./database/adapters/supabase-compat')
   return await createSupabaseCompatClient(useServiceRole)
 }
 
-// 向后兼容的导�?
+// 向后兼容的导出
 export const supabase = new Proxy({}, {
   get(_, prop) {
     // 由于 getSupabase 现在是异步的，这个代理不再适用
-    // 请直接使�?await getSupabase()
+    // 请直接使用 await getSupabase()
     throw new Error('supabase proxy is deprecated. Please use await getSupabase() instead.')
   }
 })
@@ -103,12 +103,12 @@ export const supabase = new Proxy({}, {
 export const supabaseAdmin = new Proxy({}, {
   get(_, prop) {
     // 由于 getSupabaseAdmin 现在是异步的，这个代理不再适用
-    // 请直接使�?await getSupabaseAdmin()
+    // 请直接使用 await getSupabaseAdmin()
     throw new Error('supabaseAdmin proxy is deprecated. Please use await getSupabaseAdmin() instead.')
   }
 })
 
-// 数据库类型定�?
+// 数据库类型定义
 export interface Database {
   public: {
     Tables: {

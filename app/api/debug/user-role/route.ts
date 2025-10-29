@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     const canManageInviteCodes = await AdminManager.hasPermission(session.user.id, Permission.MANAGE_INVITE_CODES)
 
     // 检查信任等级权限
-    const { UserManager } = require('@/lib/user-manager')
+    const { UserManager } = require('@/lib/user/manager')
     const userManager = new UserManager()
     const canShareKeysTrustLevel = userManager.canShareKeys(user?.trust_level || 0, user?.role)
     const canManageKeysTrustLevel = userManager.canManageKeys(user?.trust_level || 0, user?.role)

@@ -3,8 +3,8 @@
  * 管理用户账户的封禁和限制
  */
 
-import { getSupabaseAdmin } from './supabase';
-import { logSecurityEvent } from './security-logger';
+import { getSupabaseAdmin } from '@/lib/supabase';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export interface UserBanRecord {
   id?: string;

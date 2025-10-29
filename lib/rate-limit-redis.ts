@@ -22,15 +22,22 @@
  * ```
  */
 
-import { Redis } from '@upstash/redis';
+// 按需引入，若不存在依赖则降级为内存实现
+let UpstashRedis: any = null
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  UpstashRedis = require('@upstash/redis').Redis
+} catch (e) {
+  UpstashRedis = null
+}
 
 // ============================================================================
 // Redis 客户端配置
 // ============================================================================
 
-let redisClient: Redis | null = null;
+let redisClient: any | null = null;
 
-function getRedisClient(): Redis | null {
+function getRedisClient(): any | null {
   if (redisClient) {
     return redisClient;
   }
@@ -39,9 +46,9 @@ function getRedisClient(): Redis | null {
   const upstashUrl = process.env.UPSTASH_REDIS_REST_URL;
   const upstashToken = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-  if (upstashUrl && upstashToken) {
+  if (upstashUrl && upstashToken && UpstashRedis) {
     try {
-      redisClient = new Redis({
+      redisClient = new UpstashRedis({
         url: upstashUrl,
         token: upstashToken,
       });
@@ -143,7 +150,7 @@ function checkRateLimitMemory(
  * - 使用 Redis INCR + EXPIRE 原子操作
  */
 async function checkRateLimitRedis(
-  redis: Redis,
+  redis: any,
   key: string,
   limit: number,
   windowSeconds: number

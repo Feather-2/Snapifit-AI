@@ -1,4 +1,4 @@
-﻿import { SharedOpenAIClient } from "@/lib/shared-openai-client"
+﻿import { SharedOpenAIClient } from "@/lib/ai/shared"
 import type { DailyLog, UserProfile } from "@/lib/types"
 import { formatDailyStatusForAI } from "@/lib/utils"
 import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'

@@ -13,6 +13,22 @@ const TIMEOUT_CONFIG = {
 } as const
 
 // 通用的 OpenAI 兼容客户端
+type FetchDiagOptions = {
+  verbose?: boolean
+  retries?: number
+  retryDelayMs?: number
+}
+
+function getDefaultDiagOptions(): FetchDiagOptions {
+  const verbose = (process.env.OPENAI_CLIENT_VERBOSE || '').toLowerCase() === 'true'
+  const retries = Number.isFinite(Number(process.env.OPENAI_CLIENT_RETRIES))
+    ? Math.max(0, Number(process.env.OPENAI_CLIENT_RETRIES))
+    : 1
+  const retryDelayMs = Number.isFinite(Number(process.env.OPENAI_CLIENT_RETRY_DELAY_MS))
+    ? Math.max(0, Number(process.env.OPENAI_CLIENT_RETRY_DELAY_MS))
+    : 500
+  return { verbose, retries, retryDelayMs }
+}
 export class OpenAICompatibleClient {
   private baseUrl: string
   private apiKey: string
@@ -38,7 +54,7 @@ export class OpenAICompatibleClient {
     response_format?: { type: string }
     stream?: boolean
     max_tokens?: number
-  }) {
+  }, options?: FetchDiagOptions) {
     const url = `${this.baseUrl}/v1/chat/completions`
     //console.log("Making request to:", url)
     //console.log("Request params:", {
@@ -84,73 +100,122 @@ export class OpenAICompatibleClient {
     // }
     //console.log("Request body (base64 truncated):", JSON.stringify(debugRequestBody, null, 2))
 
-    try {
-      // 创建 AbortController 用于超时控制
-      const controller = new AbortController()
+    const verbose = !!options?.verbose
+    const retries = Math.max(0, options?.retries ?? 1) // 额外重试1次（总共最多2次）
+    const retryDelayMs = Math.max(0, options?.retryDelayMs ?? 500)
 
-      // 根据请求类型选择合适的超时时间
-      let timeout: number = TIMEOUT_CONFIG.DEFAULT
-      if (params.stream) {
-        timeout = TIMEOUT_CONFIG.STREAM_RESPONSE
-      } else if (requestBody.messages.some((msg: any) =>
-        Array.isArray(msg.content) && msg.content.some((item: any) => item.type === 'image_url')
-      )) {
-        timeout = TIMEOUT_CONFIG.IMAGE_PROCESSING
-      } else if (params.response_format?.type === 'json_object') {
-        // JSON 格式响应通常用于智能建议等复杂分析
-        timeout = TIMEOUT_CONFIG.SMART_SUGGESTIONS
-      }
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        // 创建 AbortController 用于超时控制
+        const controller = new AbortController()
 
-      const timeoutId = setTimeout(() => controller.abort(), timeout)
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json; charset=utf-8",
-          Authorization: `Bearer ${this.apiKey}`,
-          "Accept": "application/json; charset=utf-8",
-        },
-        body: JSON.stringify(requestBody),
-        signal: controller.signal,
-      })
-
-      clearTimeout(timeoutId)
-
-      console.log("Response status:", response.status)
-      //console.log("Response headers:", Object.fromEntries(response.headers.entries()))
-
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error("API Error Response:", errorText)
-        throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`)
-      }
-
-      return response
-    } catch (error) {
-      console.error("Fetch error:", error)
-      console.error("Error details:", {
-        name: error instanceof Error ? error.name : 'Unknown',
-        message: error instanceof Error ? error.message : String(error),
-        cause: error instanceof Error ? error.cause : undefined,
-        stack: error instanceof Error ? error.stack : undefined
-      })
-
-      // 提供更详细的错误信息
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          throw new Error(`请求超时：连接到 ${this.baseUrl} 未在预期时间内响应。请检查网络连接或API服务状态。`)
-        } else if (error.message.includes('ENOTFOUND') || error.message.includes('ECONNREFUSED')) {
-          throw new Error(`网络连接失败：无法连接到 ${this.baseUrl}。请检查网络连接和API地址是否正确。`)
-        } else if (error.message.includes('CERT') || error.message.includes('certificate')) {
-          throw new Error(`SSL证书错误：连接到 ${this.baseUrl} 时遇到证书问题。`)
-        } else if (error.message.includes('CONNECT_TIMEOUT') || error.message.includes('UND_ERR_CONNECT_TIMEOUT')) {
-          throw new Error(`连接超时：无法在合理时间内连接到 ${this.baseUrl}。这可能是网络问题、服务器负载过高或服务器不可达。请稍后重试。`)
-        } else if (error.message.includes('fetch failed')) {
-          throw new Error(`网络请求失败：无法连接到 ${this.baseUrl}。请检查：1) 网络连接是否正常 2) API地址是否正确 3) 服务器是否可访问`)
+        // 根据请求类型选择合适的超时时间
+        let timeout: number = TIMEOUT_CONFIG.DEFAULT
+        if (params.stream) {
+          timeout = TIMEOUT_CONFIG.STREAM_RESPONSE
+        } else if (requestBody.messages.some((msg: any) =>
+          Array.isArray(msg.content) && msg.content.some((item: any) => item.type === 'image_url')
+        )) {
+          timeout = TIMEOUT_CONFIG.IMAGE_PROCESSING
+        } else if (params.response_format?.type === 'json_object') {
+          // JSON 格式响应通常用于智能建议等复杂分析
+          timeout = TIMEOUT_CONFIG.SMART_SUGGESTIONS
         }
-      }
 
-      throw new Error(`API请求失败：${error instanceof Error ? error.message : String(error)}`)
+        const timeoutId = setTimeout(() => controller.abort(), timeout)
+
+        if (verbose) {
+          // 尽量避免打印大体积内容
+          const safeMessages = requestBody.messages.map((m: any) => {
+            if (Array.isArray(m.content)) {
+              const redacted = m.content.map((c: any) => c?.type === 'image_url' ? { type: 'image_url', image_url: { url: '[redacted]' } } : c)
+              return { ...m, content: redacted }
+            }
+            return m
+          })
+          console.debug('[OpenAIClient] request', {
+            url,
+            timeout,
+            model: requestBody.model,
+            stream: !!params.stream,
+            hasResponseFormat: !!params.response_format,
+            messageCount: requestBody.messages.length,
+            messagesPreview: safeMessages.slice(0, 2)
+          })
+        }
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8",
+            Authorization: `Bearer ${this.apiKey}`,
+            "Accept": "application/json; charset=utf-8",
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        if (verbose) {
+          const interestingHeaders = ['content-type', 'date', 'x-ratelimit-limit', 'x-ratelimit-remaining']
+          const picked: Record<string, string> = {}
+          for (const k of interestingHeaders) {
+            const v = response.headers.get(k)
+            if (v) picked[k] = v
+          }
+          console.debug('[OpenAIClient] response', { status: response.status, headers: picked })
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text()
+          if (verbose) console.error('[OpenAIClient] API error body:', errorText)
+          throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`)
+        }
+
+        return response
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error)
+        const errName = error instanceof Error ? error.name : 'Unknown'
+
+        if (verbose) {
+          console.error('[OpenAIClient] fetch error', { attempt, errName, errMsg })
+        } else {
+          console.error('Fetch error:', error)
+        }
+
+        // 优化错误文案
+        if (error instanceof Error) {
+          if (error.name === 'AbortError') {
+            // 超时无需再重试（通常是服务端处理过慢）
+            throw new Error(`请求超时：连接到 ${this.baseUrl} 未在预期时间内响应。请检查网络或API服务状态。`)
+          }
+          // 瞬时网络错误可重试
+          const msg = error.message || ''
+          const transientHints = [
+            'ECONNRESET', 'socket hang up', 'The socket connection was closed unexpectedly',
+            'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_CONNECT_TIMEOUT', 'ETIMEDOUT', 'EAI_AGAIN'
+          ]
+          const isTransient = transientHints.some(h => msg.includes(h))
+
+          if (isTransient && attempt < retries) {
+            if (verbose) console.warn(`[OpenAIClient] transient error, retrying in ${retryDelayMs}ms...`)
+            await new Promise(r => setTimeout(r, retryDelayMs))
+            continue
+          }
+
+          if (msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED')) {
+            throw new Error(`网络连接失败：无法连接到 ${this.baseUrl}。请检查网络和API地址是否正确。`)
+          } else if (msg.includes('CERT') || msg.includes('certificate')) {
+            throw new Error(`SSL证书错误：连接到 ${this.baseUrl} 时遇到证书问题。`)
+          } else if (msg.includes('fetch failed')) {
+            throw new Error(`网络请求失败：无法连接到 ${this.baseUrl}。请检查：1) 网络是否正常 2) API地址是否正确 3) 服务器是否可达`)
+          }
+        }
+
+        // 非瞬时或已用尽重试
+        throw new Error(`API请求失败：${error instanceof Error ? error.message : String(error)}`)
+      }
     }
   }
 
@@ -160,7 +225,7 @@ export class OpenAICompatibleClient {
     images?: string[]
     response_format?: { type: string }
     max_tokens?: number
-  }) {
+  }, options?: FetchDiagOptions) {
     //console.log("Generating text with params:", {
     //  model: params.model,
     //  promptLength: params.prompt.length,
@@ -190,7 +255,7 @@ export class OpenAICompatibleClient {
       messages,
       response_format: params.response_format,
       max_tokens: params.max_tokens,
-    })
+    }, options ?? getDefaultDiagOptions())
 
     const result = await response.json()
     //console.log("Generate text result:", {
@@ -208,7 +273,7 @@ export class OpenAICompatibleClient {
     model: string
     messages: Array<{ role: string; content: string; images?: string[] }>
     system?: string
-  }) {
+  }, options?: FetchDiagOptions) {
     console.log("Streaming text with params:", {
       model: params.model,
       messageCount: params.messages.length,
@@ -242,55 +307,94 @@ export class OpenAICompatibleClient {
       model: params.model,
       messages,
       stream: true,
-    })
+    }, options ?? getDefaultDiagOptions())
 
     return response
   }
 
   // 获取可用模型列表
-  async listModels() {
+  async listModels(options?: FetchDiagOptions) {
     const url = `${this.baseUrl}/v1/models`
-    console.log("Listing models from:", url)
+    options = options ?? getDefaultDiagOptions()
+    if (options?.verbose) {
+      console.debug("[OpenAIClient] listModels ->", url)
+    } else {
+      console.log("Listing models from:", url)
+    }
 
     try {
-      // 创建 AbortController 用于超时控制
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_CONFIG.CONNECTION_TEST)
+      const retries = Math.max(0, options?.retries ?? 1)
+      const retryDelayMs = Math.max(0, options?.retryDelayMs ?? 500)
 
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-        },
-        signal: controller.signal,
-      })
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          // 创建 AbortController 用于超时控制
+          const controller = new AbortController()
+          const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_CONFIG.CONNECTION_TEST)
 
-      clearTimeout(timeoutId)
+          const response = await fetch(url, {
+            method: "GET",
+            headers: {
+              Authorization: `Bearer ${this.apiKey}`,
+            },
+            signal: controller.signal,
+          })
 
-      console.log("List models response status:", response.status)
+          clearTimeout(timeoutId)
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        console.error("List models error:", errorText)
-        throw new Error(`Failed to fetch models: ${response.status} ${response.statusText} - ${errorText}`)
-      }
+          if (options?.verbose) {
+            const interestingHeaders = ['content-type', 'date', 'x-ratelimit-limit', 'x-ratelimit-remaining']
+            const picked: Record<string, string> = {}
+            for (const k of interestingHeaders) {
+              const v = response.headers.get(k)
+              if (v) picked[k] = v
+            }
+            console.debug('[OpenAIClient] listModels response', { status: response.status, headers: picked })
+          } else {
+            console.log("List models response status:", response.status)
+          }
 
-      const result = await response.json()
-      console.log("Models fetched:", result.data?.length || 0)
-      return result
-    } catch (error) {
-      console.error("List models fetch error:", error)
+          if (!response.ok) {
+            const errorText = await response.text()
+            if (options?.verbose) console.error("List models error:", errorText)
+            throw new Error(`Failed to fetch models: ${response.status} ${response.statusText} - ${errorText}`)
+          }
 
-      // 提供更详细的错误信息
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          throw new Error(`获取模型列表超时：连接到 ${this.baseUrl} 超过${TIMEOUT_CONFIG.CONNECTION_TEST/1000}秒未响应。`)
-        } else if (error.message.includes('ENOTFOUND') || error.message.includes('ECONNREFUSED')) {
-          throw new Error(`网络连接失败：无法连接到 ${this.baseUrl}。请检查网络连接和API地址。`)
+          const result = await response.json()
+          if (options?.verbose) {
+            console.debug("Models fetched:", result.data?.length || 0)
+          } else {
+            console.log("Models fetched:", result.data?.length || 0)
+          }
+          return result
+        } catch (error) {
+          const msg = error instanceof Error ? error.message : String(error)
+          const transientHints = [
+            'ECONNRESET', 'socket hang up', 'The socket connection was closed unexpectedly',
+            'UND_ERR_HEADERS_TIMEOUT', 'UND_ERR_CONNECT_TIMEOUT', 'ETIMEDOUT', 'EAI_AGAIN'
+          ]
+          const isTransient = transientHints.some(h => msg.includes(h))
+          if (isTransient && attempt < retries) {
+            if (options?.verbose) console.warn(`[OpenAIClient] listModels transient error, retrying in ${retryDelayMs}ms...`)
+            await new Promise(r => setTimeout(r, retryDelayMs))
+            continue
+          }
+
+          // 原有详细错误分类
+          if (error instanceof Error) {
+            if (error.name === 'AbortError') {
+              throw new Error(`获取模型列表超时：连接到 ${this.baseUrl} 超过${TIMEOUT_CONFIG.CONNECTION_TEST/1000}秒未响应。`)
+            } else if (msg.includes('ENOTFOUND') || msg.includes('ECONNREFUSED')) {
+              throw new Error(`网络连接失败：无法连接到 ${this.baseUrl}。请检查网络连接和API地址。`)
+            }
+          }
+
+          throw new Error(`获取模型列表失败：${msg}`)
         }
       }
-
-      throw new Error(`获取模型列表失败：${error instanceof Error ? error.message : String(error)}`)
+    } catch (error) {
+      console.error("List models fetch error:", error)
+      throw error
     }
   }
 }

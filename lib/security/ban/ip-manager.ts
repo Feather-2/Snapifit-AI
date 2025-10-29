@@ -3,8 +3,8 @@
  * 自动检测和封禁恶意IP地址
  */
 
-import { getSupabaseAdmin } from './supabase';
-import { logSecurityEvent } from './security-logger';
+import { getSupabaseAdmin } from '@/lib/supabase';
+import { logSecurityEvent } from '@/lib/security-logger';
 
 export interface IPBanRecord {
   id?: string;
