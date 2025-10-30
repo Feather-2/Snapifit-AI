@@ -23,6 +23,14 @@
 更多使用文档与指南，请继续查看 `docs/` 目录。
 
 
+## 404 策略与 rewrites（生产）
+
+- App Router 统一 404：使用 `app/not-found.tsx` 呈现 404 页面。
+- 生产环境将直接访问 `'/404'` 的请求改写到 `'/api/not-found'`，该 API 返回 404 JSON，并设置 `Cache-Control: no-store`，避免 CDN/浏览器缓存错误页。
+- 这样可以避免 Next 在构建/导出阶段回退到 pages runtime（从而触发 `<Html>` 相关限制）。
+- 如需保留 pages 体系的 404/500/_document 文件，建议移动到 `pages_disabled/`，仅在需要时启用。
+
+
 
 ## 许可证
 

@@ -16,11 +16,10 @@ export const VERSION_CONFIGS: Record<AppVersion, VersionConfig> = {
  * 获取当前版本
  */
 export function getCurrentVersion(): AppVersion {
-  const version = process.env.NEXT_PUBLIC_VERSION as AppVersion
+  const version = (process.env.NEXT_PUBLIC_VERSION as AppVersion) || 'community'
 
-  // 验证版本有效性
-  if (!version || !VERSION_CONFIGS[version]) {
-    console.warn(`Invalid version: ${version}, falling back to 'community'`)
+  // 验证版本有效性（静默降级，避免构建时重复告警）
+  if (!VERSION_CONFIGS[version]) {
     return 'community'
   }
 
