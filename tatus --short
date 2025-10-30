@@ -1,0 +1,90 @@
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/.gitignore b/.gitignore[m
+[1mindex 7f6ae5a..1f23ec2 100644[m
+[1m--- a/.gitignore[m
+[1m+++ b/.gitignore[m
+[36m@@ -36,3 +36,4 @@[m [mnext-env.d.ts[m
+ /.claude[m
+ AGENTS.md[m
+ AGENTS.md[m
+[32m+[m[32mCODE_REVIEW.md[m
+[1mdiff --git a/next.config.mjs b/next.config.mjs[m
+[1mindex bd12cb7..e338848 100644[m
+[1m--- a/next.config.mjs[m
+[1m+++ b/next.config.mjs[m
+[36m@@ -22,7 +22,27 @@[m [mconst nextConfig = {[m
+ [m
+   // 在生产环境中禁用 debug 和 test 路由[m
+   async rewrites() {[m
+[31m-    // 只在生产环境中应用这些重写规则[m
+[32m+[m[32m    // 基础 404 改写：所有环境统一将显式访问 /404 的路径改写到 API not-found，避免触发 pages runtime 回退[m
+[32m+[m[32m    const base404Rewrites = [[m
+[32m+[m[32m      {[m
+[32m+[m[32m        source: '/404',[m
+[32m+[m[32m        destination: '/api/not-found',[m
+[32m+[m[32m      },[m
+[32m+[m[32m      {[m
+[32m+[m[32m        source: '/404/:path*',[m
+[32m+[m[32m        destination: '/api/not-found',[m
+[32m+[m[32m      },[m
+[32m+[m[32m      {[m
+[32m+[m[32m        source: '/:locale/404',[m
+[32m+[m[32m        destination: '/api/not-found',[m
+[32m+[m[32m      },[m
+[32m+[m[32m      {[m
+[32m+[m[32m        source: '/:locale/404/:path*',[m
+[32m+[m[32m        destination: '/api/not-found',[m
+[32m+[m[32m      },[m
+[32m+[m[32m    ][m
+[32m+[m
+[32m+[m[32m    // 在生产环境中应用更严格的重写规则（禁用 debug/test 等），并附加基础 404 改写[m
+     if (process.env.NODE_ENV === 'production') {[m
+       return [[m
+         // 将所有 debug 路由重定向到 404[m
+[36m@@ -100,26 +120,12 @@[m [mconst nextConfig = {[m
+         // verify-email 是正常功能，不应该被禁用[m
+         // 只禁用纯测试页面[m
+ [m
+[31m-        // 显式访问 /404 的路径统一改写到 API not-found，避免触发 pages runtime 回退[m
+[31m-        {[m
+[31m-          source: '/404',[m
+[31m-          destination: '/api/not-found',[m
+[31m-        },[m
+[31m-        {[m
+[31m-          source: '/404/:path*',[m
+[31m-          destination: '/api/not-found',[m
+[31m-        },[m
+[31m-        {[m
+[31m-          source: '/:locale/404',[m
+[31m-          destination: '/api/not-found',[m
+[31m-        },[m
+[31m-        {[m
+[31m-          source: '/:locale/404/:path*',[m
+[31m-          destination: '/api/not-found',[m
+[31m-        },[m
+[32m+[m[32m        // 统一附加基础 404 改写，避免 pages runtime 回退[m
+[32m+[m[32m        ...base404Rewrites,[m
+       ];[m
+     }[m
+[31m-    return [];[m
+[32m+[m[32m    // 非生产环境也保持与生产一致的 /404 行为，减少环境差异[m
+[32m+[m[32m    return base404Rewrites;[m
+   },[m
+ [m
+   // 为 not-found API 设置不缓存，防止 CDN/浏览器缓存 404 响应[m
+[1mdiff --git a/package.json b/package.json[m
+[1mindex ff114a7..d8b9141 100644[m
+[1m--- a/package.json[m
+[1m+++ b/package.json[m
+[36m@@ -61,7 +61,10 @@[m
+                 "smoke:personal":  "NEXT_PUBLIC_VERSION=personal PERSONAL_DB_MODE=indexeddb npx tsx scripts/smoke-api.ts",[m
+                 "smoke:personal:sqlite":  "NEXT_PUBLIC_VERSION=personal PERSONAL_DB_MODE=sqlite npx tsx scripts/smoke-api.ts",[m
+                 "smoke:linuxdo":  "NEXT_PUBLIC_VERSION=linuxdo DB_PROVIDER=supabase npx tsx scripts/smoke-api.ts",[m
+[31m-                "smoke:community":  "NEXT_PUBLIC_VERSION=community DB_PROVIDER=postgresql npx tsx scripts/smoke-api.ts",[m
+[32m+[m[32m                    "smoke:community":  "NEXT_PUBLIC_VERSION=community DB_PROVIDER=postgresql npx tsx scripts/smoke-api.ts",[m
+[32m+[m[32m                    "test-404": "npx tsx scripts/test-404.ts",[m
+[32m+[m[32m                    "build:community:ps": "powershell -ExecutionPolicy Bypass -File scripts/build-community.ps1",[m
+[32m+[m[32m                    "start:community:ps": "powershell -ExecutionPolicy Bypass -File scripts/start-community.ps1",[m
+                 "smoke:usage":  "npx tsx scripts/smoke-usage.ts",[m
+                 "smoke:tokens":  "npx tsx scripts/smoke-tokens.ts",[m
+                 "e2e:login-usage":  "npx tsx scripts/e2e-login-usage.ts",[m

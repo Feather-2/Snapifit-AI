@@ -22,7 +22,27 @@ const nextConfig = {
 
   // 在生产环境中禁用 debug 和 test 路由
   async rewrites() {
-    // 只在生产环境中应用这些重写规则
+    // 基础 404 改写：所有环境统一将显式访问 /404 的路径改写到 API not-found，避免触发 pages runtime 回退
+    const base404Rewrites = [
+      {
+        source: '/404',
+        destination: '/api/not-found',
+      },
+      {
+        source: '/404/:path*',
+        destination: '/api/not-found',
+      },
+      {
+        source: '/:locale/404',
+        destination: '/api/not-found',
+      },
+      {
+        source: '/:locale/404/:path*',
+        destination: '/api/not-found',
+      },
+    ]
+
+    // 在生产环境中应用更严格的重写规则（禁用 debug/test 等），并附加基础 404 改写
     if (process.env.NODE_ENV === 'production') {
       return [
         // 将所有 debug 路由重定向到 404
@@ -100,26 +120,12 @@ const nextConfig = {
         // verify-email 是正常功能，不应该被禁用
         // 只禁用纯测试页面
 
-        // 显式访问 /404 的路径统一改写到 API not-found，避免触发 pages runtime 回退
-        {
-          source: '/404',
-          destination: '/api/not-found',
-        },
-        {
-          source: '/404/:path*',
-          destination: '/api/not-found',
-        },
-        {
-          source: '/:locale/404',
-          destination: '/api/not-found',
-        },
-        {
-          source: '/:locale/404/:path*',
-          destination: '/api/not-found',
-        },
+        // 统一附加基础 404 改写，避免 pages runtime 回退
+        ...base404Rewrites,
       ];
     }
-    return [];
+    // 非生产环境也保持与生产一致的 /404 行为，减少环境差异
+    return base404Rewrites;
   },
 
   // 为 not-found API 设置不缓存，防止 CDN/浏览器缓存 404 响应
