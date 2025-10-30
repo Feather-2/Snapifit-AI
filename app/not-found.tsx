@@ -1,5 +1,9 @@
 import Link from "next/link"
 
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+export const runtime = 'nodejs'
+
 export default function NotFound() {
   return (
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh', padding: '2rem' }}>
