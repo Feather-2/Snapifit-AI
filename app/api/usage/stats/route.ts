@@ -78,9 +78,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error fetching usage stats:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }

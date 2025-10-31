@@ -43,10 +43,8 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid usage type' }, { status: 400 })
     }
   } catch (error) {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }
 
@@ -118,11 +116,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Invalid usage type' }, { status: 400 })
     }
   } catch (error) {
-    // 🚫 任何异常都默认拒绝
-    return NextResponse.json({
-      error: 'Service temporarily unavailable',
-      code: 'SERVICE_ERROR'
-    }, { status: 503 })
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 503)
   }
 }
 
