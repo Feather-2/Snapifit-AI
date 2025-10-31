@@ -1,0 +1,37 @@
+name: Quality Checks
+
+on:
+  pull_request:
+    branches: [ main, master ]
+  push:
+    branches: [ main, master ]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Security check
+        run: npm run security-check
+
+      - name: Env check (versioned)
+        run: |
+          node scripts/check-env-versioned.js || node scripts/check-env.js
+
+      - name: Production build (community, postgresql)
+        env:
+          NODE_ENV: production
+          NEXT_PUBLIC_VERSION: community
+          DB_PROVIDER: postgresql
+        run: npm run build
