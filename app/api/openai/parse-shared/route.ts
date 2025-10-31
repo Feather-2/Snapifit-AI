@@ -2,6 +2,7 @@
 import { v4 as uuidv4 } from "uuid"
 import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
 import { safeJSONParse } from '@/lib/safe-json'
+import { handleApiError } from '@/lib/api/error-handler'
 
 export async function POST(req: Request) {
   let session: any = null
@@ -10,7 +11,7 @@ export async function POST(req: Request) {
     const { text, type, userWeight, aiConfig, currentTime } = await req.json()
 
     if (!text) {
-      return Response.json({ error: "No text provided" }, { status: 400 })
+      return Response.json({ error: "No text provided", code: 'NO_TEXT' }, { status: 400 })
     }
 
     // 🔒 统一的身份验证和限制检查（只对共享模式进行限制）
@@ -224,7 +225,7 @@ export async function POST(req: Request) {
         },
       })
     } else {
-      return Response.json({ error: "Invalid type" }, { status: 400 })
+      return Response.json({ error: "Invalid type", code: 'INVALID_TYPE' }, { status: 400 })
     }
   } catch (error) {
     console.error('Parse shared API error:', error)
@@ -244,10 +245,6 @@ export async function POST(req: Request) {
       }, { status: 503 }) // Service Unavailable
     }
 
-    return Response.json({
-      error: "AI服务处理失败，请稍后重试",
-      code: "AI_SERVICE_ERROR",
-      details: errorMessage
-    }, { status: 500 })
+    return handleApiError(error, 500)
   }
 }

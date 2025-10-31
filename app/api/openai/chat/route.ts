@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { streamText, tool } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import { KeyManager } from '@/lib/auth/key-manager'
+import { handleApiError } from '@/lib/api/error-handler'
 
 export async function POST(req: Request) {
   // 提前声明，便于在 catch 中访问并回滚
@@ -17,14 +18,14 @@ export async function POST(req: Request) {
     const expertRoleId = req.headers.get("x-expert-role")
 
     if (!aiConfigStr) {
-      return Response.json({ error: "AI configuration not found" }, { status: 400 })
+      return Response.json({ error: "AI configuration not found", code: 'INVALID_AI_CONFIG' }, { status: 400 })
     }
 
     let aiConfig
     try {
       aiConfig = JSON.parse(aiConfigStr)
     } catch (e) {
-      return Response.json({ error: "Invalid AI configuration format" }, { status: 400 })
+      return Response.json({ error: "Invalid AI configuration format", code: 'INVALID_AI_CONFIG' }, { status: 400 })
     }
 
     // 🔒 统一的身份验证和限制检查（禁用private模式）
@@ -149,7 +150,7 @@ export async function POST(req: Request) {
     //console.log("=== 健康数据接收完成 ===")
 
     if (!messages || !Array.isArray(messages)) {
-      return Response.json({ error: "Invalid messages format" }, { status: 400 })
+      return Response.json({ error: "Invalid messages format", code: 'INVALID_MESSAGES' }, { status: 400 })
     }
 
     // AI配置已在开始时解析，这里直接使用
@@ -735,20 +736,10 @@ export async function POST(req: Request) {
     }
   } catch (error) {
     console.error('Chat API error:', error)
-
-    // 发生异常，回滚使用计数
     if (session?.user?.id) {
       await rollbackUsageIfNeeded(usageManager || null, session.user.id, 'conversation_count')
     }
-
-    return Response.json(
-      {
-        error: "Failed to process chat request",
-        code: "AI_SERVICE_ERROR",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    )
+    return handleApiError(error, 500)
   }
 }
 

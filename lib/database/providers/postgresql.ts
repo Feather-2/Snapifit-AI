@@ -28,6 +28,24 @@ export class PostgreSQLProvider implements DatabaseClient {
     })
   }
 
+  // 标识符/SELECT 子句校验，限制表/列/函数名格式，防注入
+  private validateIdentifier(name: string, type: 'table' | 'column' | 'function' = 'column'): void {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+      throw new Error(`Invalid ${type} name: ${name}`)
+    }
+  }
+
+  private validateSelectClause(select?: string): string {
+    const trimmed = (select || '*').trim()
+    if (trimmed === '*') return '*'
+    const columns = trimmed.split(',').map(c => c.trim()).filter(Boolean)
+    columns.forEach(col => {
+      const [name] = col.split(/\s+as\s+/i)
+      this.validateIdentifier(name, 'column')
+    })
+    return trimmed
+  }
+
   // 重试执行方法
   private async executeWithRetry<T>(operation: () => Promise<T>, maxRetries = 3): Promise<T> {
     let lastError: Error | null = null
@@ -83,6 +101,7 @@ export class PostgreSQLProvider implements DatabaseClient {
       // 处理比较操作符
       if (key.includes('__')) {
         const [column, operator] = key.split('__')
+        this.validateIdentifier(column, 'column')
         switch (operator) {
           case 'neq':
             conditions.push(`${column} != $${paramIndex}`)
@@ -94,7 +113,8 @@ export class PostgreSQLProvider implements DatabaseClient {
               conditions.push(`${column} IS NULL`)
               // 不需要参数，不增加 paramIndex
             } else {
-              conditions.push(`${column} IS $${paramIndex}`)
+              // 保守处理非常规 IS 值，退化为等号
+              conditions.push(`${column} = $${paramIndex}`)
               values.push(value)
               paramIndex++
             }
@@ -127,6 +147,7 @@ export class PostgreSQLProvider implements DatabaseClient {
         }
       } else {
         // 默认等号比较
+        this.validateIdentifier(key, 'column')
         conditions.push(`${key} = $${paramIndex}`)
         values.push(value)
         paramIndex++
@@ -142,28 +163,29 @@ export class PostgreSQLProvider implements DatabaseClient {
   private buildOrderClause(orderBy?: { column: string; ascending?: boolean }[]): string {
     if (!orderBy || orderBy.length === 0) return ''
 
-    const orders = orderBy.map(({ column, ascending = true }) =>
-      `${column} ${ascending ? 'ASC' : 'DESC'}`
-    )
+    const orders = orderBy.map(({ column, ascending = true }) => {
+      this.validateIdentifier(column, 'column')
+      return `${column} ${ascending ? 'ASC' : 'DESC'}`
+    })
 
     return `ORDER BY ${orders.join(', ')}`
   }
 
   async select<T = any>(table: string, options?: QueryOptions): Promise<QueryResult<T[]>> {
     try {
-      const selectClause = options?.select || '*'
+      this.validateIdentifier(table, 'table')
+      const selectClause = this.validateSelectClause(options?.select)
       const { clause: whereClause, values } = this.buildWhereClause(options?.where)
       const orderClause = this.buildOrderClause(options?.orderBy)
 
-      let sql = `SELECT ${selectClause} FROM ${table} ${whereClause} ${orderClause}`
+      const limitStr = Number.isFinite(options?.limit as any) && (options!.limit as number) > 0
+        ? ` LIMIT ${Math.floor(options!.limit as number)}`
+        : ''
+      const offsetStr = Number.isFinite(options?.offset as any) && (options!.offset as number) > 0
+        ? ` OFFSET ${Math.floor(options!.offset as number)}`
+        : ''
 
-      // 添加分页
-      if (options?.limit) {
-        sql += ` LIMIT ${options.limit}`
-      }
-      if (options?.offset) {
-        sql += ` OFFSET ${options.offset}`
-      }
+      const sql = `SELECT ${selectClause} FROM ${table} ${whereClause} ${orderClause}${limitStr}${offsetStr}`
 
       const result = await this.executeWithRetry(() => this.pool.query(sql, values))
       return { data: result.rows as T[], error: null, count: result.rowCount || 0 }
@@ -187,14 +209,16 @@ export class PostgreSQLProvider implements DatabaseClient {
 
   async insert<T = any>(table: string, data: any, options?: UpsertOptions): Promise<QueryResult<T>> {
     try {
+      this.validateIdentifier(table, 'table')
       const columns = Object.keys(data)
+      columns.forEach(col => this.validateIdentifier(col, 'column'))
       const values = Object.values(data)
       const placeholders = values.map((_, index) => `$${index + 1}`)
 
       let sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders.join(', ')})`
 
       if (options?.returning) {
-        sql += ` RETURNING ${options.returning}`
+        sql += ` RETURNING ${this.validateSelectClause(options.returning)}`
       }
 
       const result = await this.pool.query(sql, values)
@@ -206,11 +230,13 @@ export class PostgreSQLProvider implements DatabaseClient {
 
   async update<T = any>(table: string, data: any, options?: QueryOptions & UpsertOptions): Promise<QueryResult<T>> {
     try {
+      this.validateIdentifier(table, 'table')
       const setColumns: string[] = []
       const setValues: any[] = []
       let paramIndex = 1
 
       Object.entries(data).forEach(([col, val]) => {
+        this.validateIdentifier(col, 'column')
         if (val && typeof val === 'object' && (val as any).__raw) {
           // 原始 SQL 字符串，直接嵌入
           setColumns.push(`${col} = ${(val as any).__raw}`)
@@ -229,7 +255,7 @@ export class PostgreSQLProvider implements DatabaseClient {
       let sql = `UPDATE ${table} SET ${setClause} ${whereClause}`
 
       if (options?.returning) {
-        sql += ` RETURNING ${options.returning}`
+        sql += ` RETURNING ${this.validateSelectClause(options.returning)}`
       }
 
       const result = await this.pool.query(sql, allValues)
@@ -249,8 +275,11 @@ export class PostgreSQLProvider implements DatabaseClient {
       }
 
       // 使用第一个记录来确定列结构
+      this.validateIdentifier(table, 'table')
       const columns = Object.keys(records[0])
+      columns.forEach(c => this.validateIdentifier(c, 'column'))
       const conflictColumn = options?.onConflict || 'id'
+      this.validateIdentifier(conflictColumn, 'column')
       const updateColumns = columns.filter(col => col !== conflictColumn)
       const updateClause = updateColumns.map(col => `${col} = EXCLUDED.${col}`).join(', ')
 
@@ -267,11 +296,11 @@ export class PostgreSQLProvider implements DatabaseClient {
       })
 
       let sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${valuesClauses.join(', ')}
-                 ON CONFLICT (${conflictColumn}) DO UPDATE SET ${updateClause}`
-
+      let sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${valuesClauses.join(', ')}`
+                 + `\n                 ON CONFLICT (${conflictColumn}) DO UPDATE SET ${updateClause}`
       if (options?.returning) {
         sql += ` RETURNING ${options.returning}`
-      }
+        sql += ` RETURNING ${this.validateSelectClause(options.returning)}`
 
       console.log('🔧 [PostgreSQL] UPSERT SQL:', sql)
       console.log('🔧 [PostgreSQL] UPSERT Values:', allValues)
@@ -305,7 +334,9 @@ export class PostgreSQLProvider implements DatabaseClient {
   private async manualUpsert<T = any>(table: string, data: any, options?: UpsertOptions): Promise<QueryResult<T>> {
     try {
       const records = Array.isArray(data) ? data : [data]
+      this.validateIdentifier(table, 'table')
       const conflictColumn = options?.onConflict || 'id'
+      this.validateIdentifier(conflictColumn, 'column')
       const results: any[] = []
 
       for (const record of records) {
@@ -340,6 +371,7 @@ export class PostgreSQLProvider implements DatabaseClient {
 
   async delete<T = any>(table: string, options?: QueryOptions): Promise<QueryResult<T>> {
     try {
+      this.validateIdentifier(table, 'table')
       const { clause: whereClause, values } = this.buildWhereClause(options?.where)
 
       let sql = `DELETE FROM ${table} ${whereClause}`
@@ -441,6 +473,23 @@ class PostgreSQLTransactionClient implements DatabaseClient {
   constructor(private client: PoolClient, private currentUserId?: string) {}
 
   // 与外层 Provider 中相同的工具方法 ---------------------------
+  // 简单标识符/SELECT 子句校验，限制表/列名格式，防注入
+  private validateIdentifier(name: string, type: 'table' | 'column' | 'function' = 'column'): void {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+      throw new Error(`Invalid ${type} name: ${name}`)
+    }
+  }
+
+  private validateSelectClause(select?: string): string {
+    const trimmed = (select || '*').trim()
+    if (trimmed === '*') return '*'
+    const columns = trimmed.split(',').map(c => c.trim()).filter(Boolean)
+    columns.forEach(col => {
+      const [name] = col.split(/\s+as\s+/i)
+      this.validateIdentifier(name, 'column')
+    })
+    return trimmed
+  }
   private buildWhereClause(where?: Record<string, any>, startParamIndex: number = 1): { clause: string; values: any[] } {
     if (!where || Object.keys(where).length === 0) {
       return { clause: '', values: [] }
@@ -454,6 +503,7 @@ class PostgreSQLTransactionClient implements DatabaseClient {
       // 处理比较操作符
       if (key.includes('__')) {
         const [column, operator] = key.split('__')
+        this.validateIdentifier(column, 'column')
         switch (operator) {
           case 'neq':
             conditions.push(`${column} != $${paramIndex}`)
@@ -465,7 +515,8 @@ class PostgreSQLTransactionClient implements DatabaseClient {
               conditions.push(`${column} IS NULL`)
               // 不需要参数，不增加 paramIndex
             } else {
-              conditions.push(`${column} IS $${paramIndex}`)
+              // 保守处理：非常规 IS 值退化为等号
+              conditions.push(`${column} = $${paramIndex}`)
               values.push(value)
               paramIndex++
             }
@@ -498,6 +549,7 @@ class PostgreSQLTransactionClient implements DatabaseClient {
         }
       } else {
         // 默认等号比较
+        this.validateIdentifier(key, 'column')
         conditions.push(`${key} = $${paramIndex}`)
         values.push(value)
         paramIndex++
@@ -513,9 +565,10 @@ class PostgreSQLTransactionClient implements DatabaseClient {
   private buildOrderClause(orderBy?: { column: string; ascending?: boolean }[]): string {
     if (!orderBy || orderBy.length === 0) return ''
 
-    const orders = orderBy.map(({ column, ascending = true }) =>
-      `${column} ${ascending ? 'ASC' : 'DESC'}`
-    )
+    const orders = orderBy.map(({ column, ascending = true }) => {
+      this.validateIdentifier(column, 'column')
+      return `${column} ${ascending ? 'ASC' : 'DESC'}`
+    })
 
     return `ORDER BY ${orders.join(', ')}`
   }
@@ -523,19 +576,19 @@ class PostgreSQLTransactionClient implements DatabaseClient {
   // CRUD 实现 ---------------------------------------------------
   async select<T = any>(table: string, options?: QueryOptions): Promise<QueryResult<T[]>> {
     try {
-      const selectClause = options?.select || '*'
+      this.validateIdentifier(table, 'table')
+      const selectClause = this.validateSelectClause(options?.select)
       const { clause: whereClause, values } = this.buildWhereClause(options?.where)
       const orderClause = this.buildOrderClause(options?.orderBy)
 
-      let sql = `SELECT ${selectClause} FROM ${table} ${whereClause} ${orderClause}`
+      const limitStr = Number.isFinite(options?.limit as any) && (options!.limit as number) > 0
+        ? ` LIMIT ${Math.floor(options!.limit as number)}`
+        : ''
+      const offsetStr = Number.isFinite(options?.offset as any) && (options!.offset as number) > 0
+        ? ` OFFSET ${Math.floor(options!.offset as number)}`
+        : ''
 
-      // 添加分页
-      if (options?.limit) {
-        sql += ` LIMIT ${options.limit}`
-      }
-      if (options?.offset) {
-        sql += ` OFFSET ${options.offset}`
-      }
+      const sql = `SELECT ${selectClause} FROM ${table} ${whereClause} ${orderClause}${limitStr}${offsetStr}`
 
       const result = await this.client.query(sql, values)
       return { data: result.rows as T[], error: null, count: result.rowCount || 0 }
@@ -557,14 +610,16 @@ class PostgreSQLTransactionClient implements DatabaseClient {
 
   async insert<T = any>(table: string, data: any, options?: UpsertOptions): Promise<QueryResult<T>> {
     try {
+      this.validateIdentifier(table, 'table')
       const columns = Object.keys(data)
+      columns.forEach(c => this.validateIdentifier(c, 'column'))
       const values = Object.values(data)
       const placeholders = values.map((_, index) => `$${index + 1}`)
 
       let sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${placeholders.join(', ')})`
 
       if (options?.returning) {
-        sql += ` RETURNING ${options.returning}`
+        sql += ` RETURNING ${this.validateSelectClause(options.returning)}`
       }
 
       const result = await this.client.query(sql, values)
@@ -576,11 +631,13 @@ class PostgreSQLTransactionClient implements DatabaseClient {
 
   async update<T = any>(table: string, data: any, options?: QueryOptions & UpsertOptions): Promise<QueryResult<T>> {
     try {
+      this.validateIdentifier(table, 'table')
       const setColumns: string[] = []
       const setValues: any[] = []
       let paramIndex = 1
 
       Object.entries(data).forEach(([col, val]) => {
+        this.validateIdentifier(col, 'column')
         if (val && typeof val === 'object' && (val as any).__raw) {
           // 原始 SQL 字符串，直接嵌入
           setColumns.push(`${col} = ${(val as any).__raw}`)
@@ -599,7 +656,7 @@ class PostgreSQLTransactionClient implements DatabaseClient {
       let sql = `UPDATE ${table} SET ${setClause} ${whereClause}`
 
       if (options?.returning) {
-        sql += ` RETURNING ${options.returning}`
+        sql += ` RETURNING ${this.validateSelectClause(options.returning)}`
       }
 
       const result = await this.client.query(sql, allValues)
@@ -619,8 +676,11 @@ class PostgreSQLTransactionClient implements DatabaseClient {
       }
 
       // 使用第一个记录来确定列结构
+      this.validateIdentifier(table, 'table')
       const columns = Object.keys(records[0])
+      columns.forEach(c => this.validateIdentifier(c, 'column'))
       const conflictColumn = options?.onConflict || 'id'
+      this.validateIdentifier(conflictColumn, 'column')
       const updateColumns = columns.filter(col => col !== conflictColumn)
       const updateClause = updateColumns.map(col => `${col} = EXCLUDED.${col}`).join(', ')
 
@@ -640,7 +700,7 @@ class PostgreSQLTransactionClient implements DatabaseClient {
                  ON CONFLICT (${conflictColumn}) DO UPDATE SET ${updateClause}`
 
       if (options?.returning) {
-        sql += ` RETURNING ${options.returning}`
+        sql += ` RETURNING ${this.validateSelectClause(options?.returning)}`
       }
 
       console.log('🔧 [PostgreSQL Transaction] UPSERT SQL:', sql)
@@ -670,6 +730,7 @@ class PostgreSQLTransactionClient implements DatabaseClient {
 
   async delete<T = any>(table: string, options?: QueryOptions): Promise<QueryResult<T>> {
     try {
+      this.validateIdentifier(table, 'table')
       const { clause: whereClause, values } = this.buildWhereClause(options?.where)
 
       let sql = `DELETE FROM ${table} ${whereClause}`

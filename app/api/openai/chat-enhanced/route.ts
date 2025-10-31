@@ -3,6 +3,7 @@ import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
 import type { DailyLog, UserProfile, AIConfig } from "@/lib/types"
 import { getHealthToolExecutor } from '@/lib/function-calling/health-tools'
 import { getHealthDataRAG } from '@/lib/rag/health-data-rag'
+import { handleApiError } from '@/lib/api/error-handler'
 // 本地直接使用健康MCP服务器工厂（如需调用）
 // import { createHealthMCPServer } from '@/lib/mcp/server'
 
@@ -16,14 +17,14 @@ export async function POST(req: Request) {
     const expertRoleId = req.headers.get("x-expert-role")
 
     if (!aiConfigStr) {
-      return Response.json({ error: "AI configuration not found" }, { status: 400 })
+      return Response.json({ error: "AI configuration not found", code: 'INVALID_AI_CONFIG' }, { status: 400 })
     }
 
     let aiConfig
     try {
       aiConfig = JSON.parse(aiConfigStr)
     } catch (e) {
-      return Response.json({ error: "Invalid AI configuration format" }, { status: 400 })
+      return Response.json({ error: "Invalid AI configuration format", code: 'INVALID_AI_CONFIG' }, { status: 400 })
     }
 
     // 身份验证和限制检查
@@ -47,7 +48,7 @@ export async function POST(req: Request) {
     console.log("Has health data:", !!healthData)
 
     if (!messages || !Array.isArray(messages)) {
-      return Response.json({ error: "Invalid messages format" }, { status: 400 })
+      return Response.json({ error: "Invalid messages format", code: 'INVALID_MESSAGES' }, { status: 400 })
     }
 
     // 🚀 增强模式：使用 MCP 和 RAG 系统
@@ -386,18 +387,9 @@ ${ragContext}
     })
   } catch (error) {
     console.error('Enhanced Chat API error:', error)
-
     if (session?.user?.id) {
       await rollbackUsageIfNeeded(usageManager || null, session.user.id, 'conversation_count')
     }
-
-    return Response.json(
-      {
-        error: "Failed to process enhanced chat request",
-        code: "AI_SERVICE_ERROR",
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 },
-    )
+    return handleApiError(error, 500)
   }
 }

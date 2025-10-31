@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid"
 import type { AIConfig } from "@/lib/types"
 import { checkApiAuth, rollbackUsageIfNeeded } from '@/lib/auth/api-helper'
 import { safeJSONParse } from '@/lib/safe-json'
+import { handleApiError } from '@/lib/api/error-handler'
 
 export async function POST(req: Request) {
   let session: any = null
@@ -16,11 +17,11 @@ export async function POST(req: Request) {
     const currentTime = formData.get("currentTime") as string // 用户浏览器当前时间 HH:MM 格式
 
     if (!image) {
-      return Response.json({ error: "No image provided" }, { status: 400 })
+      return Response.json({ error: "No image provided", code: 'NO_IMAGE' }, { status: 400 })
     }
 
     if (!aiConfigStr) {
-      return Response.json({ error: "AI configuration not found" }, { status: 400 })
+      return Response.json({ error: "AI configuration not found", code: 'INVALID_AI_CONFIG' }, { status: 400 })
     }
 
     const aiConfig = JSON.parse(aiConfigStr)
@@ -226,7 +227,7 @@ export async function POST(req: Request) {
         keyInfo // 包含使用的Key信息
       })
     } else {
-      return Response.json({ error: "Invalid type" }, { status: 400 })
+      return Response.json({ error: "Invalid type", code: 'INVALID_TYPE' }, { status: 400 })
     }
   } catch (error) {
     console.error('Parse image API error:', error)
@@ -235,9 +236,6 @@ export async function POST(req: Request) {
       await rollbackUsageIfNeeded(usageManager || null, session.user.id, 'conversation_count')
     }
 
-    return Response.json({
-      error: "Failed to process request",
-      code: "AI_SERVICE_ERROR"
-    }, { status: 500 })
+    return handleApiError(error, 500)
   }
 }

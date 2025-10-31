@@ -1,7 +1,9 @@
 import { OpenAICompatibleClient } from '@/lib/ai/openai'
 import { KeyManager } from '@/lib/auth/key-manager'
 import type { SharedKeyConfig } from '@/lib/auth/key-manager'
-import * as CryptoJS from 'crypto-js'
+// 保留类型导入但避免实际在前端解密服务端密钥
+// 仅用于历史数据在前端展示掩码，不进行真实解密
+// 不再直接依赖 CryptoJS 进行解密逻辑
 
 export interface SharedClientOptions {
   preferredModel?: string
@@ -42,20 +44,9 @@ export class SharedOpenAIClient {
 
   // 手动添加解密方法，因为 KeyManager 的是 private
   decryptApiKey(encryptedKey: string): string {
-    // 支持新格式 v2:iv:authTag:ciphertext（但此处主要用于客户端回显，不应在前端解密服务端密钥）
-    try {
-      if (encryptedKey.startsWith('v2:')) {
-        // 前端不具备服务端密钥，不能解密 v2；返回掩码
-        return '********'
-      }
-      // 旧版（不安全）格式仅在历史兼容场景下尝试解密
-      const secret = process.env.KEY_ENCRYPTION_SECRET || 'your-secret-key'
-      const bytes = CryptoJS.AES.decrypt(encryptedKey, secret)
-      const text = bytes.toString(CryptoJS.enc.Utf8)
-      return text || '********'
-    } catch {
-      return '********'
-    }
+    // 新版 v2 使用服务端 AES‑GCM，前端不可解密，统一返回掩码
+    // 旧版历史数据在前端同样不再尝试解密，避免弱口令导致泄露
+    return '********'
   }
 
   // 获取当前使用的Key信息（用于显示感谢信息）
