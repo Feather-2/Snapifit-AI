@@ -8,7 +8,8 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true,
+    // 为了安全与类型收敛，生产构建不忽略类型错误
+    ignoreBuildErrors: process.env.NODE_ENV !== 'production',
   },
   images: {
     unoptimized: true,
@@ -142,6 +143,16 @@ const nextConfig = {
           source: '/api/not-found/:path*',
           headers: [
             { key: 'Cache-Control', value: 'no-store' },
+          ],
+        },
+        // 统一为 API 预检提供允许的 CORS 头（按需扩展）
+        {
+          source: '/api/:path*',
+          headers: [
+            { key: 'Access-Control-Allow-Methods', value: 'GET, POST, PUT, DELETE, OPTIONS, PATCH' },
+            { key: 'Access-Control-Allow-Headers', value: 'Content-Type, Authorization, X-API-Key' },
+            { key: 'Access-Control-Max-Age', value: '86400' },
+            { key: 'Vary', value: 'Origin' },
           ],
         },
       ];

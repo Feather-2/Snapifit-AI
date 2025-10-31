@@ -358,7 +358,36 @@ export class PostgreSQLProvider implements DatabaseClient {
       const paramValues = Object.values(params)
       const paramPlaceholders = paramNames.map((name, index) => `${name} => $${index + 1}`)
 
-      const sql = `SELECT * FROM ${options.functionName}(${paramPlaceholders.join(', ')})`
+      // 允许的 RPC 函数白名单（根据项目使用逐步补充）
+      const ALLOWED_RPC_FUNCTIONS = new Set([
+        'create_user_with_password',
+        'validate_invite_code',
+        'use_invite_code',
+        'atomic_usage_check_and_increment',
+        'decrement_usage_count',
+        'log_limit_violation',
+        'upsert_log_patch',
+        'remove_log_entry',
+        'upsert_ai_memories',
+        'is_ip_banned',
+        'get_user_violation_stats',
+        'get_user_ban_statistics',
+        'exec_sql',
+        'jsonb_delete_key',
+        'reset_shared_keys_daily',
+        'mark_old_ai_memories',
+        'refresh_ai_memory_markers',
+        'verify_email'
+      ])
+
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(options.functionName)) {
+        return { data: null as any, error: new Error(`Invalid function name format: ${options.functionName}`) }
+      }
+      if (!ALLOWED_RPC_FUNCTIONS.has(options.functionName)) {
+        return { data: null as any, error: new Error(`Invalid RPC function name: ${options.functionName}`) }
+      }
+
+      const sql = `SELECT * FROM "${options.functionName}"(${paramPlaceholders.join(', ')})`
 
       const result = await this.pool.query(sql, paramValues)
       return { data: result.rows as unknown as T, error: null }
@@ -696,7 +725,35 @@ class PostgreSQLTransactionClient implements DatabaseClient {
       const paramValues = Object.values(params)
       const paramPlaceholders = paramNames.map((name, index) => `${name} => $${index + 1}`)
 
-      const sql = `SELECT * FROM ${options.functionName}(${paramPlaceholders.join(', ')})`
+      const ALLOWED_RPC_FUNCTIONS = new Set([
+        'create_user_with_password',
+        'validate_invite_code',
+        'use_invite_code',
+        'atomic_usage_check_and_increment',
+        'decrement_usage_count',
+        'log_limit_violation',
+        'upsert_log_patch',
+        'remove_log_entry',
+        'upsert_ai_memories',
+        'is_ip_banned',
+        'get_user_violation_stats',
+        'get_user_ban_statistics',
+        'exec_sql',
+        'jsonb_delete_key',
+        'reset_shared_keys_daily',
+        'mark_old_ai_memories',
+        'refresh_ai_memory_markers',
+        'verify_email'
+      ])
+
+      if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(options.functionName)) {
+        return { data: null as any, error: new Error(`Invalid function name format: ${options.functionName}`) }
+      }
+      if (!ALLOWED_RPC_FUNCTIONS.has(options.functionName)) {
+        return { data: null as any, error: new Error(`Invalid RPC function name: ${options.functionName}`) }
+      }
+
+      const sql = `SELECT * FROM "${options.functionName}"(${paramPlaceholders.join(', ')})`
 
       const result = await this.client.query(sql, paramValues)
       return { data: result.rows as unknown as T, error: null }

@@ -22,29 +22,75 @@ import { getVersion } from './config/features';
 function addSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  // 现代浏览器已忽略 X-XSS-Protection，保留对旧环境的兼容
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
 
+  // 环境可配置的 CSP 允许列表（以逗号分隔）
+  const envList = (v?: string) => (v || '')
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+
+  const connectAllow = [
+    "'self'",
+    'https://*.supabase.co',
+    'https://api.openai.com',
+    ...envList(process.env.CSP_CONNECT_SRC),
+  ];
+
+  // img-src：若未配置，保留 https: 以减少破坏面；配置后使用白名单
+  const hasImgEnv = !!envList(process.env.CSP_IMG_SRC).length;
+  const imgAllow = hasImgEnv
+    ? ["'self'", 'data:', ...envList(process.env.CSP_IMG_SRC)]
+    : ["'self'", 'data:', 'https:'];
+
+  // 更严格的 CSP（逐步移除 style inline）
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: https:",
+    `img-src ${imgAllow.join(' ')}`,
     "font-src 'self' data:",
-    "connect-src 'self'",
+    `connect-src ${connectAllow.join(' ')}`,
+    "frame-ancestors 'none'",
   ].join('; ');
   response.headers.set('Content-Security-Policy', csp);
+
+  // 收敛权限策略，关闭不需要的硬件能力
+  response.headers.set(
+    'Permissions-Policy',
+    [
+      'geolocation=()',
+      'microphone=()',
+      'camera=()',
+      'accelerometer=()',
+      'autoplay=(self)',
+      'fullscreen=(self)'
+    ].join(', ')
+  );
 
   return response;
 }
 
-function addCorsHeaders(response: NextResponse, origin?: string): NextResponse {
-  if (origin) {
+function addCorsHeaders(response: NextResponse, origin?: string, allowedOrigins?: string[]): NextResponse {
+  const allowed = (allowedOrigins || [
+    process.env.NEXT_PUBLIC_APP_URL || '',
+    'http://localhost:3000',
+    'https://localhost:3000',
+  ]).filter(Boolean);
+
+  const nodeEnv = process.env.NODE_ENV || 'development';
+
+  if (origin && allowed.includes(origin)) {
     response.headers.set('Access-Control-Allow-Origin', origin);
-  } else {
-    response.headers.set('Access-Control-Allow-Origin', '*');
+  } else if (nodeEnv === 'development') {
+    // 开发环境允许通配符以减少阻断
+    response.headers.set('Access-Control-Allow-Origin', origin || '*');
   }
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+
+  response.headers.set('Vary', 'Origin');
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
   response.headers.set('Access-Control-Max-Age', '86400');
   return response;
@@ -181,6 +227,16 @@ export default async function middleware(req: NextRequest) {
   // ============================================================================
 
   if (path.startsWith('/api/')) {
+    // 预检请求直接放行（附带 CORS 头）
+    if (method === 'OPTIONS') {
+      const preflight = new NextResponse(null, { status: 204 });
+      const origin = req.headers.get('origin') || undefined;
+      const allowedOrigins = (process.env.ALLOWED_CORS_ORIGINS || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+      return addCorsHeaders(addSecurityHeaders(preflight), origin, allowedOrigins);
+    }
     // 2.1 版本特定逻辑：个人体验版（IndexedDB）拦截所有 API
     const version = getVersion();
     const personalMode = process.env.PERSONAL_DB_MODE || 'indexeddb';
@@ -207,7 +263,11 @@ export default async function middleware(req: NextRequest) {
     // 2.2 添加安全头和 CORS
     const response = NextResponse.next();
     const origin = req.headers.get('origin') || undefined;
-    return addCorsHeaders(addSecurityHeaders(response), origin);
+    const allowedOrigins = (process.env.ALLOWED_CORS_ORIGINS || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    return addCorsHeaders(addSecurityHeaders(response), origin, allowedOrigins);
   }
 
   // ============================================================================

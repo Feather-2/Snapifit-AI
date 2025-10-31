@@ -163,8 +163,29 @@ export class EnvConfig {
   static validateConfig(): { isValid: boolean; errors: string[] } {
     const errors: string[] = []
 
-    // 这里可以添加配置验证逻辑
-    // 例如检查必需的环境变量是否存在
+    // 必需环境变量校验
+    const nextAuthSecret = getStringEnv('NEXTAUTH_SECRET', '')
+    if (!nextAuthSecret || nextAuthSecret.length < 32) {
+      errors.push('NEXTAUTH_SECRET 未设置或长度不足（至少 32 字符）')
+    }
+
+    const encSecret = getStringEnv('KEY_ENCRYPTION_SECRET', '')
+    const isHex64 = /^[0-9a-fA-F]{64}$/.test(encSecret)
+    if (!isHex64) {
+      errors.push('KEY_ENCRYPTION_SECRET 必须是 64 位十六进制（32 字节）')
+    }
+
+    // 数据库提供商要求
+    const dbProvider = getStringEnv('DB_PROVIDER', 'postgresql')
+    if (dbProvider === 'postgresql') {
+      if (!getStringEnv('DATABASE_URL')) {
+        errors.push('使用 postgresql 时必须设置 DATABASE_URL')
+      }
+    } else if (dbProvider === 'supabase') {
+      if (!getStringEnv('NEXT_PUBLIC_SUPABASE_URL') || !getStringEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY')) {
+        errors.push('使用 supabase 时必须设置 NEXT_PUBLIC_SUPABASE_URL 与 NEXT_PUBLIC_SUPABASE_ANON_KEY')
+      }
+    }
 
     return {
       isValid: errors.length === 0,

@@ -1,9 +1,23 @@
 import { getSupabaseAdmin } from '@/lib/supabase'
 import { OpenAICompatibleClient } from '@/lib/ai/openai'
 import * as CryptoJS from 'crypto-js'
+import crypto from 'crypto'
 
-// 加密密钥（实际使用时应该从环境变量获取）
-const ENCRYPTION_KEY = process.env.KEY_ENCRYPTION_SECRET || 'your-secret-key'
+// 加密配置：使用 AES-256-GCM，返回格式 v2:iv:authTag:ciphertext（hex）
+const ALGORITHM = 'aes-256-gcm'
+
+function getEncryptionKey(): Buffer {
+  const secret = process.env.KEY_ENCRYPTION_SECRET
+  if (!secret) {
+    throw new Error('KEY_ENCRYPTION_SECRET is required for key encryption')
+  }
+  // 期望 32 字节十六进制
+  const key = Buffer.from(secret, 'hex')
+  if (key.length !== 32) {
+    throw new Error('KEY_ENCRYPTION_SECRET must be a 64-hex (32 bytes) value')
+  }
+  return key
+}
 
 export interface SharedKeyConfig {
   id?: string
@@ -42,12 +56,36 @@ export class KeyManager {
 
   // 加密API Key
   private encryptApiKey(apiKey: string): string {
-    return CryptoJS.AES.encrypt(apiKey, ENCRYPTION_KEY).toString()
+    const key = getEncryptionKey()
+    const iv = crypto.randomBytes(16)
+    const cipher = crypto.createCipheriv(ALGORITHM, key, iv)
+    const enc1 = cipher.update(apiKey, 'utf8', 'hex')
+    const enc2 = cipher.final('hex')
+    const authTag = cipher.getAuthTag().toString('hex')
+    return `v2:${iv.toString('hex')}:${authTag}:${enc1 + enc2}`
   }
 
   // 解密API Key
   private decryptApiKey(encryptedKey: string): string {
-      return CryptoJS.AES.decrypt(encryptedKey, ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8)
+      // 新版格式 v2
+      if (encryptedKey.startsWith('v2:')) {
+        const [, ivHex, authTagHex, ciphertext] = encryptedKey.split(':')
+        const key = getEncryptionKey()
+        const iv = Buffer.from(ivHex, 'hex')
+        const authTag = Buffer.from(authTagHex, 'hex')
+        const decipher = crypto.createDecipheriv(ALGORITHM, key, iv)
+        decipher.setAuthTag(authTag)
+        const dec1 = decipher.update(ciphertext, 'hex', 'utf8')
+        const dec2 = decipher.final('utf8')
+        return dec1 + dec2
+      }
+      // 旧版兼容（CryptoJS），仅用于历史数据解密
+      try {
+        const secret = process.env.KEY_ENCRYPTION_SECRET || 'your-secret-key'
+        return CryptoJS.AES.decrypt(encryptedKey, secret).toString(CryptoJS.enc.Utf8)
+      } catch {
+        throw new Error('Failed to decrypt API key: invalid format or secret')
+      }
   }
 
   // 公共解密方法（用于定时任务等外部调用）

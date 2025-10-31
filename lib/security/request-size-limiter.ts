@@ -19,8 +19,9 @@ async function logSecurityEventAsync(event: {
   metadata?: Record<string, any>;
 }) {
   try {
-    // 非阻塞的内部 API 调用
-    fetch('/api/security/log-event', {
+    // 非阻塞的内部 API 调用（使用绝对 URL 避免中间件循环）
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    fetch(`${baseUrl}/api/security/log-event`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

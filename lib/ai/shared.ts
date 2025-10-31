@@ -3,9 +3,6 @@ import { KeyManager } from '@/lib/auth/key-manager'
 import type { SharedKeyConfig } from '@/lib/auth/key-manager'
 import * as CryptoJS from 'crypto-js'
 
-// 加密密钥（实际使用时应该从环境变量获取）
-const ENCRYPTION_KEY = process.env.KEY_ENCRYPTION_SECRET || 'your-secret-key'
-
 export interface SharedClientOptions {
   preferredModel?: string
   userId: string
@@ -45,8 +42,20 @@ export class SharedOpenAIClient {
 
   // 手动添加解密方法，因为 KeyManager 的是 private
   decryptApiKey(encryptedKey: string): string {
-    const bytes = CryptoJS.AES.decrypt(encryptedKey, ENCRYPTION_KEY)
-    return bytes.toString(CryptoJS.enc.Utf8)
+    // 支持新格式 v2:iv:authTag:ciphertext（但此处主要用于客户端回显，不应在前端解密服务端密钥）
+    try {
+      if (encryptedKey.startsWith('v2:')) {
+        // 前端不具备服务端密钥，不能解密 v2；返回掩码
+        return '********'
+      }
+      // 旧版（不安全）格式仅在历史兼容场景下尝试解密
+      const secret = process.env.KEY_ENCRYPTION_SECRET || 'your-secret-key'
+      const bytes = CryptoJS.AES.decrypt(encryptedKey, secret)
+      const text = bytes.toString(CryptoJS.enc.Utf8)
+      return text || '********'
+    } catch {
+      return '********'
+    }
   }
 
   // 获取当前使用的Key信息（用于显示感谢信息）

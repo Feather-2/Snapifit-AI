@@ -125,17 +125,42 @@ export class SQLiteProvider implements DatabaseClient {
 
   private buildOrder(orderBy?: { column: string; ascending?: boolean }[]) {
     if (!orderBy || orderBy.length === 0) return ''
-    const parts = orderBy.map(o => `${o.column} ${o.ascending === false ? 'DESC' : 'ASC'}`)
+    const parts = orderBy.map(o => {
+      this.validateIdentifier(o.column, 'column')
+      return `${o.column} ${o.ascending === false ? 'DESC' : 'ASC'}`
+    })
     return ` ORDER BY ${parts.join(', ')}`
+  }
+
+  // 简单的标识符校验，限制表/列名格式，防注入
+  private validateIdentifier(name: string, type: 'table' | 'column'): void {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) {
+      throw new Error(`Invalid ${type} name: ${name}`)
+    }
+  }
+
+  private validateSelectClause(select: string): string {
+    const trimmed = select.trim()
+    if (trimmed === '*') return '*'
+    const columns = trimmed.split(',').map(c => c.trim())
+    columns.forEach(col => {
+      // 允许简单的别名格式：col 或 col as alias
+      const [name] = col.split(/\s+as\s+/i)
+      this.validateIdentifier(name, 'column')
+    })
+    return trimmed
   }
 
   async select<T = any>(table: string, options?: QueryOptions): Promise<QueryResult<T[]>> {
     try {
-      const select = options?.select?.trim() || '*'
+      // 校验表与列
+      this.validateIdentifier(table, 'table')
+      const select = this.validateSelectClause(options?.select?.trim() || '*')
+
       const { clause, params } = this.buildWhere(options?.where)
       const order = this.buildOrder(options?.orderBy)
-      const limit = options?.limit ? ` LIMIT ${options.limit}` : ''
-      const offset = options?.offset ? ` OFFSET ${options.offset}` : ''
+      const limit = options?.limit ? ` LIMIT ${Math.max(0, Math.floor(options.limit))}` : ''
+      const offset = options?.offset ? ` OFFSET ${Math.max(0, Math.floor(options.offset))}` : ''
       const sql = `SELECT ${select} FROM ${table}${clause}${order}${limit}${offset}`
       const stmt = this.db.prepare(sql)
       const rows = stmt.all(...params)
@@ -154,7 +179,9 @@ export class SQLiteProvider implements DatabaseClient {
 
   async insert<T = any>(table: string, data: any, _options?: UpsertOptions): Promise<QueryResult<T>> {
     try {
+      this.validateIdentifier(table, 'table')
       const keys = Object.keys(data)
+      keys.forEach(k => this.validateIdentifier(k, 'column'))
       const placeholders = keys.map(() => '?').join(', ')
       const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders}) RETURNING *`
       const stmt = this.db.prepare(sql)
@@ -167,7 +194,9 @@ export class SQLiteProvider implements DatabaseClient {
 
   async update<T = any>(table: string, data: any, options?: QueryOptions & UpsertOptions): Promise<QueryResult<T>> {
     try {
+      this.validateIdentifier(table, 'table')
       const setKeys = Object.keys(data)
+      setKeys.forEach(k => this.validateIdentifier(k, 'column'))
       const setClause = setKeys.map(k => `${k} = ?`).join(', ')
       const { clause, params } = this.buildWhere(options?.where)
       const sql = `UPDATE ${table} SET ${setClause}${clause} RETURNING *`
@@ -181,10 +210,12 @@ export class SQLiteProvider implements DatabaseClient {
 
   async upsert<T = any>(table: string, data: any, options?: UpsertOptions): Promise<QueryResult<T>> {
     try {
+      this.validateIdentifier(table, 'table')
       if (!options?.onConflict) {
         return this.insert<T>(table, data)
       }
       const keys = Object.keys(data)
+      keys.forEach(k => this.validateIdentifier(k, 'column'))
       const placeholders = keys.map(() => '?').join(', ')
       const updates = keys.map(k => `${k}=excluded.${k}`).join(', ')
       const sql = `INSERT INTO ${table} (${keys.join(', ')}) VALUES (${placeholders}) ON CONFLICT(${options.onConflict}) DO UPDATE SET ${updates} RETURNING *`
@@ -198,6 +229,7 @@ export class SQLiteProvider implements DatabaseClient {
 
   async delete<T = any>(table: string, options?: QueryOptions): Promise<QueryResult<T>> {
     try {
+      this.validateIdentifier(table, 'table')
       const { clause, params } = this.buildWhere(options?.where)
       const sql = `DELETE FROM ${table}${clause} RETURNING *`
       const stmt = this.db.prepare(sql)
