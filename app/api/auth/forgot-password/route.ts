@@ -110,9 +110,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Forgot password error:', error)
-    return NextResponse.json(
-      { error: '服务器内部错误' },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }

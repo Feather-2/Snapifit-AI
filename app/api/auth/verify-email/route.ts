@@ -57,13 +57,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Email verification error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal server error'
-      },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }
 
@@ -192,12 +187,7 @@ export async function PUT(request: NextRequest) {
 
   } catch (error) {
     console.error('Resend verification email error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal server error'
-      },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }

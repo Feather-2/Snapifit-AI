@@ -92,13 +92,8 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Registration error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal server error'
-      },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }
 
@@ -176,12 +171,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Availability check error:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Internal server error'
-      },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }

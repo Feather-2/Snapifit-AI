@@ -219,7 +219,14 @@ export default async function middleware(req: NextRequest) {
   if (method === 'POST' || method === 'PUT' || method === 'PATCH') {
     const sizeCheckResponse = checkRequestSize(req);
     if (sizeCheckResponse) {
-      return sizeCheckResponse;
+      // 早返回也需要统一注入安全头、CORS 与请求 ID
+      const origin = req.headers.get('origin') || undefined;
+      const allowedOrigins = (process.env.ALLOWED_CORS_ORIGINS || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+      sizeCheckResponse.headers.set('X-Request-ID', requestId);
+      return addCorsHeaders(addSecurityHeaders(sizeCheckResponse), origin, allowedOrigins);
     }
   }
 
@@ -251,7 +258,7 @@ export default async function middleware(req: NextRequest) {
         metadata: { path, method }
       });
 
-      return NextResponse.json(
+      const blocked = NextResponse.json(
         {
           error: 'SERVER_DB_DISABLED',
           message: '个人体验版（IndexedDB）不提供服务端接口，请使用前端本地存储或导入/导出功能',
@@ -260,6 +267,13 @@ export default async function middleware(req: NextRequest) {
         },
         { status: 405 }
       );
+      const origin = req.headers.get('origin') || undefined;
+      const allowedOrigins = (process.env.ALLOWED_CORS_ORIGINS || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+      blocked.headers.set('X-Request-ID', requestId);
+      return addCorsHeaders(addSecurityHeaders(blocked), origin, allowedOrigins);
     }
 
     // 2.2 添加安全头和 CORS
