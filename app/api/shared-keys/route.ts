@@ -34,10 +34,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ keys: safeKeys })
   } catch (error) {
     console.error('Get shared keys error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }
 
@@ -174,10 +172,8 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('Add shared key error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }
 
@@ -245,10 +241,8 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: true, message: 'Key updated successfully' })
   } catch (error) {
     console.error('Update shared key error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }
 
@@ -313,9 +307,7 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ success: true, message: 'Key deleted successfully' })
   } catch (error) {
     console.error('Delete shared key error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }

@@ -55,9 +55,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error in GET /api/admin/users:', error)
-    return NextResponse.json({
-      success: false,
-      error: '服务器错误'
-    }, { status: 500 })
+    const { handleApiError } = await import('@/lib/api/error-handler')
+    return handleApiError(error, 500)
   }
 }
