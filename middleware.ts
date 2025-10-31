@@ -204,6 +204,7 @@ function logSecurityEvent(event: {
 export default async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const method = req.method;
+  const requestId = req.headers.get('x-request-id') || (globalThis.crypto && 'randomUUID' in globalThis.crypto ? globalThis.crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
 
   // 跳过内部请求
   const isInternal = req.headers.get('X-Internal-Request') === 'true';
@@ -230,6 +231,7 @@ export default async function middleware(req: NextRequest) {
     // 预检请求直接放行（附带 CORS 头）
     if (method === 'OPTIONS') {
       const preflight = new NextResponse(null, { status: 204 });
+      preflight.headers.set('X-Request-ID', requestId);
       const origin = req.headers.get('origin') || undefined;
       const allowedOrigins = (process.env.ALLOWED_CORS_ORIGINS || '')
         .split(',')
@@ -262,6 +264,7 @@ export default async function middleware(req: NextRequest) {
 
     // 2.2 添加安全头和 CORS
     const response = NextResponse.next();
+    response.headers.set('X-Request-ID', requestId);
     const origin = req.headers.get('origin') || undefined;
     const allowedOrigins = (process.env.ALLOWED_CORS_ORIGINS || '')
       .split(',')
@@ -275,6 +278,7 @@ export default async function middleware(req: NextRequest) {
   // ============================================================================
 
   const response = intlMiddleware(req);
+  response.headers.set('X-Request-ID', requestId);
   return addSecurityHeaders(response);
 }
 

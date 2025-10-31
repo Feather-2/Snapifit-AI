@@ -39,30 +39,35 @@ async function logSecurityEventAsync(event: {
 }
 
 // 不同API的大小限制配置（字节）
+const toNum = (v: string | undefined, def: number) => {
+  const n = v ? parseInt(v, 10) : NaN
+  return Number.isFinite(n) && n >= 0 ? n : def
+}
+
 const SIZE_LIMITS = {
   // 默认限制：1MB
-  default: 1 * 1024 * 1024,
+  default: toNum(process.env.REQUEST_SIZE_LIMIT_DEFAULT, 1 * 1024 * 1024),
 
   // 设置相关API：较小限制
-  settings: 100 * 1024, // 100KB
+  settings: toNum(process.env.REQUEST_SIZE_LIMIT_SETTINGS, 100 * 1024),
 
   // 共享密钥API：中等限制
-  'shared-keys': 50 * 1024, // 50KB
+  'shared-keys': toNum(process.env.REQUEST_SIZE_LIMIT_SHARED_KEYS, 50 * 1024),
 
   // 聊天API：较大限制（支持图片）
-  chat: 10 * 1024 * 1024, // 10MB
+  chat: toNum(process.env.REQUEST_SIZE_LIMIT_CHAT, 10 * 1024 * 1024),
 
   // 上传API：最大限制
-  upload: 50 * 1024 * 1024, // 50MB
+  upload: toNum(process.env.REQUEST_SIZE_LIMIT_UPLOAD, 50 * 1024 * 1024),
 
   // 管理API：小限制
-  admin: 200 * 1024, // 200KB
+  admin: toNum(process.env.REQUEST_SIZE_LIMIT_ADMIN, 200 * 1024),
 
   // 同步API：小限制
-  sync: 500 * 1024, // 500KB
+  sync: toNum(process.env.REQUEST_SIZE_LIMIT_SYNC, 500 * 1024),
 
   // AI API：大限制
-  ai: 5 * 1024 * 1024, // 5MB
+  ai: toNum(process.env.REQUEST_SIZE_LIMIT_AI, 5 * 1024 * 1024),
 } as const;
 
 /**

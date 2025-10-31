@@ -15,7 +15,11 @@
 
 type Result = { name: string; ok: boolean; detail?: string }
 
-const BASE = process.argv[2] || process.env.BASE_URL || 'http://localhost:3000'
+function validateUrlInput(raw: string): string {
+  try { new URL(raw); return raw } catch { throw new Error(`Invalid BASE URL: ${raw}`) }
+}
+
+const BASE = validateUrlInput(process.argv[2] || process.env.BASE_URL || 'http://localhost:3000')
 const NODE_ENV = (process.env.NODE_ENV || 'development').toLowerCase()
 const REQUIRE_NO_STORE = process.env.CHECK_NO_STORE === 'true' || NODE_ENV === 'production'
 
