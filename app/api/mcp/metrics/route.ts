@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getPrometheusMetricsText } from '@/lib/mcp/metrics'
+import { handleApiError } from '@/lib/api/error-handler'
 
 function getOrCreateRequestId(req: NextRequest): string {
   const headerId = req.headers.get('x-request-id')
@@ -8,8 +9,14 @@ function getOrCreateRequestId(req: NextRequest): string {
 
 export async function GET(req: NextRequest) {
   const requestId = getOrCreateRequestId(req)
-  const text = getPrometheusMetricsText()
-  return new NextResponse(text, { status: 200, headers: { 'Content-Type': 'text/plain; version=0.0.4', 'x-request-id': requestId } })
+  try {
+    const text = getPrometheusMetricsText()
+    return new NextResponse(text, { status: 200, headers: { 'Content-Type': 'text/plain; version=0.0.4', 'x-request-id': requestId } })
+  } catch (error) {
+    const res = handleApiError(error, 500)
+    res.headers.set('x-request-id', requestId)
+    return res
+  }
 }
 
 

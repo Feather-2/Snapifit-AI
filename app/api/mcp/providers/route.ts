@@ -8,6 +8,7 @@ import { auth } from '@/lib/auth'
 import { MCPProvider } from '@/lib/mcp/client'
 import { z } from 'zod'
 import { getProviderRegistry } from '@/lib/mcp/provider-registry'
+import { handleApiError } from '@/lib/api/error-handler'
 
 function withRequestIdHeaders(init?: ResponseInit) {
   const requestId = `mcp_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`
@@ -38,7 +39,8 @@ export async function GET() {
 
   } catch (error) {
     console.error('[MCP Providers API] 获取提供者失败:', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : '服务器内部错误' }, withRequestIdHeaders({ status: 500 }))
+    const res = handleApiError(error, 500)
+    return new NextResponse(await res.text(), withRequestIdHeaders({ status: 500 }))
   }
 }
 
@@ -61,44 +63,59 @@ const UpdateSchema = z.object({
 })
 
 export async function POST(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: '未授权访问' }, withRequestIdHeaders({ status: 401 }))
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: '未授权访问' }, withRequestIdHeaders({ status: 401 }))
+    }
+    const parsed = UpsertSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: '参数校验失败', details: parsed.error.flatten() }, withRequestIdHeaders({ status: 400 }))
+    }
+    const data = parsed.data
+    getProviderRegistry().upsert({ id: data.id, name: data.name, serverUrl: data.serverUrl, isActive: data.isActive, connectionTimeout: data.connectionTimeout })
+    return NextResponse.json({ success: true }, withRequestIdHeaders({ status: 201 }))
+  } catch (error) {
+    const res = handleApiError(error, 500)
+    return new NextResponse(await res.text(), withRequestIdHeaders({ status: 500 }))
   }
-  const parsed = UpsertSchema.safeParse(await req.json())
-  if (!parsed.success) {
-    return NextResponse.json({ error: '参数校验失败', details: parsed.error.flatten() }, withRequestIdHeaders({ status: 400 }))
-  }
-  const data = parsed.data
-  getProviderRegistry().upsert({ id: data.id, name: data.name, serverUrl: data.serverUrl, isActive: data.isActive, connectionTimeout: data.connectionTimeout })
-  return NextResponse.json({ success: true }, withRequestIdHeaders({ status: 201 }))
 }
 
 export async function PUT(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: '未授权访问' }, withRequestIdHeaders({ status: 401 }))
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: '未授权访问' }, withRequestIdHeaders({ status: 401 }))
+    }
+    const parsed = UpdateSchema.safeParse(await req.json())
+    if (!parsed.success) {
+      return NextResponse.json({ error: '参数校验失败', details: parsed.error.flatten() }, withRequestIdHeaders({ status: 400 }))
+    }
+    const { id, updates } = parsed.data
+    const reg = getProviderRegistry()
+    const curr = reg.get(id)
+    if (!curr) return NextResponse.json({ error: `提供者不存在: ${id}` }, withRequestIdHeaders({ status: 404 }))
+    reg.upsert({ ...curr, ...updates })
+    return NextResponse.json({ success: true }, withRequestIdHeaders())
+  } catch (error) {
+    const res = handleApiError(error, 500)
+    return new NextResponse(await res.text(), withRequestIdHeaders({ status: 500 }))
   }
-  const parsed = UpdateSchema.safeParse(await req.json())
-  if (!parsed.success) {
-    return NextResponse.json({ error: '参数校验失败', details: parsed.error.flatten() }, withRequestIdHeaders({ status: 400 }))
-  }
-  const { id, updates } = parsed.data
-  const reg = getProviderRegistry()
-  const curr = reg.get(id)
-  if (!curr) return NextResponse.json({ error: `提供者不存在: ${id}` }, withRequestIdHeaders({ status: 404 }))
-  reg.upsert({ ...curr, ...updates })
-  return NextResponse.json({ success: true }, withRequestIdHeaders())
 }
 
 export async function DELETE(req: NextRequest) {
-  const session = await auth()
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: '未授权访问' }, withRequestIdHeaders({ status: 401 }))
+  try {
+    const session = await auth()
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: '未授权访问' }, withRequestIdHeaders({ status: 401 }))
+    }
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+    if (!id) return NextResponse.json({ error: '缺少必需参数: id' }, withRequestIdHeaders({ status: 400 }))
+    getProviderRegistry().remove(id)
+    return NextResponse.json({ success: true }, withRequestIdHeaders())
+  } catch (error) {
+    const res = handleApiError(error, 500)
+    return new NextResponse(await res.text(), withRequestIdHeaders({ status: 500 }))
   }
-  const { searchParams } = new URL(req.url)
-  const id = searchParams.get('id')
-  if (!id) return NextResponse.json({ error: '缺少必需参数: id' }, withRequestIdHeaders({ status: 400 }))
-  getProviderRegistry().remove(id)
-  return NextResponse.json({ success: true }, withRequestIdHeaders())
 }

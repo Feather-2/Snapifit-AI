@@ -9,6 +9,7 @@ import { auth } from '@/lib/auth'
 import { getSimpleMCPCaller, MCPProvider } from '@/lib/mcp/client'
 import { z } from 'zod'
 import { recordToolCall } from '@/lib/mcp/metrics'
+import { handleApiError } from '@/lib/api/error-handler'
 
 function getOrCreateRequestId(req: NextRequest): string {
   const headerId = req.headers.get('x-request-id')
@@ -125,7 +126,8 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const requestId = getOrCreateRequestId(req)
     logError('mcp.call.error', { requestId, error: error instanceof Error ? error.message : String(error) })
-    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : '服务器内部错误' }, withRequestIdHeaders(requestId, { status: 500 }))
+    const res = handleApiError(error, 500)
+    return new NextResponse(await res.text(), withRequestIdHeaders({ status: 500 }))
   }
 }
 
@@ -189,8 +191,8 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     const requestId = getOrCreateRequestId(req)
     logError('mcp.call.get.error', { requestId, error: error instanceof Error ? error.message : String(error) })
-    return NextResponse.json({
-      error: error instanceof Error ? error.message : '服务器内部错误'
-    }, { status: 500, headers: { 'x-request-id': requestId } })
+    const res = handleApiError(error, 500)
+    res.headers.set('x-request-id', requestId)
+    return res
   }
 }

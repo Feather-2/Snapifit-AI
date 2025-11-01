@@ -7,6 +7,7 @@ import { authenticateByApiKeyHeader } from '@/lib/auth/api-keys'
 import { withRateLimit } from '@/lib/api/helpers'
 import { createHealthMCPServer } from '@/lib/mcp/server'
 import { HEALTH_TOOLS, type HealthToolName, type MCPCallContext } from '@/lib/mcp/types'
+import { handleApiError } from '@/lib/api/error-handler'
 
 const RequestSchema = z.object({
   tool: z.nativeEnum(HEALTH_TOOLS as any, { errorMap: () => ({ message: '无效的工具名称' }) }).or(z.string()),
@@ -90,7 +91,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, result, timestamp: new Date().toISOString() }, withRequestIdHeaders(requestId))
   } catch (e) {
     logError('mcp.health_tool.error', { requestId, userId, tool: toolName, error: e instanceof Error ? e.message : String(e) })
-    return NextResponse.json({ success: false, error: e instanceof Error ? e.message : String(e) }, withRequestIdHeaders(requestId, { status: 400 }))
+    const res = handleApiError(e, 400)
+    res.headers.set('x-request-id', requestId)
+    return res
   }
 }
 
