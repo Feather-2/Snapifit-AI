@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from 'next/server';
 import { KeyManager } from '@/lib/auth/key-manager';
 import { getSupabaseAdmin } from '@/lib/supabase';
+import { handleApiError } from '@/lib/api/error-handler'
 
 // 限制更新频率，避免过于频繁的调用
 const UPDATE_COOLDOWN_MINUTES = 30;
@@ -111,7 +112,7 @@ export async function POST() {
 
   } catch (error) {
     console.error('Model update failed:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 500);
   }
 }
 
@@ -136,6 +137,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error('Error checking update status:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return handleApiError(error, 500);
   }
 }

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
+import { handleApiError } from '@/lib/api/error-handler'
 import { format, parseISO, eachDayOfInterval } from "date-fns"
 
 export async function GET(request: NextRequest) {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(chartData)
   } catch (error) {
     console.error('获取图表数据失败:', error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return handleApiError(error, 500)
   }
 }
 

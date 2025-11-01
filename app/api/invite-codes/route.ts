@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { InviteCodeManager } from '@/lib/auth/invite-code-manager'
+import { handleApiError } from '@/lib/api/error-handler'
 
 // 获取用户的邀请码列表和额度信息
 export async function GET(request: NextRequest) {
@@ -37,10 +38,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Get invite codes error:', error)
-    return NextResponse.json(
-      { error: '服务器内部错误' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }
 
@@ -88,9 +86,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Create invite code batch error:', error)
-    return NextResponse.json(
-      { error: '服务器内部错误' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { secureCache } from '@/lib/cache/secure-cache'
 import { UsageManager } from '@/lib/user/usage-manager'
+import { handleApiError } from '@/lib/api/error-handler'
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
@@ -84,10 +85,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('[API/DASHBOARD/INIT] Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }
 
@@ -154,10 +152,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('[API/DASHBOARD/INIT] POST Error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }
 

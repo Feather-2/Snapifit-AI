@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { auth } from '@/lib/auth'
 import { logInfo, logError } from '@/lib/logging'
 import { createUserApiKey, listUserApiKeys } from '@/lib/auth/api-keys'
+import { handleApiError } from '@/lib/api/error-handler'
 
 function getOrCreateRequestId(req: NextRequest): string {
   const headerId = req.headers.get('x-request-id')
@@ -25,7 +26,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: true, keys }, withRequestIdHeaders(requestId))
   } catch (e) {
     logError('keys.list.error', { requestId, error: e instanceof Error ? e.message : String(e) })
-    return NextResponse.json({ success: false, error: '无法获取API Key列表' }, withRequestIdHeaders(requestId, { status: 500 }))
+    const res = handleApiError(e, 500)
+    return new NextResponse(await res.text(), withRequestIdHeaders(requestId, { status: 500 }))
   }
 }
 
@@ -59,7 +61,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, key: plaintextKey, id, prefix, expiresAt }, withRequestIdHeaders(requestId))
   } catch (e) {
     logError('keys.create.error', { requestId, error: e instanceof Error ? e.message : String(e) })
-    return NextResponse.json({ success: false, error: '创建API Key失败' }, withRequestIdHeaders(requestId, { status: 500 }))
+    const res = handleApiError(e, 500)
+    return new NextResponse(await res.text(), withRequestIdHeaders(requestId, { status: 500 }))
   }
 }
 

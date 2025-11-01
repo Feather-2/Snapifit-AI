@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { generateMathCaptcha } from '@/lib/captcha/math-captcha'
 import { getClientIP } from '@/lib/utils/ip'
+import { handleApiError } from '@/lib/api/error-handler'
 
 export const runtime = 'nodejs'
 
@@ -28,12 +29,6 @@ export async function GET(request: NextRequest) {
     
   } catch (error) {
     console.error('生成验证码失败:', error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: '生成验证码失败'
-      },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }

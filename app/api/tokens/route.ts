@@ -2,6 +2,7 @@
 import { auth } from '@/lib/auth' // 使用 next-auth 的 auth 方法
 import { ApiTokenManager } from '@/lib/auth/token-manager'
 import type { CreateTokenRequest } from '@/lib/auth/token-manager'
+import { handleApiError } from '@/lib/api/error-handler'
 
 /**
  * GET /api/tokens - 获取用户的所有令牌
@@ -33,10 +34,7 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('获取令牌列表失败:', error)
-    return NextResponse.json(
-      { error: '服务器内部错误' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }
 
@@ -88,10 +86,7 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('创建令牌失败:', error)
-    return NextResponse.json(
-      { error: '服务器内部错误' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }
 
@@ -135,9 +130,6 @@ export async function DELETE(request: NextRequest) {
     })
   } catch (error) {
     console.error('撤销令牌失败:', error)
-    return NextResponse.json(
-      { error: '服务器内部错误' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }

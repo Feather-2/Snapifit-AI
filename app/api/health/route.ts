@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
+import { handleApiError } from '@/lib/api/error-handler'
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const isInternal = (request.headers.get('X-Internal-Request') === 'true')
+
     // 基本健康检查
     const healthCheck = {
       status: 'ok',
@@ -23,6 +26,11 @@ export async function GET() {
           error: null as string | null
         }
       }
+    }
+
+    // 对外部请求，避免暴露详细信息
+    if (!isInternal) {
+      return NextResponse.json({ status: 'ok' }, { status: 200 })
     }
 
     // 检查 Supabase 环境变量
@@ -59,18 +67,8 @@ export async function GET() {
       }
     }
 
-    const statusCode = healthCheck.status === 'ok' ? 200 : 200; // 总是返回 200，但在响应中标明状态
-
-    return NextResponse.json(healthCheck, { status: statusCode })
+    return NextResponse.json(healthCheck, { status: 200 })
   } catch (error) {
-    return NextResponse.json(
-      {
-        status: 'error',
-        message: 'Health check failed',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        timestamp: new Date().toISOString()
-      },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }

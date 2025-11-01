@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { OpenAICompatibleClient } from '@/lib/ai/openai'
+import { handleApiError } from '@/lib/api/error-handler'
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,11 +61,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: false,
-      error: errorMessage,
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 })
+    return handleApiError(new Error(errorMessage), 500)
   }
 }
 

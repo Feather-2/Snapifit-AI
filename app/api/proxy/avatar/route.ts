@@ -56,15 +56,12 @@ export async function GET(request: NextRequest) {
     const imageBuffer = await response.arrayBuffer()
     const contentType = response.headers.get('content-type') || 'image/png'
 
-    // 返回图片，设置适当的缓存头
+    // 返回图片，设置适当的缓存头（CORS 由中间件统一处理）
     return new NextResponse(imageBuffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,
         'Cache-Control': 'public, max-age=3600, s-maxage=3600', // 缓存1小时
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET',
-        'Access-Control-Allow-Headers': 'Content-Type',
       },
     })
 
@@ -86,14 +83,4 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// 支持 OPTIONS 请求（CORS 预检）
-export async function OPTIONS() {
-  return new NextResponse(null, {
-    status: 200,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    },
-  })
-}
+// 预检请求由全局中间件统一处理（/api/** 返回 204 并注入安全+CORS 头）

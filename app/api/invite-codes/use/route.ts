@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { InviteCodeManager } from '@/lib/auth/invite-code-manager'
+import { handleApiError } from '@/lib/api/error-handler'
 
 // 使用邀请码
 export async function POST(request: NextRequest) {
@@ -40,10 +41,7 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Use invite code error:', error)
-    return NextResponse.json(
-      { error: '服务器内部错误' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }
 
@@ -70,9 +68,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Validate invite code error:', error)
-    return NextResponse.json(
-      { error: '服务器内部错误' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }

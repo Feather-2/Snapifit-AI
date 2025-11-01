@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { InviteCodeManager } from '@/lib/auth/invite-code-manager'
+import { handleApiError } from '@/lib/api/error-handler'
 
 // 禁用邀请码
 export async function DELETE(
@@ -43,9 +44,6 @@ export async function DELETE(
 
   } catch (error) {
     console.error('Deactivate invite code error:', error)
-    return NextResponse.json(
-      { error: '服务器内部错误' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }

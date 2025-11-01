@@ -1,4 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { handleApiError } from '@/lib/api/error-handler';
 import { auth } from '@/lib/auth';
 import { withRateLimitPreset } from '@/lib/api/helpers';
 import { logSecurityEvent } from '@/lib/security-logger';
@@ -64,8 +65,7 @@ export async function GET(request: Request) {
 
   } catch (error: any) {
     console.error('[API/SYNC/PROFILE/GET] An unexpected error occurred:', error);
-    const errorMessage = error.message || 'An unexpected error occurred.';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return handleApiError(error, 500);
   }
 }
 
@@ -179,7 +179,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error: any) {
     console.error('[API/SYNC/PROFILE/POST] An unexpected error occurred:', error);
-    const errorMessage = error.message || 'An unexpected error occurred.';
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return handleApiError(error, 500);
   }
 }

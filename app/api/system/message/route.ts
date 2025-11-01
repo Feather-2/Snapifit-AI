@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { secureCache } from '@/lib/cache/secure-cache'
+import { handleApiError } from '@/lib/api/error-handler'
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
@@ -44,9 +45,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error in system message API:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Internal server error'
-    }, { status: 500 })
+    return handleApiError(error, 500)
   }
 }

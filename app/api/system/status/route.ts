@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { handleApiError } from '@/lib/api/error-handler'
 
 // 获取系统状态信息
 export async function GET(request: NextRequest) {
@@ -38,9 +39,6 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Get system status error:', error)
-    return NextResponse.json(
-      { error: '获取系统状态失败' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }

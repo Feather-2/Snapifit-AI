@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server'
+import { handleApiError } from '@/lib/api/error-handler'
 
 // 超时配置常量
 const TIMEOUT_CONFIG = {
@@ -105,10 +106,8 @@ export async function POST(req: NextRequest) {
     return Response.json(results)
 
   } catch (error) {
-    return Response.json({
-      error: 'Diagnostic failed',
-      details: error instanceof Error ? error.message : String(error)
-    }, { status: 500 })
+    const res = handleApiError(error, 500)
+    return Response.json(await res.json(), { status: 500 })
   }
 }
 

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import bcrypt from 'bcryptjs'
+import { handleApiError } from '@/lib/api/error-handler'
 
 export async function POST(request: NextRequest) {
   try {
@@ -124,9 +125,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error('Update profile error:', error)
-    return NextResponse.json(
-      { error: '服务器内部错误' },
-      { status: 500 }
-    )
+    return handleApiError(error, 500)
   }
 }

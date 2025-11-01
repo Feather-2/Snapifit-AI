@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { logInfo, logError } from '@/lib/logging'
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { handleApiError } from '@/lib/api/error-handler'
 
 function getOrCreateRequestId(req: NextRequest): string {
   const headerId = req.headers.get('x-request-id')
@@ -31,7 +32,8 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     return NextResponse.json({ success: true }, withRequestIdHeaders(requestId))
   } catch (e) {
     logError('keys.revoke.error', { requestId, error: e instanceof Error ? e.message : String(e) })
-    return NextResponse.json({ success: false, error: '撤销API Key失败' }, withRequestIdHeaders(requestId, { status: 500 }))
+    const res = handleApiError(e, 500)
+    return new NextResponse(await res.text(), withRequestIdHeaders(requestId, { status: 500 }))
   }
 }
 

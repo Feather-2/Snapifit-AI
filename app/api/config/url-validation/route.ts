@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { EnvConfig } from '@/lib/config/environment'
+import { handleApiError } from '@/lib/api/error-handler'
 
 /**
  * 获取URL验证配置
@@ -18,9 +19,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error('Error getting URL validation config:', error)
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to get URL validation config'
-    }, { status: 500 })
+    return handleApiError(error, 500)
   }
 }
