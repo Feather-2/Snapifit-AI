@@ -289,21 +289,17 @@ export class PostgreSQLProvider implements DatabaseClient {
       let paramIndex = 1
 
       records.forEach(record => {
-        const recordValues = columns.map(col => record[col])
+        const recordValues = columns.map(col => (record as any)[col])
         const placeholders = recordValues.map(() => `$${paramIndex++}`)
         valuesClauses.push(`(${placeholders.join(', ')})`)
         allValues.push(...recordValues)
       })
 
-      let sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${valuesClauses.join(', ')}
       let sql = `INSERT INTO ${table} (${columns.join(', ')}) VALUES ${valuesClauses.join(', ')}`
-                 + `\n                 ON CONFLICT (${conflictColumn}) DO UPDATE SET ${updateClause}`
+      sql += ` ON CONFLICT (${conflictColumn}) DO UPDATE SET ${updateClause}`
       if (options?.returning) {
-        sql += ` RETURNING ${options.returning}`
         sql += ` RETURNING ${this.validateSelectClause(options.returning)}`
-
-      console.log('🔧 [PostgreSQL] UPSERT SQL:', sql)
-      console.log('🔧 [PostgreSQL] UPSERT Values:', allValues)
+      }
 
       try {
         const result = await this.pool.query(sql, allValues)
@@ -317,13 +313,6 @@ export class PostgreSQLProvider implements DatabaseClient {
           return await this.manualUpsert(table, data, options)
         }
         throw error
-      }
-
-      // 如果原始数据是数组，返回数组；如果是单个对象，返回单个对象
-      if (Array.isArray(data)) {
-        return { data: result.rows as unknown as T, error: null }
-      } else {
-        return { data: result.rows[0] || null, error: null }
       }
     } catch (error) {
       return { data: null, error: error as Error }
