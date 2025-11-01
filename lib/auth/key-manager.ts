@@ -96,17 +96,15 @@ export class KeyManager {
   // 添加共享Key
   async checkDuplicateKey(userId: string, baseUrl: string, apiKey: string): Promise<{ exists: boolean; keyId?: string }> {
     try {
-      // 加密API Key用于比较
-      const encryptedKey = this.encryptApiKey(apiKey)
-
+      // 由于加密使用随机 IV，无法直接通过密文比对
+      // 策略：获取同用户+同 baseUrl 的候选密钥，逐个解密后比对明文
       const supabase = await this.getSupabase()
       const { data, error } = await supabase
         .from('shared_keys')
-        .select('id')
+        .select('id, api_key_encrypted')
         .eq('user_id', userId)
         .eq('base_url', baseUrl)
-        .eq('api_key_encrypted', encryptedKey)
-        .limit(1)
+        .limit(50)
 
       if (error) {
         console.error('Error checking duplicate key:', error)
@@ -114,11 +112,23 @@ export class KeyManager {
       }
 
       if (!data || !Array.isArray(data)) {
-        console.error('Invalid data returned from duplicate key check')
+        console.error('[KeyManager] Duplicate check returned invalid dataset')
         return { exists: false }
       }
 
-      return { exists: data.length > 0, keyId: data[0]?.id }
+      for (const row of data) {
+        try {
+          const decrypted = this.decryptApiKey(row.api_key_encrypted)
+          if (decrypted === apiKey) {
+            return { exists: true, keyId: row.id }
+          }
+        } catch (e) {
+          // 单条解密失败不应中断整体检查，继续下一条
+          continue
+        }
+      }
+
+      return { exists: false }
     } catch (error) {
       console.error('Exception in checkDuplicateKey:', error)
       return { exists: false }
