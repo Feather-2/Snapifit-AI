@@ -1,6 +1,7 @@
 ﻿import { RAGQuery, RAGResult, HealthDataContext, DailyLog, UserProfile } from '@/lib/types'
 import { createClient } from '@supabase/supabase-js'
 import { SharedOpenAIClient } from '@/lib/ai/shared'
+import { logInfo, logWarn, logError, logDebug } from '@/lib/logging'
 
 // 获取 Supabase 客户端
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -171,7 +172,7 @@ class HealthDataVectorizer {
           })
         })
       } catch (error) {
-        console.error('生成嵌入失败:', error)
+        logError('rag_generate_embeddings_failed', { error: error instanceof Error ? error.message : String(error) } as any)
         // 如果失败，添加没有嵌入的块
         chunksWithEmbeddings.push(...batch)
       }
@@ -256,20 +257,19 @@ class VectorSearchEngine {
     dailyLogs: DailyLog[],
     context: HealthDataContext
   ): Promise<void> {
-    console.log(`[RAG] 开始索引用户 ${userId} 的健康数据`)
+    logInfo('rag_index_start', { userId } as any)
 
     // 分块数据
     const chunks = await this.vectorizer.chunkHealthData(userProfile, dailyLogs, context)
-    console.log(`[RAG] 生成了 ${chunks.length} 个文档块`)
+    logDebug('rag_chunks_generated', { count: chunks.length } as any)
 
     // 生成嵌入
     const chunksWithEmbeddings = await this.vectorizer.generateEmbeddings(chunks)
-    console.log(`[RAG] 生成了 ${chunksWithEmbeddings.filter(c => c.embedding).length} 个嵌入`)
+    logDebug('rag_embeddings_generated', { count: chunksWithEmbeddings.filter(c => c.embedding).length } as any)
 
     // 存储到内存索引（实际应用中应该使用专门的向量数据库）
     this.indexedData.set(userId, chunksWithEmbeddings)
-
-    console.log(`[RAG] 用户 ${userId} 的数据索引完成`)
+    logInfo('rag_index_complete', { userId } as any)
   }
 
   // 向量搜索
@@ -287,14 +287,14 @@ class VectorSearchEngine {
   ): Promise<DocumentChunk[]> {
     const userChunks = this.indexedData.get(userId)
     if (!userChunks) {
-      console.log(`[RAG] 用户 ${userId} 的数据未索引`)
+      logWarn('rag_user_not_indexed', { userId } as any)
       return []
     }
 
     // 生成查询嵌入
     const queryEmbedding = await this.generateQueryEmbedding(query)
     if (!queryEmbedding) {
-      console.log('[RAG] 查询嵌入生成失败')
+      logWarn('rag_query_embedding_failed')
       return []
     }
 
@@ -342,7 +342,7 @@ class VectorSearchEngine {
       })
       return response.data[0].embedding
     } catch (error) {
-      console.error('生成查询嵌入失败:', error)
+      logError('rag_generate_query_embedding_failed', { error: error instanceof Error ? error.message : String(error) } as any)
       return null
     }
   }
@@ -394,7 +394,7 @@ export class HealthDataRAG {
   async query(ragQuery: RAGQuery): Promise<RAGResult> {
     const startTime = Date.now()
 
-    console.log(`[RAG] 执行查询: "${ragQuery.query}"`)
+    logInfo('rag_query_start', { query: ragQuery.query } as any)
 
     // 向量搜索
     const searchResults = await this.searchEngine.vectorSearch(
@@ -420,7 +420,7 @@ export class HealthDataRAG {
 
     const processingTime = Date.now() - startTime
 
-    console.log(`[RAG] 查询完成，找到 ${documents.length} 个相关文档，耗时 ${processingTime}ms`)
+    logInfo('rag_query_complete', { results: documents.length, processingTime } as any)
 
     return {
       documents,
@@ -472,7 +472,7 @@ ${contextText}
 
       return response.text || "抱歉，我无法生成回答。"
     } catch (error) {
-      console.error('生成增强回答失败:', error)
+      logError('rag_generate_enhanced_response_failed', { error: error instanceof Error ? error.message : String(error) } as any)
       return "抱歉，生成回答时发生错误。"
     }
   }
