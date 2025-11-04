@@ -1,4 +1,5 @@
 import type { UserProfile } from './types';
+import { logWarn, logDebug } from '@/lib/logging'
 
 // 活动水平对应的TDEE乘数
 const activityMultipliers: Record<string, number> = {
@@ -113,7 +114,7 @@ export function calculateMetabolicRates(
   } else if (userProfile.activityLevel && activityMultipliers.hasOwnProperty(userProfile.activityLevel)) {
     activityLevelForTDEE = userProfile.activityLevel;
     if (currentDayData.activityLevel && currentDayData.activityLevel !== userProfile.activityLevel) {
-        console.warn(`calculateMetabolicRates: Daily activity level '${currentDayData.activityLevel}' was invalid or different from profile. Using profile's: '${userProfile.activityLevel}'.`);
+        logWarn('health_calc_daily_activity_mismatch', { daily: currentDayData.activityLevel, profile: userProfile.activityLevel } as any);
     }
   } else {
     // If no valid activity level from daily log or profile, try to use profile one as a last resort if it exists, even if it wasn't in activityMultipliers (though this case should be rare if profile settings are validated)
@@ -121,14 +122,10 @@ export function calculateMetabolicRates(
   }
 
   if (!weightToUse || !activityLevelForTDEE || !activityMultipliers.hasOwnProperty(activityLevelForTDEE)) {
-    console.warn(
-      "calculateMetabolicRates: Missing valid weightToUse or activityLevelForTDEE. Cannot calculate BMR/TDEE.",
-      { weightToUse, profileActivityLevel: userProfile.activityLevel, dailyActivityLevel: currentDayData.activityLevel, finalActivityLevelForTDEE: activityLevelForTDEE }
-    );
+    logWarn('health_calc_missing_params', { weightToUse, profileActivityLevel: userProfile.activityLevel, dailyActivityLevel: currentDayData.activityLevel, finalActivityLevelForTDEE: activityLevelForTDEE } as any);
     return undefined;
   }
-
-  console.log(`calculateMetabolicRates: Using weight: ${weightToUse}kg, activity level for TDEE: ${activityLevelForTDEE}`);
+  logDebug?.('health_calc_params', { weightToUse, activityLevelForTDEE } as any);
 
   let bmr: number | undefined = undefined;
 
@@ -138,35 +135,35 @@ export function calculateMetabolicRates(
       const leanBodyMassKg = weightToUse * (1 - (userProfile.bodyFatPercentage / 100));
       if (leanBodyMassKg > 0) {
         bmr = calculateKatchMcArdleBMR(leanBodyMassKg);
-        // console.log(`Calculated BMR using Katch-McArdle: ${bmr} (LBM: ${leanBodyMassKg}kg)`);
+        // if needed: logDebug('health_calc_bmr_katch', { bmr, leanBodyMassKg })
         if (bmr <= 0) {
-          console.warn("calculateMetabolicRates: Katch-McArdle BMR is not positive. Will attempt fallback.");
+          logWarn('health_calc_bmr_non_positive_katch');
           bmr = undefined;
         }
       } else {
-        console.warn("calculateMetabolicRates: Calculated Lean Body Mass is not positive. Will attempt fallback to total weight calculation.");
+        logWarn('health_calc_lbm_non_positive');
       }
     } else {
-      console.warn("calculateMetabolicRates: bmrCalculationBasis is 'leanBodyMass' but bodyFatPercentage is invalid or missing. Will attempt fallback to total weight calculation.");
+      logWarn('health_calc_bodyfat_invalid_or_missing');
     }
   }
 
   // 如果未使用去脂体重计算，或计算失败，则回退到基于总体重的计算
   if (bmr === undefined) {
     if (!userProfile.height || !userProfile.age || !userProfile.gender) {
-      console.warn("calculateMetabolicRates: Missing height, age, or gender for total weight BMR calculation.");
+      logWarn('health_calc_missing_profile_fields');
       return undefined;
     }
     const validGenders = ['male', 'female', 'other'];
     const gender = userProfile.gender as 'male' | 'female' | 'other';
     if (!validGenders.includes(gender)) {
-        console.warn(`Invalid gender: ${userProfile.gender}. Cannot calculate BMR.`);
+        logWarn('health_calc_invalid_gender', { gender: userProfile.gender } as any);
         return undefined;
     }
     const formula = (userProfile.bmrFormula && ['mifflin-st-jeor', 'harris-benedict'].includes(userProfile.bmrFormula))
                     ? userProfile.bmrFormula
                     : 'mifflin-st-jeor';
-    // console.log(`Calculating BMR using ${formula} with total weight ${weightToUse}kg.`);
+    // logDebug('health_calc_bmr_formula', { formula, weightToUse } as any)
     if (formula === 'mifflin-st-jeor') {
       bmr = calculateMifflinStJeorBMR(weightToUse, userProfile.height, userProfile.age, gender);
     } else {
@@ -175,7 +172,7 @@ export function calculateMetabolicRates(
   }
 
   if (bmr === undefined || bmr <= 0) {
-      console.warn(`Final calculated BMR is not positive or undefined: ${bmr}. Cannot calculate TDEE.`);
+      logWarn('health_calc_bmr_final_invalid', { bmr } as any);
       return undefined;
   }
 

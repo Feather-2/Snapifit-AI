@@ -52,14 +52,20 @@ function getRedisClient(): any | null {
         url: upstashUrl,
         token: upstashToken,
       });
-      console.log('[RateLimit] Connected to Upstash Redis');
+      // 连接成功日志仅在非生产下记录
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.log('[RateLimit] Connected to Upstash Redis');
+      }
       return redisClient;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('[RateLimit] Failed to connect to Upstash Redis:', error);
     }
   }
 
   // 如果没有配置 Redis，返回 null（降级到内存模式）
+  // eslint-disable-next-line no-console
   console.warn('[RateLimit] Redis not configured, using in-memory fallback');
   return null;
 }
@@ -185,6 +191,7 @@ async function checkRateLimitRedis(
       reset
     };
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('[RateLimit] Redis check failed:', error);
     // Redis 失败时，允许请求通过（fail-open 策略）
     return {
@@ -271,6 +278,7 @@ async function check(options: RateLimitOptions): Promise<RateLimitResult> {
     result = await checkRateLimitRedis(redis, fullKey, limit, window);
   } else {
     // 降级到内存存储
+    // eslint-disable-next-line no-console
     console.warn('[RateLimit] Using in-memory fallback for:', fullKey);
     result = checkRateLimitMemory(fullKey, limit, window);
   }
@@ -302,8 +310,10 @@ async function reset(options: { key: string; identifier: string }): Promise<void
       // 删除所有相关的时间窗口 key
       const pattern = `${fullKey}:*`;
       await redis.del(pattern);
+      // eslint-disable-next-line no-console
       console.log('[RateLimit] Reset:', fullKey);
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('[RateLimit] Reset failed:', error);
     }
   } else {
@@ -340,6 +350,7 @@ async function status(options: {
         reset: now + (ttl as number)
       };
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error('[RateLimit] Status check failed:', error);
       return { count: 0, reset: 0 };
     }

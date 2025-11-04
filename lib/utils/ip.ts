@@ -4,6 +4,7 @@
  */
 
 import { NextRequest } from 'next/server';
+import { logWarn } from '@/lib/logging'
 
 /**
  * 从请求中获取客户端真实IP地址
@@ -48,7 +49,7 @@ export function getClientIP(req: NextRequest): string {
 
   // 验证IP格式
   if (!isValidIP(clientIP)) {
-    console.warn(`Invalid IP detected: ${clientIP}, using fallback`);
+    logWarn('ip_invalid_detected', { clientIP } as any);
     clientIP = getLocalFallbackIP();
   }
 

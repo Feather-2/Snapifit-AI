@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '@/lib/supabase'
+import { logInfo, logWarn, logError } from '@/lib/logging'
 import { getDb } from '@/lib/database'
 import { getVersion } from '@/config/features'
 import { getDailyConversationLimit, getTrustLevelConfig } from '@/config/trust-level-limits'
@@ -45,7 +46,7 @@ async function getSystemMaxDailyUsage(): Promise<number> {
       .single()
 
     if (error) {
-      console.error('Error fetching system max daily usage:', error)
+      logError('usage_system_max_daily_usage_error', { error: error?.message || String(error) } as any)
       return 150 // 默认值
     }
 
@@ -59,7 +60,7 @@ async function getSystemMaxDailyUsage(): Promise<number> {
 
     return maxDailyUsage
   } catch (error) {
-    console.error('Error in getSystemMaxDailyUsage:', error)
+    logError('usage_getSystemMaxDailyUsage_error', { error: error instanceof Error ? error.message : String(error) } as any)
     return 150 // 默认值
   }
 }
@@ -154,7 +155,7 @@ export class UsageManager {
 
       // 当底层数据库不支持 RPC（如 personal + sqlite）时，走回退实现
       if (error) {
-        console.warn('[UsageManager] RPC not available, falling back to manual update:', error?.message || error)
+        logWarn('usage_rpc_fallback', { error: error?.message || String(error) } as any)
         return await this.fallbackCheckAndRecordUsage(userId, trustLevel, usageType, limit)
       }
 
@@ -177,7 +178,7 @@ export class UsageManager {
         allowed = data.allowed
         new_count = data.new_count
       } else {
-        console.error('Unexpected data format from database function:', data)
+        logError('usage_unexpected_db_response', { data: typeof data } as any)
         return {
           allowed: false,
           newCount: 0,
@@ -202,7 +203,7 @@ export class UsageManager {
         error: allowed ? undefined : 'Daily limit exceeded'
       }
     } catch (error) {
-      console.error('Error in checkAndRecordUsage:', error)
+      logError('usage_checkAndRecordUsage_error', { error: error instanceof Error ? error.message : String(error) } as any)
       return {
         allowed: false,
         newCount: 0,
@@ -227,14 +228,14 @@ export class UsageManager {
       })
 
       if (error) {
-        console.warn('[UsageManager] RPC rollback unavailable, using fallback:', error?.message || error)
+        logWarn('usage_rpc_rollback_fallback', { error: error?.message || String(error) } as any)
         const fb = await this.fallbackDecrementUsage(userId, usageType)
         return fb
       }
 
       return { success: true, newCount: data }
     } catch (error) {
-      console.error('Error in rollbackUsage:', error)
+      logError('usage_rollbackUsage_error', { error: error instanceof Error ? error.message : String(error) } as any)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'
@@ -264,7 +265,7 @@ export class UsageManager {
         p_user_agent: userAgent
       })
     } catch (error) {
-      console.error('Error logging limit violation:', error)
+      logWarn('usage_log_limit_violation_error', { error: error instanceof Error ? error.message : String(error) } as any)
       // 不抛出异常，避免影响主流程
     }
   }
@@ -443,19 +444,16 @@ export class UsageManager {
     error?: string
   }> {
     try {
-      console.log('[UsageManager] getUserUsageStats called for user:', userId, 'days:', days)
+      logInfo('usage_getUserUsageStats_called', { userId, days } as any)
 
       const endDate = new Date()
       const startDate = new Date()
       startDate.setDate(endDate.getDate() - days + 1)
 
-      console.log('[UsageManager] Date range:', {
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0]
-      })
+      logDebug?.('usage_getUserUsageStats_range', { startDate: startDate.toISOString().split('T')[0], endDate: endDate.toISOString().split('T')[0] } as any)
 
       const supabase = await this.getSupabase()
-      console.log('[UsageManager] Got supabase client, executing query...')
+      logDebug?.('usage_getUserUsageStats_querying')
 
       const { data, error } = await supabase
         .from('daily_logs')
@@ -465,15 +463,10 @@ export class UsageManager {
         .lte('date', endDate.toISOString().split('T')[0])
         .order('date', { ascending: true })
 
-      console.log('[UsageManager] Query result:', {
-        hasData: !!data,
-        dataLength: data?.length,
-        hasError: !!error,
-        error: error?.message
-      })
+      logDebug?.('usage_getUserUsageStats_result', { hasData: !!data, dataLength: data?.length, hasError: !!error, error: error?.message } as any)
 
       if (error) {
-        console.log('[UsageManager] Query error:', error)
+        logWarn('usage_getUserUsageStats_query_error', { error: error.message } as any)
         return { success: false, error: error.message }
       }
 
@@ -565,22 +558,18 @@ export class UsageManager {
     error?: string
   }> {
     try {
-      console.log('[UsageManager] getUserLimitInfo called for user:', userId, 'trustLevel:', trustLevel)
+      logInfo('usage_getUserLimitInfo_called', { userId, trustLevel } as any)
 
       const config = getTrustLevelConfig(trustLevel)
-      console.log('[UsageManager] Trust level config:', config)
+      logDebug?.('usage_trust_level_config', { config } as any)
 
       const today = new Date().toISOString().split('T')[0]
-      console.log('[UsageManager] Today date:', today)
+      logDebug?.('usage_today', { today } as any)
 
-      console.log('[UsageManager] Getting today usage...')
+      logDebug?.('usage_getting_today_usage')
       const { conversationUsage, apiCallUsage, uploadUsage } = await this.getTodayAllUsage(userId, today)
 
-      console.log('[UsageManager] Today usage:', {
-        conversationUsage,
-        apiCallUsage,
-        uploadUsage
-      })
+      logDebug?.('usage_today_usage', { conversationUsage, apiCallUsage, uploadUsage } as any)
 
       return {
         success: true,
