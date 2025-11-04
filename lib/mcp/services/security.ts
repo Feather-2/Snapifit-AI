@@ -4,6 +4,7 @@
  */
 
 import { SecurityConfig, MCPCallContext, ReviewResult, SecurityReviewInterface } from '../types'
+import { logInfo, logWarn } from '@/lib/logging'
 
 export class SecurityService implements SecurityReviewInterface {
   private callCounts: Map<string, { count: number, resetTime: number }> = new Map()
@@ -14,7 +15,7 @@ export class SecurityService implements SecurityReviewInterface {
    * 验证工具调用安全性
    */
   async validateToolCall(toolName: string, params: any, context: MCPCallContext): Promise<void> {
-    console.log(`[Security] 验证工具调用: ${toolName}`)
+    logInfo('mcp_validate_tool_call', { toolName } as any)
 
     // 速率限制检查
     await this.checkRateLimit(context.userId || 'anonymous')
@@ -100,7 +101,7 @@ export class SecurityService implements SecurityReviewInterface {
 
     for (const sensitiveField of this.config.dataFilters.sensitiveFields) {
       if (paramString.toLowerCase().includes(sensitiveField.toLowerCase())) {
-        console.warn(`[Security] 检测到敏感字段: ${sensitiveField}`)
+        logWarn('mcp_sensitive_field_detected', { field: sensitiveField } as any)
         // 可以选择阻止请求或记录日志
       }
     }
@@ -110,7 +111,7 @@ export class SecurityService implements SecurityReviewInterface {
    * 审核请求（预留接口实现）
    */
   async reviewRequest(request: any, context: MCPCallContext): Promise<ReviewResult> {
-    console.log('[Security] 审核请求')
+    logInfo('mcp_review_request')
 
     // 基础安全检查
     const issues = []
@@ -143,7 +144,7 @@ export class SecurityService implements SecurityReviewInterface {
    * 审核响应（预留接口实现）
    */
   async reviewResponse(response: any, context: MCPCallContext): Promise<ReviewResult> {
-    console.log('[Security] 审核响应')
+    logInfo('mcp_review_response')
 
     const issues = []
 
@@ -246,7 +247,7 @@ export class SecurityService implements SecurityReviewInterface {
       type: 'security_event'
     }
 
-    console.log('[Security Event]', JSON.stringify(logEntry))
+    logInfo('mcp_security_event', logEntry as any)
 
     // TODO: 发送到日志系统或安全监控平台
   }
@@ -290,7 +291,7 @@ export class SecurityService implements SecurityReviewInterface {
     // 3. 隐私保护审核Agent
     // 4. 上下文理解审核Agent
 
-    console.log('[Security] 多层Agent审核 - 预留功能')
+    logInfo('mcp_multi_agent_review_reserved')
     return []
   }
 }
