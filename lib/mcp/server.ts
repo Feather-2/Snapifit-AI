@@ -30,6 +30,7 @@ import { HealthToolRegistry } from './health-tools/registry'
 import { DatabaseService } from './services/database'
 import { AuthService } from './services/auth'
 import { SecurityService } from './services/security'
+import { logInfo, logWarn, logError, logDebug } from '@/lib/logging'
 
 export class HealthMCPServer {
   private server: Server
@@ -119,7 +120,7 @@ export class HealthMCPServer {
           ]
         }
       } catch (error) {
-        console.error(`[MCP Server] 工具调用失败: ${name}`, error)
+        logError('mcp_tool_call_failed', { toolName: name, error: error instanceof Error ? error.message : String(error) } as any)
         throw error
       }
     })
@@ -180,7 +181,7 @@ export class HealthMCPServer {
     const startTime = Date.now()
 
     try {
-      console.log(`[MCP Server] 调用工具: ${toolName}`)
+      logInfo('mcp_tool_call', { toolName } as any)
 
       // 获取工具实例
       const tool = await this.toolRegistry.getTool(toolName)
@@ -237,7 +238,7 @@ export class HealthMCPServer {
       }
 
       const duration = Date.now() - startTime
-      console.log(`[MCP Server] 工具执行完成: ${toolName} (${duration}ms)`)
+      logInfo('mcp_tool_done', { toolName, duration } as any)
 
       return {
         success: true,
@@ -255,7 +256,7 @@ export class HealthMCPServer {
       const duration = Date.now() - startTime
       const errorMessage = error instanceof Error ? error.message : String(error)
 
-      console.error(`[MCP Server] 工具执行失败: ${toolName} (${duration}ms)`, error)
+      logError('mcp_tool_failed', { toolName, duration, error: error instanceof Error ? error.message : String(error) } as any)
 
       return {
         success: false,
@@ -319,7 +320,7 @@ export class HealthMCPServer {
    */
   async start(transport: 'stdio' | 'sse', options?: any): Promise<void> {
     try {
-      console.log(`[MCP Server] 启动健康MCP服务器: ${this.config.name}`)
+      logInfo('mcp_server_start', { name: this.config.name } as any)
 
       if (transport === 'stdio') {
         this.transport = new StdioServerTransport()
@@ -333,10 +334,10 @@ export class HealthMCPServer {
       }
 
       await this.server.connect(this.transport)
-      console.log(`[MCP Server] 服务器启动成功 (${transport})`)
+      logInfo('mcp_server_started', { transport } as any)
 
     } catch (error) {
-      console.error('[MCP Server] 启动失败:', error)
+      logError('mcp_server_start_failed', { error: error instanceof Error ? error.message : String(error) } as any)
       throw error
     }
   }
@@ -349,9 +350,9 @@ export class HealthMCPServer {
       if (this.server) {
         await this.server.close()
       }
-      console.log('[MCP Server] 服务器已停止')
+      logInfo('mcp_server_stopped')
     } catch (error) {
-      console.error('[MCP Server] 停止服务器时出错:', error)
+      logError('mcp_server_stop_failed', { error: error instanceof Error ? error.message : String(error) } as any)
     }
   }
 
