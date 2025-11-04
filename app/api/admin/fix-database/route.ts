@@ -1,7 +1,7 @@
 // 数据库修复 API - 仅限管理员使用
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { PostgreSQLProvider } from '@/lib/database/providers/postgresql'
+import { getSupabaseAdmin } from '@/lib/supabase'
 
 export const runtime = 'nodejs'
 

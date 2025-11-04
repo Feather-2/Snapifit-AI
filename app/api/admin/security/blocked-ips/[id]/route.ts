@@ -6,7 +6,7 @@ export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id?: string | string[] }> }
 ) {
   try {
     const session = await auth()
@@ -21,7 +21,8 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: '权限不足' }, { status: 403 })
     }
 
-    const blockId = params.id
+    const { id: rawId } = await context.params
+    const blockId = Array.isArray(rawId) ? rawId[0] : rawId
 
     // 获取数据库客户端
     const supabase = await getSupabaseAdmin()

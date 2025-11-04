@@ -348,7 +348,7 @@ function SettingsContent() {
 
   // 获取URL参数中的tab值，默认为account
   const [activeTab, setActiveTab] = useState(() => {
-    const tabParam = searchParams.get('tab')
+    const tabParam = searchParams?.get('tab') ?? null
     // 更健壮的检查，确保 activeTab 始终是字符串
     return (tabParam && validTabs.includes(tabParam)) ? tabParam : 'account'
   })

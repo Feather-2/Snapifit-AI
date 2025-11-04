@@ -55,7 +55,7 @@ export default function RegisterPage() {
 
   const router = useRouter()
   const params = useParams()
-  const locale = params.locale as string
+  const locale = (params as any)?.locale ?? 'en'
   const t = useTranslation('auth')
 
   // 获取系统状态

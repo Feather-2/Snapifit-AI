@@ -7,7 +7,7 @@ export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 // 更新共享密钥状态
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id?: string | string[] }> }
 ) {
   try {
     const session = await auth()
@@ -29,7 +29,8 @@ export async function PATCH(
     }
 
     const { action } = await request.json()
-    const keyId = params.id
+    const { id: rawId } = await context.params
+    const keyId = Array.isArray(rawId) ? rawId[0] : rawId
 
     if (!action || !['pause', 'resume'].includes(action)) {
       return NextResponse.json({
@@ -78,7 +79,7 @@ export async function PATCH(
 // 删除共享密钥
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id?: string | string[] }> }
 ) {
   try {
     const session = await auth()
@@ -99,7 +100,8 @@ export async function DELETE(
       }, { status: 403 })
     }
 
-    const keyId = params.id
+    const { id: rawId } = await context.params
+    const keyId = Array.isArray(rawId) ? rawId[0] : rawId
 
     // 获取数据库客户端
     const supabaseAdmin = await getSupabaseAdmin()

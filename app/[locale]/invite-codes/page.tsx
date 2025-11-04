@@ -61,7 +61,7 @@ export default function InviteCodesPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
-  const locale = params.locale as string
+  const locale = (params as any)?.locale ?? 'en'
   const t = useTranslations('inviteCodes')
 
   // 版本特性检查

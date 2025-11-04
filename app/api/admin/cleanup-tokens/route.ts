@@ -25,12 +25,12 @@ export async function POST(request: NextRequest) {
 
     if (!isAdmin) {
       await logSecurityEvent({
-        eventType: 'unauthorized_access',
+        type: 'authorization_failed',
         severity: 'high',
         userId: session.user.id,
         ipAddress: getClientIP(request) || 'unknown',
         userAgent: request.headers.get('user-agent') || undefined,
-        description: '非管理员尝试访问令牌清理功能'
+        message: '非管理员尝试访问令牌清理功能'
       })
 
       return NextResponse.json(
@@ -51,12 +51,12 @@ export async function POST(request: NextRequest) {
 
     // 记录管理操作
     await logSecurityEvent({
-      eventType: 'system_maintenance',
+      type: 'other',
       severity: 'low',
       userId: session.user.id,
       ipAddress: getClientIP(request) || 'unknown',
       userAgent: request.headers.get('user-agent') || undefined,
-      description: `管理员清理了 ${result.cleaned} 个过期令牌`
+      message: `管理员清理了 ${result.cleaned} 个过期令牌`
     })
 
     return NextResponse.json({

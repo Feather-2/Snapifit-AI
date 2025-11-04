@@ -6,7 +6,7 @@ import { handleApiError } from '@/lib/api/error-handler'
 // 禁用邀请码
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id?: string | string[] }> }
 ) {
   try {
     const session = await auth()
@@ -18,7 +18,8 @@ export async function DELETE(
       )
     }
 
-    const codeId = params.id
+    const { id: rawId } = await context.params
+    const codeId = Array.isArray(rawId) ? rawId[0] : rawId
 
     if (!codeId) {
       return NextResponse.json(

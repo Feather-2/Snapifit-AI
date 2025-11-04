@@ -19,7 +19,7 @@ export default function VerifyEmailPage({ params }: { params: Promise<{ locale: 
   const [isResending, setIsResending] = useState(false)
   const [userEmail, setUserEmail] = useState('')
 
-  const token = searchParams.get('token')
+  const token = searchParams?.get('token') ?? null
 
   useEffect(() => {
     if (!token) {

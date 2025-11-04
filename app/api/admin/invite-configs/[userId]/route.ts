@@ -5,7 +5,7 @@ import { InviteConfigManager } from '@/lib/auth/invite-config-manager'
 // 删除用户的邀请码配置
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { userId: string } }
+  context: { params: Promise<{ userId?: string | string[] }> }
 ) {
   try {
     const session = await auth()
@@ -17,7 +17,8 @@ export async function DELETE(
       )
     }
 
-    const userId = params.userId
+    const { userId: rawUserId } = await context.params
+    const userId = Array.isArray(rawUserId) ? rawUserId[0] : rawUserId
 
     if (!userId) {
       return NextResponse.json(

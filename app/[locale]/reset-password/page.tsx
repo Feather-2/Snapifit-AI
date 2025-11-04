@@ -44,7 +44,7 @@ export default function ResetPasswordPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const params = useParams()
-  const locale = params.locale as string
+  const locale = (params as any)?.locale ?? 'en'
   const t = useTranslation('auth')
 
   const [token, setToken] = useState('')
@@ -70,8 +70,8 @@ export default function ResetPasswordPage() {
 
   // 从URL参数获取token和email
   useEffect(() => {
-    const tokenParam = searchParams.get('token')
-    const emailParam = searchParams.get('email')
+    const tokenParam = searchParams?.get('token') ?? null
+    const emailParam = searchParams?.get('email') ?? null
 
     if (tokenParam) {
       setToken(tokenParam)
@@ -357,7 +357,7 @@ export default function ResetPasswordPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || !passwordStrength?.isValid || success}
+              disabled={isLoading || !passwordStrength?.isValid || !!success}
             >
               {isLoading ? (t('forgotPassword.resetting') || "重置中...") : (t('forgotPassword.resetButton') || "重置密码")}
             </Button>

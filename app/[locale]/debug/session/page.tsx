@@ -56,54 +56,56 @@ export default function SessionDebugPage() {
             <CardTitle>用户信息详情</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {(() => { const user = session.user as any; return (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-muted-foreground">用户ID</label>
-                <p className="font-mono text-sm">{session.user.id}</p>
+                <p className="font-mono text-sm">{user.id}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">用户名</label>
-                <p>{session.user.name}</p>
+                <p>{user.name}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">显示名称</label>
-                <p>{session.user.displayName || '未设置'}</p>
+                <p>{user.displayName || '未设置'}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">邮箱</label>
-                <p>{session.user.email}</p>
+                <p>{user.email}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">信任等级</label>
                 <div className="flex items-center gap-2">
-                  <Badge variant={session.user.trustLevel >= 1 ? 'default' : 'secondary'}>
-                    LV{session.user.trustLevel || 0}
+                  <Badge variant={(user?.trustLevel ?? 0) >= 1 ? 'default' : 'secondary'}>
+                    LV{user?.trustLevel ?? 0}
                   </Badge>
                   <span className="text-sm text-muted-foreground">
-                    {session.user.trustLevel >= 1 && session.user.trustLevel <= 4 ? '有权限' : '权限不足'}
+                    {(user?.trustLevel ?? 0) >= 1 && (user?.trustLevel ?? 0) <= 4 ? '有权限' : '权限不足'}
                   </span>
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">角色</label>
-                <Badge variant="outline">{session.user.role || 'user'}</Badge>
+                <Badge variant="outline">{user.role || 'user'}</Badge>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">账户状态</label>
                 <div className="flex gap-2">
-                  <Badge variant={session.user.isActive ? 'default' : 'destructive'}>
-                    {session.user.isActive ? '活跃' : '非活跃'}
+                  <Badge variant={user.isActive ? 'default' : 'destructive'}>
+                    {user.isActive ? '活跃' : '非活跃'}
                   </Badge>
-                  {session.user.isSilenced && (
+                  {user.isSilenced && (
                     <Badge variant="destructive">已禁言</Badge>
                   )}
                 </div>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">登录方式</label>
-                <Badge variant="outline">{session.user.provider || 'unknown'}</Badge>
+                <Badge variant="outline">{user.provider || 'unknown'}</Badge>
               </div>
             </div>
+            ) })()}
           </CardContent>
         </Card>
       )}

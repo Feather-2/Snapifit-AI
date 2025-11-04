@@ -6,7 +6,7 @@ export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id?: string | string[] }> }
 ) {
   try {
     const session = await auth()
@@ -22,7 +22,8 @@ export async function PUT(
     }
 
     const { trustLevel, role, isActive, isSilenced } = await request.json()
-    const userId = params.id
+    const { id: rawId } = await context.params
+    const userId = Array.isArray(rawId) ? rawId[0] : rawId
 
     // 防止修改自己的权限
     if (userId === session.user.id) {

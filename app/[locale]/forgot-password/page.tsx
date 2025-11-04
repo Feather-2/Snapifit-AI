@@ -40,10 +40,10 @@ export default function ForgotPasswordPage() {
 
   const router = useRouter()
   const params = useParams()
-  const locale = params.locale as string
+  const locale = (params as any)?.locale ?? 'en'
   const searchParams = useSearchParams()
-  const token = searchParams.get('token')
-  const emailParam = searchParams.get('email')
+  const token = searchParams?.get('token') ?? null
+  const emailParam = searchParams?.get('email') ?? null
   const t = useTranslation('auth')
 
   // 如果URL中有token和email，直接进入重置密码步骤
@@ -435,7 +435,7 @@ export default function ForgotPasswordPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || !passwordStrength?.isValid || success}
+              disabled={isLoading || !passwordStrength?.isValid || !!success}
             >
               {isLoading ? (t('forgotPassword.resetting') || "重置中...") : (t('forgotPassword.resetButton') || "重置密码")}
             </Button>

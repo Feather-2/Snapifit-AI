@@ -31,30 +31,33 @@ export async function GET(request: NextRequest) {
     const { data: allUsers } = await supabase
       .from('users')
       .select('trust_level, provider_type, is_active, created_at')
+    type UserRow = {
+      trust_level: number
+      provider_type?: string | null
+      is_active: boolean
+      created_at: string
+    }
+    const users = (allUsers ?? []) as UserRow[]
 
-    const totalUsers = allUsers?.length || 0
-    const activeUsers = allUsers?.filter(u => u.is_active).length || 0
+    const totalUsers = users.length || 0
+    const activeUsers = users.filter((u) => u.is_active).length || 0
 
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const newUsersToday = allUsers?.filter(u =>
-      new Date(u.created_at) >= today
-    ).length || 0
+    const newUsersToday = users.filter((u) => new Date(u.created_at) >= today).length || 0
 
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    const newUsersThisWeek = allUsers?.filter(u =>
-      new Date(u.created_at) >= weekAgo
-    ).length || 0
+    const newUsersThisWeek = users.filter((u) => new Date(u.created_at) >= weekAgo).length || 0
 
     // 信任等级分布
-    const usersByTrustLevel = allUsers?.reduce((acc, user) => {
+    const usersByTrustLevel = users.reduce((acc, user) => {
       const level = user.trust_level.toString()
       acc[level] = (acc[level] || 0) + 1
       return acc
     }, {} as Record<string, number>) || {}
 
     // 登录方式分布
-    const usersByProvider = allUsers?.reduce((acc, user) => {
+    const usersByProvider = users.reduce((acc, user) => {
       const provider = user.provider_type || 'unknown'
       acc[provider] = (acc[provider] || 0) + 1
       return acc
@@ -64,6 +67,8 @@ export async function GET(request: NextRequest) {
     const { data: dailyLogsData } = await supabase
       .from('daily_logs')
       .select('log_data, date')
+    type DailyLogRow = { log_data: any; date: string }
+    const dailyLogs = (dailyLogsData ?? []) as DailyLogRow[]
 
     // 计算总对话数和API调用数
     let totalConversations = 0
@@ -73,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     // 使用已经定义的 today 和 weekAgo 变量
 
-    dailyLogsData?.forEach(log => {
+    dailyLogs.forEach((log) => {
       const logData = log.log_data || {}
       const conversationCount = logData.conversation_count || 0
       const apiCallCount = logData.api_call_count || 0
@@ -95,9 +100,20 @@ export async function GET(request: NextRequest) {
       .from('shared_keys')
       .select('id, name, total_usage_count, available_models, description, tags, is_active')
       .order('total_usage_count', { ascending: false })
+    type SharedKeyRow = {
+      id: string
+      name: string
+      total_usage_count?: number | null
+      available_models?: string[] | null
+      description?: string | null
+      tags?: string[] | null
+      is_active: boolean
+      usage_count_today?: number | null
+    }
+    const sharedKeys = (sharedKeysData ?? []) as SharedKeyRow[]
 
     // 获取热门共享服务（按使用次数排序）
-    const topSharedServices = sharedKeysData?.slice(0, 5).map(key => ({
+    const topSharedServices = sharedKeys.slice(0, 5).map((key) => ({
       id: key.id,
       name: key.name,
       count: key.total_usage_count || 0,
@@ -119,15 +135,17 @@ export async function GET(request: NextRequest) {
     const { data: securityEventsData } = await supabase
       .from('security_events')
       .select('event_type, severity, created_at')
+    type SecurityEventRow = { event_type: string; severity: string; created_at: string }
+    const securityEvents = (securityEventsData ?? []) as SecurityEventRow[]
 
     // 计算今日安全事件
-    const todayEvents = securityEventsData?.filter(event => {
+    const todayEvents = securityEvents.filter((event) => {
       const eventDate = new Date(event.created_at)
       return eventDate >= today
     }) || []
 
     // 计算错误率（基于安全事件中的错误类型）
-    const errorEvents = securityEventsData?.filter(event =>
+    const errorEvents = securityEvents.filter((event) =>
       ['rate_limit_exceeded', 'api_abuse', 'invalid_input'].includes(event.event_type)
     ) || []
 
@@ -138,13 +156,11 @@ export async function GET(request: NextRequest) {
       .from('shared_keys')
       .select('usage_count_today')
       .eq('is_active', true)
-
-    const apiCallsToday = todaySharedKeyUsage?.reduce((sum, key) =>
-      sum + (key.usage_count_today || 0), 0) || 0
+    const todaySharedKeyUsageArr = (todaySharedKeyUsage ?? []) as Pick<SharedKeyRow, 'usage_count_today'>[]
+    const apiCallsToday = todaySharedKeyUsageArr.reduce((sum, key) => sum + (key.usage_count_today || 0), 0) || 0
 
     // 从 shared_keys 获取总API调用数
-    const totalApiCallsFromKeys = sharedKeysData?.reduce((sum, key) =>
-      sum + (key.total_usage_count || 0), 0) || 0
+    const totalApiCallsFromKeys = sharedKeys.reduce((sum, key) => sum + (key.total_usage_count || 0), 0) || 0
 
     const systemStats = {
       totalApiCalls: Math.max(totalApiCalls, totalApiCallsFromKeys), // 取较大值
@@ -152,7 +168,7 @@ export async function GET(request: NextRequest) {
       errorRate: Math.min(errorRate, 100), // 限制在100%以内
       averageResponseTime: 950, // 可以后续从实际API响应时间日志中获取
       securityEventsToday: todayEvents.length,
-      totalSecurityEvents: securityEventsData?.length || 0
+      totalSecurityEvents: securityEvents.length || 0
     }
 
     return NextResponse.json({

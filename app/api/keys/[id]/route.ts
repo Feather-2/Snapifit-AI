@@ -13,14 +13,18 @@ function withRequestIdHeaders(requestId: string, init?: ResponseInit) {
   return { ...(init || {}), headers: { ...(init?.headers || {}), 'x-request-id': requestId } }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id?: string | string[] }> }
+) {
   const requestId = getOrCreateRequestId(req)
   try {
     const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ error: '未授权访问' }, withRequestIdHeaders(requestId, { status: 401 }))
     }
-    const keyId = params.id
+    const { id: rawId } = await context.params
+    const keyId = Array.isArray(rawId) ? rawId[0] : rawId
     const supabase = await getSupabaseAdmin()
     const { error } = await supabase
       .from('api_keys')

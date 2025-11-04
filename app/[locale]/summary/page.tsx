@@ -78,7 +78,7 @@ function SummaryPageContent({ params }: { params: Promise<{ locale: string }> })
 
   // 处理URL中的日期参数
   useEffect(() => {
-    const dateParam = searchParams.get('date')
+    const dateParam = searchParams?.get('date') ?? null
     if (dateParam) {
       // 使用本地时间解析日期，避免时区问题
       const [year, month, day] = dateParam.split('-').map(Number)

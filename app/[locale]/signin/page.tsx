@@ -34,7 +34,7 @@ export default function SignInPage() {
 
   const router = useRouter()
   const params = useParams()
-  const locale = params.locale as string
+  const locale = (params as any)?.locale ?? 'en'
   const t = useTranslation('auth')
   const { data: session, status } = useSession()
   const linuxdoOnly = oauthEnabled && oauthProviders.length === 1 && oauthProviders[0] === 'linuxdo' && !credentials

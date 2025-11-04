@@ -103,7 +103,7 @@ export default function AdminDashboard({ params }: { params: Promise<{ locale: s
               <Shield className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="font-medium text-blue-900 dark:text-blue-100">
-                  {t('welcome', { name: session?.user?.displayName || session?.user?.name })}
+                  {t('welcome', { name: (session?.user?.displayName ?? session?.user?.name ?? '') })}
                 </p>
                 <p className="text-sm text-blue-700 dark:text-blue-300">
                   {t('rolePermission', { role: isSuperAdmin ? t('roleSuperAdmin') : t('roleAdmin') })}
