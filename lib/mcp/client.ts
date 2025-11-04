@@ -21,6 +21,7 @@ import {
 } from './types'
 import { HealthToolRegistry } from './health-tools/registry'
 import { DatabaseService } from './services/database'
+import { logWarn, logError } from '@/lib/logging'
 
 // 为兼容现有路由中使用的简化 Provider 结构，定义并导出 Legacy 类型
 export type LegacyMCPProvider = {
@@ -201,9 +202,10 @@ export class SecureMCPClient {
       console.log(`[MCP Client] 连接成功: ${this.config.provider.name}`)
     } catch (error) {
       this.connectionAttempts++
-      console.error(`[MCP Client] 连接失败 (尝试 ${this.connectionAttempts}):`, error)
+      logError('mcp_client_connect_failed', { attempts: this.connectionAttempts, error: error instanceof Error ? error.message : String(error) } as any)
 
       if (this.connectionAttempts < this.config.retryAttempts) {
+        // 保留信息级别输出以便本地联调
         console.log(`[MCP Client] ${this.config.retryAttempts - this.connectionAttempts} 秒后重试...`)
         await new Promise(resolve => setTimeout(resolve, 1000 * this.connectionAttempts))
         return await this.connect()
@@ -298,7 +300,7 @@ export class SecureMCPClient {
 
       await this.client.connect(this.transport)
     } catch (error) {
-      console.error(`[MCP Client] HTTP连接失败:`, error)
+      logError('mcp_client_http_connect_failed', { error: error instanceof Error ? error.message : String(error) } as any)
       throw error
     }
   }
@@ -327,7 +329,7 @@ export class SecureMCPClient {
           const timeout = setTimeout(() => {
             try {
               if (this.process && !this.process.killed) {
-                console.warn('[MCP Client] 强制终止进程')
+                logWarn('mcp_client_force_kill_process')
                 this.process.kill('SIGKILL')
               }
             } catch {}
@@ -345,7 +347,7 @@ export class SecureMCPClient {
 
       this.isConnected = false
     } catch (error) {
-      console.error('[MCP Client] 断开连接时出错:', error)
+      logError('mcp_client_disconnect_error', { error: error instanceof Error ? error.message : String(error) } as any)
     }
   }
 
@@ -387,7 +389,7 @@ export class SecureMCPClient {
         }
       }
     } catch (error) {
-      console.error(`[MCP Client] 获取工具列表失败:`, error)
+      logError('mcp_client_list_tools_failed', { error: error instanceof Error ? error.message : String(error) } as any)
       throw error
     }
   }
@@ -454,7 +456,7 @@ export class SecureMCPClient {
       const duration = Date.now() - startTime
       const errorMessage = error instanceof Error ? error.message : String(error)
 
-      console.error(`[MCP Client] 工具调用失败: ${toolName} (${duration}ms)`, error)
+      logError('mcp_client_call_tool_failed', { toolName, duration, error: errorMessage } as any)
 
       return {
         success: false,
