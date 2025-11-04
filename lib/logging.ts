@@ -1,9 +1,11 @@
 type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+import { sanitizeForLog } from '@/lib/security/log-sanitizer'
 
 function base(payload: Record<string, unknown>) {
   try {
+    const safe = sanitizeForLog(payload)
     // eslint-disable-next-line no-console
-    console.log(JSON.stringify(payload))
+    console.log(JSON.stringify(safe))
   } catch {
     // eslint-disable-next-line no-console
     console.log('[log-serialization-error]', payload)

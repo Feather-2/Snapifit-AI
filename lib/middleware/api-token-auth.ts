@@ -1,4 +1,5 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
+import { logError, logWarn } from '@/lib/logging'
 import { ApiTokenManager } from '@/lib/auth/token-manager'
 import type { TokenScope, TokenPermission } from '@/lib/auth/token-manager'
 
@@ -132,7 +133,7 @@ export async function withApiTokenAuth(
       ipAddress,
       userAgent
     ).catch(error => {
-      console.error('记录令牌使用失败:', error)
+      logWarn('api_token_usage_log_failed', { error: error instanceof Error ? error.message : String(error) } as any)
     })
 
     // 创建认证请求对象
@@ -152,7 +153,7 @@ export async function withApiTokenAuth(
     }
 
   } catch (error) {
-    console.error('API令牌认证错误:', error)
+    logError('api_token_auth_error', { error: error instanceof Error ? error.message : String(error) } as any)
     return {
       success: false,
       response: NextResponse.json(
@@ -226,7 +227,7 @@ export async function validateApiTokenQuick(token: string): Promise<{
       remainingUsage: validation.remaining_usage
     }
   } catch (error) {
-    console.error('快速令牌验证错误:', error)
+    logError('api_token_quick_validate_error', { error: error instanceof Error ? error.message : String(error) } as any)
     return {
       valid: false,
       error: '验证服务错误'

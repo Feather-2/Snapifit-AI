@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getClientIP } from '@/lib/utils/ip';
+import { logInfo, logWarn } from '@/lib/logging'
 
 /**
  * 异步记录安全事件到数据库（非阻塞）
@@ -30,11 +31,11 @@ async function logSecurityEventAsync(event: {
       body: JSON.stringify(event),
     }).catch(error => {
       // 静默处理错误，不影响主要流程
-      console.error('Failed to log security event to database:', error);
+      logWarn('security_event_log_db_failed', { error: error instanceof Error ? error.message : String(error) } as any)
     });
   } catch (error) {
     // 静默处理错误
-    console.error('Failed to initiate security event logging:', error);
+    logWarn('security_event_log_initiate_failed', { error: error instanceof Error ? error.message : String(error) } as any)
   }
 }
 
@@ -114,7 +115,7 @@ export async function checkRequestSize(req: NextRequest): Promise<NextResponse |
       const userAgent = req.headers.get('user-agent') || 'unknown';
 
       // 记录安全事件到控制台
-      console.log('Security Event - Request Too Large:', {
+      logWarn('Security Event - Request Too Large', {
         ip,
         userAgent,
         eventType: 'invalid_input',
@@ -163,7 +164,7 @@ export async function checkRequestSize(req: NextRequest): Promise<NextResponse |
 
     return null;
   } catch (error) {
-    console.error('Error checking request size:', error);
+    logWarn('request_size_check_error', { error: error instanceof Error ? error.message : String(error) } as any)
     return null; // 出错时不阻止请求
   }
 }
@@ -196,7 +197,7 @@ async function checkRequestBodySize(req: NextRequest, pathname: string): Promise
           const userAgent = req.headers.get('user-agent') || 'unknown';
 
           // 记录安全事件到控制台
-          console.log('Security Event - Streaming Request Too Large:', {
+          logWarn('Security Event - Streaming Request Too Large', {
             ip,
             userAgent,
             eventType: 'invalid_input',
@@ -251,7 +252,7 @@ async function checkRequestBodySize(req: NextRequest, pathname: string): Promise
 
     return null;
   } catch (error) {
-    console.error('Error checking streaming request size:', error);
+    logWarn('request_size_stream_check_error', { error: error instanceof Error ? error.message : String(error) } as any)
     return null;
   }
 }

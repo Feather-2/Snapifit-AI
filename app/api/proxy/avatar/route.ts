@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { timeoutFetch } from '@/lib/utils/timeout'
+import { logError } from '@/lib/logging'
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 获取图片
-    const response = await fetch(url, {
+    const response = await timeoutFetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
         'Accept': 'image/webp,image/apng,image/*,*/*;q=0.8',
@@ -40,12 +42,11 @@ export async function GET(request: NextRequest) {
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache'
       },
-      // 设置超时
-      signal: AbortSignal.timeout(10000) // 10秒超时
+      timeoutMs: 10_000
     })
 
     if (!response.ok) {
-      console.error('Failed to fetch avatar:', response.status, response.statusText)
+      logError('avatar_proxy_fetch_failed', { status: response.status, statusText: response.statusText })
       return NextResponse.json(
         { error: 'Failed to fetch image' },
         { status: response.status }
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Avatar proxy error:', error)
+    logError('avatar_proxy_error', { error: error instanceof Error ? error.message : String(error) })
 
     // 如果是超时错误
     if (error instanceof Error && error.name === 'TimeoutError') {

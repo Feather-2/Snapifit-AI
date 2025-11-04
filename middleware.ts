@@ -14,6 +14,7 @@ import createMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
 import { locales, defaultLocale } from './i18n';
 import { getVersion } from './config/features';
+import { logInfo, logWarn, logError } from '@/lib/logging'
 
 // ============================================================================
 // 安全头辅助函数
@@ -45,17 +46,36 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     ? ["'self'", 'data:', ...envList(process.env.CSP_IMG_SRC)]
     : ["'self'", 'data:', 'https:'];
 
+  // 生成 style 的 CSP nonce（为后续移除 unsafe-inline 做准备）
+  let styleNonce = ''
+  try {
+    const bytes = new Uint8Array(16)
+    // @ts-ignore - Edge runtime 提供 getRandomValues
+    globalThis.crypto.getRandomValues(bytes)
+    // @ts-ignore - Edge runtime 提供 btoa
+    styleNonce = btoa(String.fromCharCode(...Array.from(bytes)))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '')
+  } catch {
+    styleNonce = (globalThis.crypto && 'randomUUID' in globalThis.crypto)
+      ? (globalThis.crypto as any).randomUUID().replace(/-/g, '')
+      : Math.random().toString(36).slice(2)
+  }
+
   // 更严格的 CSP（逐步移除 style inline）
   const csp = [
     "default-src 'self'",
     "script-src 'self'",
-    "style-src 'self' 'unsafe-inline'",
+    // 过渡期同时允许 nonce 与 unsafe-inline（后续移除 unsafe-inline）
+    `style-src 'self' 'nonce-${styleNonce}' 'unsafe-inline'`,
     `img-src ${imgAllow.join(' ')}`,
     "font-src 'self' data:",
     `connect-src ${connectAllow.join(' ')}`,
     "frame-ancestors 'none'",
   ].join('; ');
   response.headers.set('Content-Security-Policy', csp);
+  response.headers.set('X-Style-Nonce', styleNonce);
 
   // 收敛权限策略，关闭不需要的硬件能力
   response.headers.set(
@@ -145,12 +165,12 @@ function checkRequestSize(req: NextRequest): NextResponse | null {
   if (contentLength) {
     const size = parseInt(contentLength, 10);
     if (size > SECURITY_CONFIG.maxRequestSize) {
-      console.warn('[MIDDLEWARE] Request size exceeded', {
+      logWarn('middleware_request_size_exceeded', {
         size,
         maxSize: SECURITY_CONFIG.maxRequestSize,
         path: req.nextUrl.pathname,
         ip: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
-      });
+      } as any)
 
       return NextResponse.json(
         {
@@ -187,13 +207,13 @@ function logSecurityEvent(event: {
   switch (event.severity) {
     case 'critical':
     case 'high':
-      console.error('[SECURITY]', JSON.stringify(logEntry));
+      logError('SECURITY', logEntry as any)
       break;
     case 'medium':
-      console.warn('[SECURITY]', JSON.stringify(logEntry));
+      logWarn('SECURITY', logEntry as any)
       break;
     default:
-      console.info('[SECURITY]', JSON.stringify(logEntry));
+      logInfo('SECURITY', logEntry as any)
   }
 }
 

@@ -7,6 +7,8 @@ import { streamText, tool } from 'ai'
 import { createOpenAI } from '@ai-sdk/openai'
 import { KeyManager } from '@/lib/auth/key-manager'
 import { handleApiError } from '@/lib/api/error-handler'
+import { timeoutFetch } from '@/lib/utils/timeout'
+import { logDebug, logError } from '@/lib/logging'
 
 export async function POST(req: Request) {
   // 提前声明，便于在 catch 中访问并回滚
@@ -123,22 +125,27 @@ export async function POST(req: Request) {
     }
 
     if (recentHealthData?.length > 0) {
-      console.log("近期健康数据概览:", recentHealthData.map((log: any, index: number) => ({
-        天数: index === 0 ? "今天" : index === 1 ? "昨天" : `${index}天前`,
-        日期: log.date,
-        体重: log.weight,
-        BMR: log.calculatedBMR,
-        TDEE: log.calculatedTDEE,
-        摄入卡路里: log.summary?.totalCaloriesConsumed,
-        消耗卡路里: log.summary?.totalCaloriesBurned,
-        净卡路里: log.summary ? (log.summary.totalCaloriesConsumed - log.summary.totalCaloriesBurned) : 0,
-        热量缺口: log.summary && log.calculatedTDEE ?
-          (log.calculatedTDEE - (log.summary.totalCaloriesConsumed - log.summary.totalCaloriesBurned)) : null,
-        食物记录数: log.foodEntries?.length || 0,
-        运动记录数: log.exerciseEntries?.length || 0,
-        有每日状态: !!log.dailyStatus,
-        有TEF分析: !!log.tefAnalysis,
-      })))
+      const enableVerbose = process.env.NODE_ENV !== 'production' || process.env.ENABLE_VERBOSE_AI_LOGS === 'true'
+      if (enableVerbose) {
+        try {
+          const summary = recentHealthData.map((log: any, index: number) => ({
+            day: index === 0 ? 'today' : index === 1 ? 'yesterday' : `${index}d_ago`,
+            date: log.date,
+            weight: log.weight,
+            bmr: log.calculatedBMR,
+            tdee: log.calculatedTDEE,
+            caloriesIn: log.summary?.totalCaloriesConsumed,
+            caloriesOut: log.summary?.totalCaloriesBurned,
+            net: log.summary ? (log.summary.totalCaloriesConsumed - log.summary.totalCaloriesBurned) : 0,
+            deficit: log.summary && log.calculatedTDEE ? (log.calculatedTDEE - (log.summary.totalCaloriesConsumed - log.summary.totalCaloriesBurned)) : null,
+            foods: log.foodEntries?.length || 0,
+            exercises: log.exerciseEntries?.length || 0,
+            hasDailyStatus: !!log.dailyStatus,
+            hasTEF: !!log.tefAnalysis,
+          }))
+          logDebug('recent_health_overview', { summary })
+        } catch {}
+      }
     }
 
     //console.log("专家角色信息:", {
@@ -580,26 +587,21 @@ export async function POST(req: Request) {
       return cleanMsg
     })
 
-    // 🔍 输出完整的上下文信息到控制台
-    console.log("=== AI 上下文信息 ===")
-    console.log("1. 系统提示词:")
-    console.log(systemPrompt)
-    console.log("\n2. 对话消息 (最近5条):")
-    console.log(JSON.stringify(cleanMessages.slice(-5), null, 2))
-    console.log("\n3. 用户档案:")
-    console.log(JSON.stringify(userProfile, null, 2))
-    console.log("\n4. 今日健康数据:")
-    console.log(JSON.stringify(healthData, null, 2))
-    console.log("\n5. 近期健康数据:")
-    console.log(JSON.stringify(recentHealthData, null, 2))
-    console.log("\n6. AI记忆:")
-    console.log(JSON.stringify(aiMemory, null, 2))
-    console.log("\n7. 专家角色:")
-    console.log(JSON.stringify(expertRole, null, 2))
-    console.log("\n8. 模型配置:")
-    console.log(`选择的模型: ${selectedModel}`)
-    console.log(`共享模式: ${isSharedMode}`)
-    console.log("=== 上下文信息结束 ===\n")
+    // 🔍 调试日志（默认在开发环境启用；生产需显式开启）
+    const verboseLogs = process.env.NODE_ENV !== 'production' || process.env.ENABLE_VERBOSE_AI_LOGS === 'true'
+    if (verboseLogs) {
+      logDebug('ai_context', {
+        model: selectedModel,
+        sharedMode: isSharedMode,
+        messagesPreview: cleanMessages.slice(-5),
+        userProfile,
+        healthData,
+        recentHealthData,
+        aiMemory,
+        expertRole,
+        systemPrompt
+      })
+    }
 
     // ========== 使用 AI SDK (tools) 流式响应（私有模式优先） ==========
     if (modelConfig?.source === 'private' && fallbackConfig?.apiKey) {
@@ -619,10 +621,11 @@ export async function POST(req: Request) {
           if (!isToolAllowed(name)) {
             return { success: false, error: `工具未被允许: ${name}` }
           }
-          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/health-data`, {
+          const res = await timeoutFetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/health-data`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', cookie },
-            body: JSON.stringify({ tool: name, params })
+            body: JSON.stringify({ tool: name, params }),
+            timeoutMs: 10_000
           })
           return await res.json()
         }
@@ -639,10 +642,11 @@ export async function POST(req: Request) {
           if (!isToolAllowed(tool_name)) {
             return { success: false, error: `工具未被允许: ${tool_name}` }
           }
-          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/bridge`, {
+          const res = await timeoutFetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/bridge`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', cookie },
-            body: JSON.stringify({ action: 'call_tool', provider_id, tool_name, params })
+            body: JSON.stringify({ action: 'call_tool', provider_id, tool_name, params }),
+            timeoutMs: 10_000
           })
           return await res.json()
         }
@@ -677,8 +681,8 @@ export async function POST(req: Request) {
           if (!isToolAllowed(name)) {
             return { success: false, error: `工具未被允许: ${name}` }
           }
-          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/health-data`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ tool: name, params })
+          const res = await timeoutFetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/health-data`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ tool: name, params }), timeoutMs: 10_000
           })
           return await res.json()
         }
@@ -690,8 +694,8 @@ export async function POST(req: Request) {
           if (!isToolAllowed(tool_name)) {
             return { success: false, error: `工具未被允许: ${tool_name}` }
           }
-          const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/bridge`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ action: 'call_tool', provider_id, tool_name, params })
+          const res = await timeoutFetch(`${process.env.NEXT_PUBLIC_BASE_URL || ''}/api/mcp/bridge`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json', cookie }, body: JSON.stringify({ action: 'call_tool', provider_id, tool_name, params }), timeoutMs: 10_000
           })
           return await res.json()
         }
@@ -735,7 +739,7 @@ export async function POST(req: Request) {
       return new Response(transformedStream, { headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Transfer-Encoding': 'chunked' } })
     }
   } catch (error) {
-    console.error('Chat API error:', error)
+    logError('chat_api_error', { error: error instanceof Error ? error.message : String(error) })
     if (session?.user?.id) {
       await rollbackUsageIfNeeded(usageManager || null, session.user.id, 'conversation_count')
     }

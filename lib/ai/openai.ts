@@ -1,3 +1,4 @@
+import { logDebug, logInfo, logWarn, logError } from '@/lib/logging'
 // 检测是否在 Vercel 环境中运行
 const isVercelEnvironment = process.env.VERCEL === '1' || process.env.VERCEL_ENV !== undefined
 
@@ -133,7 +134,7 @@ export class OpenAICompatibleClient {
             }
             return m
           })
-          console.debug('[OpenAIClient] request', {
+          logDebug('openai_request', {
             url,
             timeout,
             model: requestBody.model,
@@ -141,7 +142,7 @@ export class OpenAICompatibleClient {
             hasResponseFormat: !!params.response_format,
             messageCount: requestBody.messages.length,
             messagesPreview: safeMessages.slice(0, 2)
-          })
+          } as any)
         }
 
         const response = await fetch(url, {
@@ -164,12 +165,12 @@ export class OpenAICompatibleClient {
             const v = response.headers.get(k)
             if (v) picked[k] = v
           }
-          console.debug('[OpenAIClient] response', { status: response.status, headers: picked })
+          logDebug('openai_response', { status: response.status, headers: picked } as any)
         }
 
         if (!response.ok) {
           const errorText = await response.text()
-          if (verbose) console.error('[OpenAIClient] API error body:', errorText)
+          if (verbose) logError('openai_api_error_body', { body: errorText } as any)
           throw new Error(`API request failed: ${response.status} ${response.statusText} - ${errorText}`)
         }
 
@@ -179,9 +180,9 @@ export class OpenAICompatibleClient {
         const errName = error instanceof Error ? error.name : 'Unknown'
 
         if (verbose) {
-          console.error('[OpenAIClient] fetch error', { attempt, errName, errMsg })
+          logError('openai_fetch_error', { attempt, errName, errMsg } as any)
         } else {
-          console.error('Fetch error:', error)
+          logError('fetch_error', { error: error instanceof Error ? error.message : String(error) } as any)
         }
 
         // 优化错误文案
@@ -274,12 +275,12 @@ export class OpenAICompatibleClient {
     messages: Array<{ role: string; content: string; images?: string[] }>
     system?: string
   }, options?: FetchDiagOptions) {
-    console.log("Streaming text with params:", {
+    logDebug('openai_stream_params', {
       model: params.model,
       messageCount: params.messages.length,
       hasSystem: !!params.system,
       hasImages: params.messages.some(msg => msg.images && msg.images.length > 0)
-    })
+    } as any)
 
     // 转换消息格式以支持图片
     const messages: Array<{ role: string; content: string | Array<any> }> = params.messages.map(msg => {
@@ -317,9 +318,9 @@ export class OpenAICompatibleClient {
     const url = `${this.baseUrl}/v1/models`
     options = options ?? getDefaultDiagOptions()
     if (options?.verbose) {
-      console.debug("[OpenAIClient] listModels ->", url)
+      logDebug('openai_list_models_request', { url } as any)
     } else {
-      console.log("Listing models from:", url)
+      logInfo('openai_list_models_listing', { url } as any)
     }
 
     try {
@@ -349,22 +350,22 @@ export class OpenAICompatibleClient {
               const v = response.headers.get(k)
               if (v) picked[k] = v
             }
-            console.debug('[OpenAIClient] listModels response', { status: response.status, headers: picked })
+            logDebug('openai_list_models_response', { status: response.status, headers: picked } as any)
           } else {
-            console.log("List models response status:", response.status)
+            logInfo('openai_list_models_status', { status: response.status } as any)
           }
 
           if (!response.ok) {
             const errorText = await response.text()
-            if (options?.verbose) console.error("List models error:", errorText)
+            if (options?.verbose) logError('openai_list_models_error', { body: errorText } as any)
             throw new Error(`Failed to fetch models: ${response.status} ${response.statusText} - ${errorText}`)
           }
 
           const result = await response.json()
           if (options?.verbose) {
-            console.debug("Models fetched:", result.data?.length || 0)
+            logDebug('openai_models_fetched', { count: result.data?.length || 0 } as any)
           } else {
-            console.log("Models fetched:", result.data?.length || 0)
+            logInfo('openai_models_fetched_count', { count: result.data?.length || 0 } as any)
           }
           return result
         } catch (error) {
@@ -393,7 +394,7 @@ export class OpenAICompatibleClient {
         }
       }
     } catch (error) {
-      console.error("List models fetch error:", error)
+      logError('openai_list_models_fetch_error', { error: error instanceof Error ? error.message : String(error) } as any)
       throw error
     }
   }
