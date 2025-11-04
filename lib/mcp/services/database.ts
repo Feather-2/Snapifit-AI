@@ -16,9 +16,7 @@ export class DatabaseService {
   async getUserProfile(userId: string, fields?: string[]): Promise<any> {
     // TODO: 实现数据库查询
     // 这里应该连接到你现有的数据库获取用户档案
-    // 信息级日志：保留 console 便于本地调试，或替换为 logInfo 以统一
-    // eslint-disable-next-line no-console
-    console.log(`[Database] 获取用户档案: ${userId}`)
+    logInfo('mcp_db_get_user_profile', { userId } as any)
     
     return {
       userId,
@@ -40,8 +38,7 @@ export class DatabaseService {
    * 获取每日健康日志
    */
   async getDailyLogByDate(userId: string, date: string): Promise<any> {
-    // eslint-disable-next-line no-console
-    console.log(`[Database] 获取每日日志: ${userId}, ${date}`)
+    logInfo('mcp_db_get_daily_log_by_date', { userId, date } as any)
     
     return {
       userId,
@@ -64,8 +61,7 @@ export class DatabaseService {
    * 获取最近的每日日志
    */
   async getRecentDailyLogs(userId: string, days: number): Promise<any[]> {
-    // eslint-disable-next-line no-console
-    console.log(`[Database] 获取最近${days}天日志: ${userId}`)
+    logInfo('mcp_db_get_recent_daily_logs', { userId, days } as any)
     
     const logs = []
     for (let i = 0; i < days; i++) {
@@ -97,8 +93,7 @@ export class DatabaseService {
    * 获取指定时间范围的日志
    */
   async getDailyLogs(userId: string, timeRange: string): Promise<any[]> {
-    // eslint-disable-next-line no-console
-    console.log(`[Database] 获取日志范围: ${userId}, ${timeRange}`)
+    logInfo('mcp_db_get_daily_logs', { userId, timeRange } as any)
     
     let days = 7
     switch (timeRange) {
@@ -123,8 +118,7 @@ export class DatabaseService {
    * 获取营养数据库信息
    */
   async getNutritionInfo(foodName: string): Promise<any> {
-    // eslint-disable-next-line no-console
-    console.log(`[Database] 获取营养信息: ${foodName}`)
+    logInfo('mcp_db_get_nutrition_info', { foodName } as any)
     
     // 简化的营养数据库
     const nutritionDB: Record<string, any> = {
@@ -149,8 +143,7 @@ export class DatabaseService {
    * 获取运动数据库信息
    */
   async getExerciseInfo(exerciseName: string): Promise<any> {
-    // eslint-disable-next-line no-console
-    console.log(`[Database] 获取运动信息: ${exerciseName}`)
+    logInfo('mcp_db_get_exercise_info', { exerciseName } as any)
     
     // 简化的运动数据库
     const exerciseDB: Record<string, any> = {
@@ -174,8 +167,7 @@ export class DatabaseService {
    * 搜索运动
    */
   async searchExercises(query: string, filters: any = {}): Promise<any[]> {
-    // eslint-disable-next-line no-console
-    console.log(`[Database] 搜索运动: ${query}`)
+    logInfo('mcp_db_search_exercises', { query } as any)
     
     // 模拟运动搜索结果
     const mockResults = [
@@ -211,8 +203,7 @@ export class DatabaseService {
   async healthCheck(): Promise<{ status: 'healthy' | 'degraded' | 'unhealthy', details: any }> {
     try {
       // TODO: 实现数据库连接检查
-      // eslint-disable-next-line no-console
-      console.log('[Database] 执行健康检查')
+      logInfo('mcp_db_health_check')
       
       return {
         status: 'healthy',
