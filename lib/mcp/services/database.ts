@@ -16,6 +16,8 @@ export class DatabaseService {
   async getUserProfile(userId: string, fields?: string[]): Promise<any> {
     // TODO: 实现数据库查询
     // 这里应该连接到你现有的数据库获取用户档案
+    // 信息级日志：保留 console 便于本地调试，或替换为 logInfo 以统一
+    // eslint-disable-next-line no-console
     console.log(`[Database] 获取用户档案: ${userId}`)
     
     return {
@@ -38,6 +40,7 @@ export class DatabaseService {
    * 获取每日健康日志
    */
   async getDailyLogByDate(userId: string, date: string): Promise<any> {
+    // eslint-disable-next-line no-console
     console.log(`[Database] 获取每日日志: ${userId}, ${date}`)
     
     return {
@@ -61,6 +64,7 @@ export class DatabaseService {
    * 获取最近的每日日志
    */
   async getRecentDailyLogs(userId: string, days: number): Promise<any[]> {
+    // eslint-disable-next-line no-console
     console.log(`[Database] 获取最近${days}天日志: ${userId}`)
     
     const logs = []
@@ -93,6 +97,7 @@ export class DatabaseService {
    * 获取指定时间范围的日志
    */
   async getDailyLogs(userId: string, timeRange: string): Promise<any[]> {
+    // eslint-disable-next-line no-console
     console.log(`[Database] 获取日志范围: ${userId}, ${timeRange}`)
     
     let days = 7
@@ -118,6 +123,7 @@ export class DatabaseService {
    * 获取营养数据库信息
    */
   async getNutritionInfo(foodName: string): Promise<any> {
+    // eslint-disable-next-line no-console
     console.log(`[Database] 获取营养信息: ${foodName}`)
     
     // 简化的营养数据库
@@ -143,6 +149,7 @@ export class DatabaseService {
    * 获取运动数据库信息
    */
   async getExerciseInfo(exerciseName: string): Promise<any> {
+    // eslint-disable-next-line no-console
     console.log(`[Database] 获取运动信息: ${exerciseName}`)
     
     // 简化的运动数据库
@@ -167,6 +174,7 @@ export class DatabaseService {
    * 搜索运动
    */
   async searchExercises(query: string, filters: any = {}): Promise<any[]> {
+    // eslint-disable-next-line no-console
     console.log(`[Database] 搜索运动: ${query}`)
     
     // 模拟运动搜索结果
@@ -203,6 +211,7 @@ export class DatabaseService {
   async healthCheck(): Promise<{ status: 'healthy' | 'degraded' | 'unhealthy', details: any }> {
     try {
       // TODO: 实现数据库连接检查
+      // eslint-disable-next-line no-console
       console.log('[Database] 执行健康检查')
       
       return {

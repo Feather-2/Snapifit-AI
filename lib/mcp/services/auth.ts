@@ -4,6 +4,7 @@
  */
 
 import { AuthConfig, MCPCallContext } from '../types'
+import { logInfo } from '@/lib/logging'
 
 export class AuthService {
   constructor(private config: AuthConfig) {}
@@ -18,7 +19,7 @@ export class AuthService {
 
     // TODO: 实现API Key验证逻辑
     // 这里应该查询数据库验证API Key
-    console.log('[Auth] 验证API Key')
+    logInfo('mcp_auth_validate_api_key')
     
     // 模拟验证
     if (apiKey && apiKey.length > 10) {
@@ -37,7 +38,7 @@ export class AuthService {
     }
 
     // TODO: 实现OAuth令牌验证
-    console.log('[Auth] 验证OAuth令牌')
+    logInfo('mcp_auth_validate_oauth_token')
     
     // 模拟验证
     if (token && token.startsWith('Bearer ')) {
@@ -60,7 +61,7 @@ export class AuthService {
     }
 
     // TODO: 实现会话验证
-    console.log('[Auth] 验证会话')
+    logInfo('mcp_auth_validate_session')
     
     // 模拟验证
     if (sessionId && sessionId.startsWith('session_')) {
@@ -79,7 +80,7 @@ export class AuthService {
     }
 
     // TODO: 从数据库获取用户权限
-    console.log(`[Auth] 获取用户权限: ${userId}`)
+    logInfo('mcp_auth_get_user_permissions', { userId } as any)
     
     // 模拟权限系统
     const userPermissions: Record<string, string[]> = {
