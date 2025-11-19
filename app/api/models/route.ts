@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { OpenAICompatibleClient } from '@/lib/ai/openai'
+import { logInfo, logError } from '@/lib/logging'
 import { handleApiError } from '@/lib/api/error-handler'
 
 export async function POST(request: NextRequest) {
@@ -7,8 +8,7 @@ export async function POST(request: NextRequest) {
     const { baseUrl, apiKey } = await request.json()
 
     // 调试日志：确认API被调用
-    console.log("🔧 /api/models called for fetching model list")
-    console.log("🌐 Base URL:", baseUrl)
+    logInfo('api_models_fetch_called', { baseUrl })
 
     if (!baseUrl || !apiKey) {
       return NextResponse.json({ 
@@ -20,17 +20,17 @@ export async function POST(request: NextRequest) {
     // ✅ 注意：此API用于获取私有配置的模型列表，不进行URL验证
     // ✅ 私有配置允许用户使用任何URL，包括官方API
     // 🚫 只有共享服务(/api/shared-keys/*)才需要URL验证
-    console.log("✅ Private config model fetch - URL validation SKIPPED")
+    logInfo('api_models_skip_url_validation', { reason: 'private_config' })
 
     // 创建客户端
     const client = new OpenAICompatibleClient(baseUrl, apiKey)
 
-    console.log("🚀 Fetching models from:", baseUrl)
+    logInfo('api_models_fetch_start', { baseUrl })
     
     // 获取模型列表
     const result = await client.listModels()
     
-    console.log("✅ Models fetched successfully, count:", result.data?.length || 0)
+    logInfo('api_models_fetch_done', { count: (result.data?.length || 0) as any })
 
     return NextResponse.json({
       success: true,
@@ -39,12 +39,11 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error("❌ Models fetch error:", error)
+    logError('api_models_fetch_error', { error: error instanceof Error ? error.message : String(error) })
     
     // 检查是否是URL验证错误
     if (error instanceof Error && error.message.includes("封禁")) {
-      console.error("🚨 UNEXPECTED: URL validation error in private config model fetch!")
-      console.error("🚨 This should NOT happen - private configs should allow any URL")
+      logError('api_models_unexpected_url_validation', { note: 'private configs should allow any URL' })
     }
 
     // 提供更详细的错误信息

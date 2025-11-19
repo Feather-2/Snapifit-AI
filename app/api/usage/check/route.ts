@@ -2,6 +2,7 @@
 import { auth } from '@/lib/auth'
 import { UsageManager } from '@/lib/user/usage-manager'
 import { secureCache } from '@/lib/cache/secure-cache'
+import { logInfo } from '@/lib/logging'
 
 // 检查用户使用限额
 export async function GET(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') || 'conversation'
 
     // 获取用户信任等级（使用缓存）
-    console.log('🔧 [API/USAGE/CHECK] Getting user info for:', session.user.id)
+    logInfo('api_usage_check_user_lookup_start', { userId: session.user.id })
 
     const securityContext = {
       userId: session.user.id,
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
     const { type = 'conversation' } = body
 
     // 获取用户信任等级（使用缓存）
-    console.log('🔧 [API/USAGE/CHECK] POST - Getting user info for:', session.user.id)
+    logInfo('api_usage_check_post_user_lookup_start', { userId: session.user.id })
 
     const securityContext = {
       userId: session.user.id,

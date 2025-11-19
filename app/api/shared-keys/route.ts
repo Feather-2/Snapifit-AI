@@ -7,6 +7,7 @@ import { logSecurityEvent } from '@/lib/security-logger'
 import { getClientIP } from '@/lib/utils/ip'
 import { secureCache } from '@/lib/cache/secure-cache'
 import { PermissionHelper } from '@/lib/config/environment'
+import { logInfo, logError } from '@/lib/logging'
 
 export const runtime = 'nodejs' // 明确指定使用 Node.js Runtime
 
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
     const userId = session.user.id
 
     // 检查用户信任等级权限（使用缓存）
-    console.log('🔧 [API/SHARED-KEYS] POST - Getting user info for:', userId)
+    logInfo('api_shared_keys_post_user_lookup_start', { userId })
 
     const securityContext = {
       userId: userId,
@@ -171,7 +172,7 @@ export async function POST(request: NextRequest) {
       message: 'API Key添加成功，感谢您的分享！'
     })
   } catch (error) {
-    console.error('Add shared key error:', error)
+    logError('api_shared_keys_add_error', { error: error instanceof Error ? error.message : String(error) })
     const { handleApiError } = await import('@/lib/api/error-handler')
     return handleApiError(error, 500)
   }
@@ -187,7 +188,7 @@ export async function PUT(request: NextRequest) {
     const userId = session.user.id
 
     // 检查用户信任等级权限（使用缓存）
-    console.log('🔧 [API/SHARED-KEYS] PUT - Getting user info for:', userId)
+    logInfo('api_shared_keys_put_user_lookup_start', { userId })
 
     const securityContext = {
       userId: userId,
@@ -240,7 +241,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Key updated successfully' })
   } catch (error) {
-    console.error('Update shared key error:', error)
+    logError('api_shared_keys_update_error', { error: error instanceof Error ? error.message : String(error) })
     const { handleApiError } = await import('@/lib/api/error-handler')
     return handleApiError(error, 500)
   }
@@ -256,7 +257,7 @@ export async function DELETE(request: NextRequest) {
     const userId = session.user.id
 
     // 检查用户信任等级权限（使用缓存）
-    console.log('🔧 [API/SHARED-KEYS] DELETE - Getting user info for:', userId)
+    logInfo('api_shared_keys_delete_user_lookup_start', { userId })
 
     const securityContext = {
       userId: userId,
@@ -306,7 +307,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, message: 'Key deleted successfully' })
   } catch (error) {
-    console.error('Delete shared key error:', error)
+    logError('api_shared_keys_delete_error', { error: error instanceof Error ? error.message : String(error) })
     const { handleApiError } = await import('@/lib/api/error-handler')
     return handleApiError(error, 500)
   }

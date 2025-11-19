@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { locales, defaultLocale } from './i18n';
 import { getVersion } from './config/features';
 import { logInfo, logWarn, logError } from '@/lib/logging'
+import { EnvConfig } from '@/lib/config/environment'
 
 // ============================================================================
 // 安全头辅助函数
@@ -37,6 +38,7 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
     "'self'",
     'https://*.supabase.co',
     'https://api.openai.com',
+    'https://api.github.com',
     ...envList(process.env.CSP_CONNECT_SRC),
   ];
 
@@ -66,9 +68,10 @@ function addSecurityHeaders(response: NextResponse): NextResponse {
   // 更严格的 CSP（逐步移除 style inline）
   const csp = [
     "default-src 'self'",
-    "script-src 'self'",
-    // 过渡期同时允许 nonce 与 unsafe-inline（后续移除 unsafe-inline）
-    `style-src 'self' 'nonce-${styleNonce}' 'unsafe-inline'`,
+    // 开发环境需要 unsafe-eval (Webpack) 和 unsafe-inline (Next.js HMR/Scripts)
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    // 开发环境优先使用 unsafe-inline，移除 nonce 以避免 unsafe-inline 被忽略
+    `style-src 'self' 'unsafe-inline'`,
     `img-src ${imgAllow.join(' ')}`,
     "font-src 'self' data:",
     `connect-src ${connectAllow.join(' ')}`,
@@ -230,6 +233,48 @@ export default async function middleware(req: NextRequest) {
   const isInternal = req.headers.get('X-Internal-Request') === 'true';
   if (isInternal) {
     return NextResponse.next();
+  }
+
+  // ============================================================================
+  // 0. 生产环境环境变量校验（一次性缓存结果，避免每请求重复计算）
+  // ============================================================================
+  // 模块级缓存（Edge runtime 冷启动后复用同一实例）
+  // @ts-ignore
+  const g: any = globalThis as any
+  if (!g.__envValidation) {
+    const nodeEnv = process.env.NODE_ENV || 'development'
+    const validation = EnvConfig.validateConfig()
+    g.__envValidation = { nodeEnv, ...validation }
+    if (nodeEnv === 'production' && !validation.isValid) {
+      logError('env_config_invalid', { errors: validation.errors as any })
+    }
+  }
+
+  const envValidation = (globalThis as any).__envValidation as { nodeEnv: string; isValid: boolean; errors: string[] } | undefined
+  if (envValidation && envValidation.nodeEnv === 'production' && !envValidation.isValid) {
+    // 对 API 路由直接返回 500，页面路由返回简单错误提示
+    const origin = req.headers.get('origin') || undefined;
+    const allowedOrigins = (process.env.ALLOWED_CORS_ORIGINS || '')
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    if (path.startsWith('/api/')) {
+      const resp = NextResponse.json({
+        error: 'ENV_CONFIG_INVALID',
+        message: '环境变量配置不完整或不安全，请检查部署环境',
+        errors: envValidation.errors,
+      }, { status: 500 })
+      resp.headers.set('X-Request-ID', requestId)
+      resp.headers.set('X-Config-Invalid', 'true')
+      return addCorsHeaders(addSecurityHeaders(resp), origin, allowedOrigins)
+    }
+
+    const html = `<!doctype html><html lang="zh"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><title>配置错误</title></head><body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;padding:24px;line-height:1.6"><h1>环境配置错误</h1><p>生产环境下检测到必需的环境变量未正确配置。请联系管理员或检查部署环境。</p><details><summary>查看错误详情</summary><pre style="white-space:pre-wrap">${envValidation.errors.map(e=>`- ${e}`).join('\n')}</pre></details></body></html>`
+    const resp = new NextResponse(html, { status: 500, headers: { 'Content-Type': 'text/html; charset=utf-8' } })
+    resp.headers.set('X-Request-ID', requestId)
+    resp.headers.set('X-Config-Invalid', 'true')
+    return addSecurityHeaders(resp)
   }
 
   // ============================================================================

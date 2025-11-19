@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth' // 使用 next-auth 的 auth 方法
 import { ApiTokenManager } from '@/lib/auth/token-manager'
 import type { CreateTokenRequest } from '@/lib/auth/token-manager'
 import { handleApiError } from '@/lib/api/error-handler'
+import { logError } from '@/lib/logging'
 
 /**
  * GET /api/tokens - 获取用户的所有令牌
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       tokens: result.tokens
     })
   } catch (error) {
-    console.error('获取令牌列表失败:', error)
+    logError('api_tokens_list_error', { error: error instanceof Error ? error.message : String(error) })
     return handleApiError(error, 500)
   }
 }
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
       tokenInfo: result.tokenInfo
     })
   } catch (error) {
-    console.error('创建令牌失败:', error)
+    logError('api_tokens_create_error', { error: error instanceof Error ? error.message : String(error) })
     return handleApiError(error, 500)
   }
 }
@@ -129,7 +130,7 @@ export async function DELETE(request: NextRequest) {
       message: '令牌已成功撤销'
     })
   } catch (error) {
-    console.error('撤销令牌失败:', error)
+    logError('api_tokens_revoke_error', { error: error instanceof Error ? error.message : String(error) })
     return handleApiError(error, 500)
   }
 }

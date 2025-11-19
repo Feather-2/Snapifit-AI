@@ -2,6 +2,7 @@
 import { auth } from '@/lib/auth'
 import { UsageManager } from '@/lib/user/usage-manager'
 import { secureCache } from '@/lib/cache/secure-cache'
+import { logInfo, logWarn, logError } from '@/lib/logging'
 
 // 获取用户使用统计
 export async function GET(request: NextRequest) {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
     const days = parseInt(searchParams.get('days') || '7')
 
     // 获取用户信息（使用缓存）
-    console.log('[API/USAGE/STATS] Getting user info for:', session.user.id)
+    logInfo('api_usage_stats_user_lookup_start', { userId: session.user.id })
 
     const securityContext = {
       userId: session.user.id,
@@ -25,35 +26,35 @@ export async function GET(request: NextRequest) {
 
     const userInfo = await secureCache.getUserBasicInfo(session.user.id, securityContext)
 
-    console.log('[API/USAGE/STATS] User lookup result:', {
+    logInfo('api_usage_stats_user_lookup_done', {
       hasUser: !!userInfo,
       userId: session.user.id,
-      trustLevel: userInfo?.trust_level
+      trustLevel: userInfo?.trust_level as any
     })
 
     if (!userInfo) {
-      console.log('[API/USAGE/STATS] User not found, returning 404')
+      logWarn('api_usage_stats_user_not_found', { userId: session.user.id })
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
     const usageManager = new UsageManager()
 
-    console.log('[API/USAGE/STATS] Getting usage stats for user:', session.user.id, 'days:', days)
+    logInfo('api_usage_stats_stats_start', { userId: session.user.id, days })
 
     // 获取使用统计
     const statsResult = await usageManager.getUserUsageStats(session.user.id, days)
-    console.log('[API/USAGE/STATS] Stats result:', {
-      success: statsResult.success,
-      error: statsResult.error,
+    logInfo('api_usage_stats_stats_done', {
+      success: statsResult.success as any,
+      error: statsResult.error as any,
       hasStats: !!statsResult.stats
     })
 
     if (!statsResult.success) {
-      console.log('[API/USAGE/STATS] Stats failed:', statsResult.error)
+      logWarn('api_usage_stats_stats_failed', { error: statsResult.error as any })
       return NextResponse.json({ error: statsResult.error }, { status: 500 })
     }
 
-    console.log('[API/USAGE/STATS] Getting limit info for user:', session.user.id, 'trustLevel:', userInfo.trust_level)
+    logInfo('api_usage_stats_limit_start', { userId: session.user.id, trustLevel: userInfo.trust_level as any })
 
     // 获取当前限额信息
     const limitResult = await usageManager.getUserLimitInfo(
@@ -61,14 +62,14 @@ export async function GET(request: NextRequest) {
       userInfo.trust_level
     )
 
-    console.log('[API/USAGE/STATS] Limit result:', {
-      success: limitResult.success,
-      error: limitResult.error,
+    logInfo('api_usage_stats_limit_done', {
+      success: limitResult.success as any,
+      error: limitResult.error as any,
       hasInfo: !!limitResult.info
     })
 
     if (!limitResult.success) {
-      console.log('[API/USAGE/STATS] Limit failed:', limitResult.error)
+      logWarn('api_usage_stats_limit_failed', { error: limitResult.error as any })
       return NextResponse.json({ error: limitResult.error }, { status: 500 })
     }
 
@@ -77,7 +78,7 @@ export async function GET(request: NextRequest) {
       limits: limitResult.info
     })
   } catch (error) {
-    console.error('Error fetching usage stats:', error)
+    logError('api_usage_stats_error', { error: error instanceof Error ? error.message : String(error) })
     const { handleApiError } = await import('@/lib/api/error-handler')
     return handleApiError(error, 500)
   }

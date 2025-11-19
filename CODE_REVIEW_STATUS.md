@@ -17,6 +17,18 @@
 
 ---
 
+## 📌 本次新增修复（构建/类型）
+
+- ✅ 解除 Next 15 生产构建类型检查阻塞：
+  - 为缺失页面新增最小占位：`app/[locale]/docs/mcp-diagrams/page.tsx`，按生成类型使用 Promise 包装的 `params`。
+  - API 路由对齐 Next 15 生成类型：第二参数统一为 `context: { params: Promise<...> }` 并 `await` 解析（keys/[id]、invite-codes/[id]、admin/{users、user-bans、shared-keys、security/blocked-ips}）。
+  - Client 组件补充空值安全：`useParams()`/`useSearchParams()` 场景全面 null-safe，修正部分按钮 `disabled` 布尔表达式与字符串插值类型。
+  - 补充第三方类型：新增 `types/uuid.d.ts` 以避免缺失 `@types/uuid` 导致的构建中断。
+  - 数据库抽象一致性：`/api/admin/check-table` 不再直接使用不存在于 `DatabaseClient` 接口上的原生 `query`，改为返回指引信息；`/api/admin/cleanup-tokens` 使用统一安全日志字段（`type`/`message`）；`/api/admin/fix-database` 补齐 `getSupabaseAdmin` 导入。
+
+说明：以上为不改变业务行为的类型与构建修复，旨在在严格类型检查开启的生产模式下稳定通过构建。
+
+
 ## 🔴 严重问题实现状态
 
 ### 1. CSP 配置过于宽松 ✅ **已修复**

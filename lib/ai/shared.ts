@@ -1,4 +1,5 @@
 import { OpenAICompatibleClient } from '@/lib/ai/openai'
+import { logError, logWarn } from '@/lib/logging'
 import { KeyManager } from '@/lib/auth/key-manager'
 import type { SharedKeyConfig } from '@/lib/auth/key-manager'
 // 保留类型导入但避免实际在前端解密服务端密钥
@@ -114,10 +115,10 @@ export class SharedOpenAIClient {
           });
 
           if (!logResult.success) {
-            console.error('Failed to log key usage:', logResult.error);
+            logWarn('key_usage_log_failed', { error: logResult.error as any })
           }
-        } catch (logError) {
-          console.error('Error logging key usage:', logError);
+        } catch (logErr) {
+          logWarn('key_usage_log_exception', { error: logErr instanceof Error ? logErr.message : String(logErr) })
         }
       }
 
@@ -139,10 +140,10 @@ export class SharedOpenAIClient {
           });
 
           if (!logResult.success) {
-            console.error('Failed to log key usage:', logResult.error);
+            logWarn('key_usage_log_failed', { error: logResult.error as any })
           }
-        } catch (logError) {
-          console.error('Error logging key usage:', logError);
+        } catch (logErr) {
+          logWarn('key_usage_log_exception', { error: logErr instanceof Error ? logErr.message : String(logErr) })
         }
       }
 
@@ -239,10 +240,10 @@ export class SharedOpenAIClient {
           });
 
           if (!logResult.success) {
-            console.error('Failed to log key usage:', logResult.error);
+            logWarn('key_usage_log_failed', { error: logResult.error as any })
           }
-        } catch (logError) {
-          console.error('Error logging key usage:', logError);
+        } catch (logErr) {
+          logWarn('key_usage_log_exception', { error: logErr instanceof Error ? logErr.message : String(logErr) })
         }
       }
 
@@ -264,10 +265,10 @@ export class SharedOpenAIClient {
           });
 
           if (!logResult.success) {
-            console.error('Failed to log key usage:', logResult.error);
+            logWarn('key_usage_log_failed', { error: logResult.error as any })
           }
-        } catch (logError) {
-          console.error('Error logging key usage:', logError);
+        } catch (logErr) {
+          logWarn('key_usage_log_exception', { error: logErr instanceof Error ? logErr.message : String(logErr) })
         }
       }
 

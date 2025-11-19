@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { getSupabaseAdmin } from '@/lib/supabase'
 import bcrypt from 'bcryptjs'
 import { handleApiError } from '@/lib/api/error-handler'
+import { logError, logWarn } from '@/lib/logging'
 
 export async function POST(request: NextRequest) {
   try {
@@ -49,7 +50,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (fetchError) {
-      console.error('Error fetching user:', fetchError)
+      logError('api_user_update_fetch_error', { error: fetchError?.message || String(fetchError) } as any)
       return NextResponse.json(
         { error: '获取用户信息失败' },
         { status: 500 }
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
       .eq('id', session.user.id)
 
     if (updateError) {
-      console.error('Error updating user:', updateError)
+      logError('api_user_update_update_error', { error: updateError?.message || String(updateError) } as any)
       return NextResponse.json(
         { error: '更新用户信息失败' },
         { status: 500 }
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
       const { invalidateAfterProfileUpdate } = await import('@/lib/cache/cache-manager')
       invalidateAfterProfileUpdate(session.user.id)
     } catch (cacheError) {
-      console.warn('⚠️ Failed to invalidate cache after profile update:', cacheError)
+      logWarn('api_user_update_cache_invalidate_failed', { error: cacheError instanceof Error ? cacheError.message : String(cacheError) })
       // 缓存失效失败不影响主要功能
     }
 
@@ -124,7 +125,7 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Update profile error:', error)
+    logError('api_user_update_error', { error: error instanceof Error ? error.message : String(error) })
     return handleApiError(error, 500)
   }
 }

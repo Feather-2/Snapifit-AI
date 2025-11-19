@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { handleApiError } from '@/lib/api/error-handler'
+import { timeoutFetch, TimeoutError } from '@/lib/utils/timeout'
 
 // 超时配置常量
 const TIMEOUT_CONFIG = {
@@ -21,26 +22,18 @@ export async function POST(req: NextRequest) {
       tests: {} as Record<string, any>
     }
 
-    // 1. 基础连接测试
+    // 1. 基础连接测试（使用统一超时封装）
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_CONFIG.DIAGNOSTIC)
-
       const testUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl
       const pingUrl = testUrl.includes('/v1') ? testUrl : `${testUrl}/v1/models`
 
-
-
-      const response = await fetch(pingUrl, {
+      const response = await timeoutFetch(pingUrl, {
         method: 'GET',
         headers: {
           'User-Agent': 'HealthApp-Diagnostic/1.0',
           ...(apiKey && { 'Authorization': `Bearer ${apiKey}` })
-        },
-        signal: controller.signal
-      })
-
-      clearTimeout(timeoutId)
+        }
+      }, TIMEOUT_CONFIG.DIAGNOSTIC)
 
       results.tests.connection = {
         success: true,
@@ -125,7 +118,7 @@ function getErrorDetails(error: unknown): Record<string, any> {
     } else if (error.message.includes('ECONNREFUSED')) {
       details.type = 'CONNECTION_REFUSED'
       details.suggestion = '连接被拒绝，请检查服务器是否运行或防火墙设置'
-    } else if (error.message.includes('ETIMEDOUT') || error.name === 'AbortError') {
+    } else if (error.message.includes('ETIMEDOUT') || error.name === 'AbortError' || error instanceof TimeoutError || error.name === 'TimeoutError') {
       details.type = 'TIMEOUT'
       details.suggestion = '连接超时，请检查网络速度或服务器响应时间'
     } else if (error.message.includes('CERT') || error.message.includes('certificate')) {
