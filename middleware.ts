@@ -372,6 +372,6 @@ export const config = {
     // - _vercel 内部文件
     // - 静态资源文件（带扩展名）
     '/((?!_next|_vercel|.*\\..*).*)',
-    '/api/(.*)'
+    '/api/:path*'
   ]
 };

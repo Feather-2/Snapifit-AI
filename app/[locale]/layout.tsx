@@ -1,5 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
+import { Inter } from "next/font/google"
 import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import "../globals.css"
@@ -7,6 +8,8 @@ import { locales, type Locale } from '@/i18n';
 import { Providers } from "@/components/providers";
 import { auth } from "@/lib/auth";
 import { ClientLayout } from "@/components/layout/ClientLayout";
+
+const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Snapifit AI",
@@ -16,7 +19,7 @@ export const metadata: Metadata = {
 
 interface LocaleLayoutProps {
   children: React.ReactNode;
-  params: Promise<{ locale: Locale }>;
+  params: Promise<{ locale: string }>;
 }
 
 export default async function LocaleLayout({
@@ -26,7 +29,7 @@ export default async function LocaleLayout({
   const { locale } = await params;
 
   // 验证语言是否支持
-  if (!locales.includes(locale)) {
+  if (!locales.includes(locale as Locale)) {
     notFound();
   }
 
@@ -43,9 +46,11 @@ export default async function LocaleLayout({
       timeZone="Asia/Shanghai"
       initialSession={session}
     >
-      <ClientLayout locale={locale}>
-        {children}
-      </ClientLayout>
+      <div className={inter.className}>
+        <ClientLayout locale={locale}>
+          {children}
+        </ClientLayout>
+      </div>
     </Providers>
   )
 }
